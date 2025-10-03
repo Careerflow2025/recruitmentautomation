@@ -22,20 +22,32 @@ export default function LandingPage() {
     setSuccess('');
 
     try {
+      console.log('🔐 Attempting login with email:', email.trim());
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password,
       });
 
-      if (error) throw error;
+      console.log('📦 Login response:', { data, error });
+
+      if (error) {
+        console.error('❌ Supabase error:', error);
+        throw error;
+      }
 
       if (data.session) {
-        console.log('✅ Login successful!');
-        window.location.href = '/dashboard';
+        console.log('✅ Login successful! Session:', data.session);
+        setSuccess('Login successful! Redirecting...');
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 500);
+      } else {
+        throw new Error('No session returned from login');
       }
     } catch (err: any) {
       console.error('❌ Login error:', err);
-      setError(err.message || 'Failed to sign in');
+      setError(err.message || 'Failed to sign in. Please check your credentials.');
     } finally {
       setLoading(false);
     }
