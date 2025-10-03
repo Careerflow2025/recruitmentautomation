@@ -96,7 +96,6 @@ export async function POST(request: Request) {
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 8192,  // Increased for handling multiple clients at once
-      timeout: 60000,    // 60 second timeout
       tools: [
         {
           name: 'add_candidate',
