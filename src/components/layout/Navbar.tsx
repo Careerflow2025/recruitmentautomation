@@ -26,7 +26,7 @@ export function Navbar() {
           {/* Logo / Home Link */}
           <Link
             href="/"
-            className="flex items-center gap-2 font-bold text-xl hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2 font-bold text-xl hover:opacity-90 transition-opacity"
           >
             <span className="text-2xl">⚡</span>
             <span className="hidden sm:inline">AI Laser Recruiter</span>
@@ -34,14 +34,14 @@ export function Navbar() {
           </Link>
 
           {/* Navigation Links */}
-          <div className="flex items-center gap-2 md:gap-4">
-            {navLinks.map((link) => (
+          <div className="flex items-center gap-1 md:gap-2">
+            {navLinks.slice(1).map((link) => ( {/* Skip Home link - already have logo */}
               <Link
                 key={link.href}
                 href={link.href}
-                className={`px-3 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${
+                className={`px-3 py-2 rounded-lg font-medium transition-all text-sm ${
                   pathname === link.href
-                    ? 'bg-white/20 shadow-md'
+                    ? 'bg-white/20'
                     : 'hover:bg-white/10'
                 }`}
               >
@@ -49,6 +49,9 @@ export function Navbar() {
                 <span className="hidden md:inline">{link.icon} {link.label}</span>
               </Link>
             ))}
+
+            {/* Divider */}
+            <div className="hidden md:block w-px h-8 bg-white/30 mx-2"></div>
 
             {/* Logout Button */}
             <LogoutButton />

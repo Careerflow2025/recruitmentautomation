@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
-import { LogoutButton } from '@/components/auth/LogoutButton';
-import { UserEmail } from '@/components/auth/UserEmail';
 
 export default function Home() {
   const [stats, setStats] = useState({
@@ -15,15 +14,17 @@ export default function Home() {
     under40Minutes: 0,
   });
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        // Get current user from session (more reliable than getUser)
+        // Get current user from session
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session?.user) {
-          setLoading(false);
+          // Redirect to login if not authenticated
+          router.push('/login');
           return;
         }
 
@@ -59,23 +60,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">⚡ AI Laser Recruiter</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                {loading ? 'Loading...' : '✅ Connected'}
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <UserEmail />
-              <LogoutButton />
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
