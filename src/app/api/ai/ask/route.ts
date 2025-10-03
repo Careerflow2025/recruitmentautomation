@@ -205,8 +205,7 @@ Current data:
 - Candidates: ${candidates?.length || 0}
 - Clients: ${clients?.length || 0}
 
-${candidates?.length > 0 ? `Highest Candidate ID: ${getHighestId(candidates, 'CAN')}` : 'No candidates yet - start with CAN001'}
-${clients?.length > 0 ? `Highest Client ID: ${getHighestId(clients, 'CL')}` : 'No clients yet - start with CL001'}
+⚠️ REMINDER: Generate timestamp-based IDs (CL1735900000ABC format), NOT simple IDs (CL001)
 
 Candidates data:
 ${JSON.stringify(candidates || [], null, 2)}
@@ -231,19 +230,20 @@ IMPORTANT DATA EXTRACTION RULES:
 3. **Handle incomplete data gracefully**: Always provide a value even if it's a placeholder like "TBD", "Contact for details", "Not specified"
 4. **Smart extraction**: Read the entire message and extract relevant information even if it's scattered or informal
 
-CRITICAL ID GENERATION RULES:
-5. **GLOBALLY UNIQUE IDs**: IDs must be unique across ALL users in the system
-6. **Generate timestamp-based IDs**: Use current timestamp + random letters for uniqueness
-   - Candidates: CAN + 10-digit-number + 3-uppercase-letters (e.g., CAN1704654789ABC)
-   - Clients: CL + 10-digit-number + 3-uppercase-letters (e.g., CL1704654789XYZ)
-7. **How to generate**:
-   - Take current timestamp in milliseconds (e.g., 1704654789123)
-   - Add 3 random uppercase letters (e.g., ABC, XYZ, QWE)
-   - Combine: CAN1704654789ABC or CL1704654789XYZ
-8. **Multiple records**: For each record, generate a NEW timestamp-based ID
-   - Record 1: CAN1704654789ABC
-   - Record 2: CAN1704654790DEF (different timestamp/letters)
-   - This guarantees NO duplicates across all users
+🚨 CRITICAL ID GENERATION - MUST FOLLOW EXACTLY:
+5. **NEVER use simple IDs like CL001, CL002, CAN001, CAN002**
+6. **ALWAYS use this format**: PREFIX + TIMESTAMP + RANDOM
+   - Example for clients: CL1735900000ABC, CL1735900001XYZ
+   - Example for candidates: CAN1735900000QWE, CAN1735900001RTY
+7. **Step-by-step ID generation**:
+   Step 1: Get current timestamp (use a 10-digit number like 1735900000)
+   Step 2: Generate 3 random uppercase letters (ABC, XYZ, QWE, RTY, etc.)
+   Step 3: Combine: CL + timestamp + letters = CL1735900000ABC
+8. **For multiple records, use DIFFERENT IDs**:
+   - Client 1: CL1735900000ABC
+   - Client 2: CL1735900001XYZ (different timestamp, different letters)
+   - Client 3: CL1735900002QWE (different timestamp, different letters)
+9. **IMPORTANT**: IDs are shared across ALL users globally. NEVER reuse CL001, CL002, etc.
 
 Extract all information from their message and call the appropriate tool with the data. NEVER leave required fields empty - use sensible defaults or placeholders.`,
         },
