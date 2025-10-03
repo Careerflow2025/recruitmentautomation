@@ -195,7 +195,17 @@ Available operations:
 - UPDATE: If the user asks to edit/update/modify a candidate or client, use update_candidate or update_client
 - DELETE: If the user asks to delete/remove a candidate or client, use delete_candidate or delete_client
 
-Extract all information from their message and call the appropriate tool with the data.`,
+IMPORTANT DATA EXTRACTION RULES:
+1. **Be flexible with missing data**: If budget/salary is not explicitly stated, use "DOE" (Depends on Experience), "TBD", or "Contact for details"
+2. **Extract from context**:
+   - "Further details requested" → budget: "TBD - Further details requested"
+   - No salary mentioned → budget: "DOE"
+   - "Salary: DOE" → budget: "DOE"
+   - "£12.44 - 15.50" → budget: "£12.44-£15.50"
+3. **Handle incomplete data gracefully**: Always provide a value even if it's a placeholder like "TBD", "Contact for details", "Not specified"
+4. **Smart extraction**: Read the entire message and extract relevant information even if it's scattered or informal
+
+Extract all information from their message and call the appropriate tool with the data. NEVER leave required fields empty - use sensible defaults or placeholders.`,
         },
       ],
     });
@@ -226,11 +236,15 @@ Extract all information from their message and call the appropriate tool with th
           }
         } else if (toolName === 'add_client') {
           // Add client to database
-          const { error } = await supabase.from('clients').insert({
+          // Ensure budget is never null/undefined - use placeholder if missing
+          const clientData = {
             ...toolInput,
+            budget: toolInput.budget || 'DOE',
             user_id: user.id,
             added_at: new Date().toISOString(),
-          });
+          };
+
+          const { error } = await supabase.from('clients').insert(clientData);
 
           if (error) {
             toolResults.push(`Error adding client: ${error.message}`);
