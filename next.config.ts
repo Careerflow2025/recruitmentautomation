@@ -9,6 +9,6 @@ const nextConfig: NextConfig = {
     // Skip type checking during production build (fix types later)
     ignoreBuildErrors: true,
   },
-}
+};
 
 export default nextConfig;
