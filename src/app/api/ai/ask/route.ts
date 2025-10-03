@@ -232,14 +232,16 @@ IMPORTANT DATA EXTRACTION RULES:
 4. **Smart extraction**: Read the entire message and extract relevant information even if it's scattered or informal
 
 CRITICAL ID GENERATION RULES:
-5. **NEVER reuse IDs**: Generate unique IDs by checking existing data first
-6. **Auto-increment IDs**:
-   - For candidates: Find the highest CAN number (e.g., CAN299092) and add 1 → CAN299093
-   - For clients: Find the highest CL number (e.g., CL009) and add 1 → CL010
-7. **ID Format**:
-   - Candidates: CAN followed by numbers (e.g., CAN001, CAN100001)
-   - Clients: CL followed by numbers (e.g., CL001, CL010)
-8. **When adding multiple records**: Increment the ID for each one sequentially
+5. **GLOBALLY UNIQUE IDs**: IDs must be unique across ALL users in the system
+6. **Use UUID-style IDs**: Generate IDs using timestamp + random to ensure global uniqueness
+   - Format: PREFIX + TIMESTAMP + RANDOM (e.g., CAN_1704654789_ABC, CL_1704654789_XYZ)
+   - This ensures NO duplicate IDs even if multiple users add data simultaneously
+7. **Alternative: Sequential with User Check**:
+   - Start from a high number base per user (e.g., User 1: CAN100000+, User 2: CAN200000+)
+   - Or use format: CAN_${userId.slice(0,4)}_001 to make IDs user-specific
+8. **SIMPLE SOLUTION**: Use format CAN${Date.now()}${Math.random().toString(36).slice(2,5).toUpperCase()}
+   - Example: CAN1704654789ABC, CL1704654789XYZ
+   - Guaranteed unique across all users and time
 
 Extract all information from their message and call the appropriate tool with the data. NEVER leave required fields empty - use sensible defaults or placeholders.`,
         },
