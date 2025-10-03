@@ -10,6 +10,7 @@
 -- =====================================================
 CREATE TABLE IF NOT EXISTS candidates (
   id TEXT PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   first_name TEXT,
   last_name TEXT,
   email TEXT,
@@ -24,6 +25,7 @@ CREATE TABLE IF NOT EXISTS candidates (
 );
 
 -- Create indexes for candidates
+CREATE INDEX IF NOT EXISTS idx_candidates_user ON candidates(user_id);
 CREATE INDEX IF NOT EXISTS idx_candidates_role ON candidates(role);
 CREATE INDEX IF NOT EXISTS idx_candidates_postcode ON candidates(postcode);
 CREATE INDEX IF NOT EXISTS idx_candidates_added_at ON candidates(added_at DESC);
@@ -31,15 +33,25 @@ CREATE INDEX IF NOT EXISTS idx_candidates_added_at ON candidates(added_at DESC);
 -- Enable RLS on candidates
 ALTER TABLE candidates ENABLE ROW LEVEL SECURITY;
 
--- Allow all operations for now (will restrict with auth later)
-CREATE POLICY "Allow all operations on candidates" ON candidates
-  FOR ALL USING (true) WITH CHECK (true);
+-- RLS Policies for candidates (user isolation)
+CREATE POLICY "Users can view their own candidates" ON candidates
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own candidates" ON candidates
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own candidates" ON candidates
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own candidates" ON candidates
+  FOR DELETE USING (auth.uid() = user_id);
 
 
 -- 2. CREATE CLIENTS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS clients (
   id TEXT PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   surgery TEXT NOT NULL,
   client_name TEXT,
   client_email TEXT,
@@ -54,6 +66,7 @@ CREATE TABLE IF NOT EXISTS clients (
 );
 
 -- Create indexes for clients
+CREATE INDEX IF NOT EXISTS idx_clients_user ON clients(user_id);
 CREATE INDEX IF NOT EXISTS idx_clients_role ON clients(role);
 CREATE INDEX IF NOT EXISTS idx_clients_postcode ON clients(postcode);
 CREATE INDEX IF NOT EXISTS idx_clients_added_at ON clients(added_at DESC);
@@ -61,9 +74,18 @@ CREATE INDEX IF NOT EXISTS idx_clients_added_at ON clients(added_at DESC);
 -- Enable RLS on clients
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 
--- Allow all operations for now
-CREATE POLICY "Allow all operations on clients" ON clients
-  FOR ALL USING (true) WITH CHECK (true);
+-- RLS Policies for clients (user isolation)
+CREATE POLICY "Users can view their own clients" ON clients
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own clients" ON clients
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own clients" ON clients
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own clients" ON clients
+  FOR DELETE USING (auth.uid() = user_id);
 
 
 -- 3. CREATE MATCHES TABLE (Computed View)
