@@ -95,7 +95,8 @@ export async function POST(request: Request) {
     // Create AI assistant with tools for database operations
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 4096,
+      max_tokens: 8192,  // Increased for handling multiple clients at once
+      timeout: 60000,    // 60 second timeout
       tools: [
         {
           name: 'add_candidate',

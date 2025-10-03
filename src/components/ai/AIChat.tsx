@@ -65,7 +65,21 @@ export function AIChat() {
         body: JSON.stringify({ question: currentQuestion })
       });
 
-      const result = await response.json();
+      // Check if response has content
+      const text = await response.text();
+
+      if (!text) {
+        throw new Error('Empty response from AI server. The request may have timed out.');
+      }
+
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch (parseError) {
+        console.error('JSON Parse Error:', parseError);
+        console.error('Response text:', text);
+        throw new Error('Invalid response format from AI server. Response: ' + text.substring(0, 100));
+      }
 
       if (!response.ok) {
         // Show detailed error from API
