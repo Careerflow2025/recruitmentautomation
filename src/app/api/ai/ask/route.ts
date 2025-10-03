@@ -71,7 +71,7 @@ export async function POST(request: Request) {
 
     // Create AI assistant with tools for database operations
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
       tools: [
         {
@@ -107,11 +107,66 @@ export async function POST(request: Request) {
             required: ['id', 'surgery', 'role', 'postcode', 'pay', 'days'],
           },
         },
+        {
+          name: 'update_candidate',
+          description: 'Update an existing candidate in the database. Use this when the user asks to edit/update/modify a candidate.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'Candidate ID to update (e.g., CAN001)' },
+              role: { type: 'string', description: 'Job role (optional)' },
+              postcode: { type: 'string', description: 'UK postcode (optional)' },
+              salary: { type: 'string', description: 'Salary expectation (optional)' },
+              days: { type: 'string', description: 'Working days (optional)' },
+              phone: { type: 'string', description: 'Phone number (optional)' },
+              notes: { type: 'string', description: 'Additional notes (optional)' },
+            },
+            required: ['id'],
+          },
+        },
+        {
+          name: 'update_client',
+          description: 'Update an existing client in the database. Use this when the user asks to edit/update/modify a client.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'Client ID to update (e.g., CL001)' },
+              surgery: { type: 'string', description: 'Surgery/practice name (optional)' },
+              role: { type: 'string', description: 'Role needed (optional)' },
+              postcode: { type: 'string', description: 'UK postcode (optional)' },
+              pay: { type: 'string', description: 'Pay offered (optional)' },
+              days: { type: 'string', description: 'Days needed (optional)' },
+            },
+            required: ['id'],
+          },
+        },
+        {
+          name: 'delete_candidate',
+          description: 'Delete a candidate from the database. Use this when the user asks to delete/remove a candidate.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'Candidate ID to delete (e.g., CAN001)' },
+            },
+            required: ['id'],
+          },
+        },
+        {
+          name: 'delete_client',
+          description: 'Delete a client from the database. Use this when the user asks to delete/remove a client.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'Client ID to delete (e.g., CL001)' },
+            },
+            required: ['id'],
+          },
+        },
       ],
       messages: [
         {
           role: 'user',
-          content: `You are an AI assistant for a dental recruitment system. You can view and analyze data, AND you can add new candidates and clients to the database.
+          content: `You are an AI assistant for a dental recruitment system. You can view and analyze data, AND you can add, update, or delete candidates and clients in the database.
 
 Current data:
 - Candidates: ${candidates?.length || 0}
@@ -125,7 +180,12 @@ ${JSON.stringify(clients || [], null, 2)}
 
 User question: ${question}
 
-If the user asks you to add/create/insert a candidate or client, use the appropriate tool. Extract all information from their message and call the tool with the data.`,
+Available operations:
+- ADD: If the user asks to add/create/insert a candidate or client, use add_candidate or add_client
+- UPDATE: If the user asks to edit/update/modify a candidate or client, use update_candidate or update_client
+- DELETE: If the user asks to delete/remove a candidate or client, use delete_candidate or delete_client
+
+Extract all information from their message and call the appropriate tool with the data.`,
         },
       ],
     });
@@ -166,6 +226,60 @@ If the user asks you to add/create/insert a candidate or client, use the appropr
             toolResults.push(`Error adding client: ${error.message}`);
           } else {
             toolResults.push(`✅ Successfully added client ${toolInput.id}`);
+          }
+        } else if (toolName === 'update_candidate') {
+          // Update candidate in database
+          const { id, ...updateData } = toolInput;
+          const { error } = await supabase
+            .from('candidates')
+            .update(updateData)
+            .eq('id', id)
+            .eq('user_id', user.id);
+
+          if (error) {
+            toolResults.push(`Error updating candidate: ${error.message}`);
+          } else {
+            toolResults.push(`✅ Successfully updated candidate ${id}`);
+          }
+        } else if (toolName === 'update_client') {
+          // Update client in database
+          const { id, ...updateData } = toolInput;
+          const { error } = await supabase
+            .from('clients')
+            .update(updateData)
+            .eq('id', id)
+            .eq('user_id', user.id);
+
+          if (error) {
+            toolResults.push(`Error updating client: ${error.message}`);
+          } else {
+            toolResults.push(`✅ Successfully updated client ${id}`);
+          }
+        } else if (toolName === 'delete_candidate') {
+          // Delete candidate from database
+          const { error } = await supabase
+            .from('candidates')
+            .delete()
+            .eq('id', toolInput.id)
+            .eq('user_id', user.id);
+
+          if (error) {
+            toolResults.push(`Error deleting candidate: ${error.message}`);
+          } else {
+            toolResults.push(`✅ Successfully deleted candidate ${toolInput.id}`);
+          }
+        } else if (toolName === 'delete_client') {
+          // Delete client from database
+          const { error } = await supabase
+            .from('clients')
+            .delete()
+            .eq('id', toolInput.id)
+            .eq('user_id', user.id);
+
+          if (error) {
+            toolResults.push(`Error deleting client: ${error.message}`);
+          } else {
+            toolResults.push(`✅ Successfully deleted client ${toolInput.id}`);
           }
         }
       }
