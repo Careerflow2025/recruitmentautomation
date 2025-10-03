@@ -11,12 +11,26 @@ export function LogoutButton() {
   const handleLogout = async () => {
     setLoading(true);
     try {
-      await supabase.auth.signOut();
-      router.push('/login');
-      router.refresh();
+      console.log('🚪 Signing out...');
+
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        console.error('❌ Sign out error:', error);
+        throw error;
+      }
+
+      console.log('✅ Signed out successfully');
+
+      // Clear local storage
+      localStorage.clear();
+
+      // Force redirect with full page reload to clear all state
+      window.location.href = '/login';
     } catch (error) {
       console.error('Error signing out:', error);
-    } finally {
+      alert('Failed to sign out. Please try again.');
       setLoading(false);
     }
   };
