@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { LogoutButton } from '@/components/auth/LogoutButton';
 import { supabase } from '@/lib/supabase/client';
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -87,14 +88,26 @@ export function Navbar() {
             {!isAuthenticated && !loading && (
               <>
                 <button
-                  onClick={() => window.location.href = '/login'}
-                  className="px-4 py-2 rounded-lg font-bold transition-all text-sm bg-white text-blue-600 hover:bg-blue-50 shadow-lg cursor-pointer z-50"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Login button clicked');
+                    router.push('/login');
+                  }}
+                  type="button"
+                  className="px-4 py-2 rounded-lg font-bold transition-all text-sm bg-white text-blue-600 hover:bg-blue-50 shadow-lg cursor-pointer"
                 >
                   🔐 Login
                 </button>
                 <button
-                  onClick={() => window.location.href = '/signup'}
-                  className="px-4 py-2 rounded-lg font-bold transition-all text-sm bg-green-600 text-white hover:bg-green-700 shadow-lg cursor-pointer z-50"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Signup button clicked');
+                    router.push('/signup');
+                  }}
+                  type="button"
+                  className="px-4 py-2 rounded-lg font-bold transition-all text-sm bg-green-600 text-white hover:bg-green-700 shadow-lg cursor-pointer"
                 >
                   ✨ Sign Up
                 </button>
