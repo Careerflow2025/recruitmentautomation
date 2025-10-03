@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Security-sensitive documentation files
+AI_FIXED_AND_TROUBLESHOOTING.md
+AI_IMPLEMENTATION_COMPLETE.md
+AI_SETUP_GUIDE.md
+MATCH_GENERATION_FIXED.md
+QUICK_START.md
+SYSTEM_STATUS_FINAL.md
