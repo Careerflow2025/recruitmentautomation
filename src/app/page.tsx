@@ -24,31 +24,42 @@ export default function LandingPage() {
     try {
       console.log('🔐 Attempting login with email:', email.trim());
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password,
+      // Call API endpoint (same as old working form)
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password,
+        }),
       });
 
-      console.log('📦 Login response:', { data, error });
+      const data = await response.json();
 
-      if (error) {
-        console.error('❌ Supabase error:', error);
-        throw error;
+      console.log('📦 Login response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
       }
 
       if (data.session) {
-        console.log('✅ Login successful! Session:', data.session);
+        console.log('✅ Login successful!');
+
+        // Store the session token
+        localStorage.setItem('sb-auth-token', data.session.access_token);
+
         setSuccess('Login successful! Redirecting...');
-        setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 500);
+
+        // Redirect to dashboard
+        window.location.href = '/dashboard';
       } else {
         throw new Error('No session returned from login');
       }
     } catch (err: any) {
       console.error('❌ Login error:', err);
       setError(err.message || 'Failed to sign in. Please check your credentials.');
-    } finally {
       setLoading(false);
     }
   };
