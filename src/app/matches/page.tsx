@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { normalizeRole } from '@/lib/utils/roleNormalizer';
 import { MatchesTable } from '@/components/matches/MatchesTable';
@@ -9,6 +10,7 @@ import Link from 'next/link';
 import { Match, Candidate, Client } from '@/types';
 
 export default function MatchesPage() {
+  const router = useRouter();
   const [roleMatchFilter, setRoleMatchFilter] = useState<'all' | 'match' | 'location'>('all');
   const [timeFilter, setTimeFilter] = useState<number>(80);
   const [roleFilter, setRoleFilter] = useState<string>('');
@@ -26,11 +28,16 @@ export default function MatchesPage() {
         }
         setError(null);
 
-        // Get current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError) throw userError;
-        if (!user) throw new Error('Not authenticated');
+        // Get current user from session
+        const { data: { session } } = await supabase.auth.getSession();
 
+        if (!session?.user) {
+          // Redirect to login if not authenticated
+          router.push('/login');
+          return;
+        }
+
+        const user = session.user;
         console.log('🔍 Fetching matches for user:', user.id);
 
         const { data: matchesData, error: matchesError} = await supabase
