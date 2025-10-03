@@ -1,11 +1,33 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogoutButton } from '@/components/auth/LogoutButton';
+import { supabase } from '@/lib/supabase/client';
 
 export function Navbar() {
   const pathname = usePathname();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Check authentication status
+  useEffect(() => {
+    async function checkAuth() {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+      setLoading(false);
+    }
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Don't show navbar on login/signup pages
   if (pathname === '/login' || pathname === '/signup') {
@@ -33,28 +55,51 @@ export function Navbar() {
             <span className="sm:hidden">AIR</span>
           </Link>
 
-          {/* Navigation Links - Skip Home link since logo already links to home */}
+          {/* Navigation Links and Auth Buttons */}
           <div className="flex items-center gap-1 md:gap-2">
-            {navLinks.slice(1).map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`px-3 py-2 rounded-lg font-medium transition-all text-sm ${
-                  pathname === link.href
-                    ? 'bg-white/20'
-                    : 'hover:bg-white/10'
-                }`}
-              >
-                <span className="md:hidden">{link.icon}</span>
-                <span className="hidden md:inline">{link.icon} {link.label}</span>
-              </Link>
-            ))}
+            {/* Only show nav links when authenticated */}
+            {isAuthenticated && (
+              <>
+                {navLinks.slice(1).map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`px-3 py-2 rounded-lg font-medium transition-all text-sm ${
+                      pathname === link.href
+                        ? 'bg-white/20'
+                        : 'hover:bg-white/10'
+                    }`}
+                  >
+                    <span className="md:hidden">{link.icon}</span>
+                    <span className="hidden md:inline">{link.icon} {link.label}</span>
+                  </Link>
+                ))}
 
-            {/* Divider */}
-            <div className="hidden md:block w-px h-8 bg-white/30 mx-2"></div>
+                {/* Divider */}
+                <div className="hidden md:block w-px h-8 bg-white/30 mx-2"></div>
 
-            {/* Logout Button */}
-            <LogoutButton />
+                {/* Logout Button */}
+                <LogoutButton />
+              </>
+            )}
+
+            {/* Show Login/Signup buttons when NOT authenticated */}
+            {!isAuthenticated && !loading && (
+              <>
+                <Link
+                  href="/login"
+                  className="px-4 py-2 rounded-lg font-bold transition-all text-sm bg-white text-blue-600 hover:bg-blue-50 shadow-md"
+                >
+                  🔐 Login
+                </Link>
+                <Link
+                  href="/signup"
+                  className="px-4 py-2 rounded-lg font-bold transition-all text-sm bg-green-600 text-white hover:bg-green-700 shadow-md"
+                >
+                  ✨ Sign Up
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
