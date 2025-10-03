@@ -39,14 +39,24 @@ export function LogoutButton() {
     <button
       onClick={handleLogout}
       disabled={loading}
-      className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+      className={`px-3 py-2 rounded-lg text-sm font-bold transition-all ${
         loading
-          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          ? 'bg-white/10 text-white/50 cursor-not-allowed'
           : 'bg-red-600 text-white hover:bg-red-700 shadow-md hover:shadow-lg'
       }`}
       title="Sign out"
     >
-      {loading ? 'Signing out...' : '🚪 Sign Out'}
+      {loading ? (
+        <>
+          <span className="md:hidden">⏳</span>
+          <span className="hidden md:inline">⏳ Signing out...</span>
+        </>
+      ) : (
+        <>
+          <span className="md:hidden">🚪</span>
+          <span className="hidden md:inline">🚪 Sign Out</span>
+        </>
+      )}
     </button>
   );
 }

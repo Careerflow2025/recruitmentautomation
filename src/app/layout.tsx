@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { AIChat } from '@/components/ai/AIChat';
+import { Navbar } from '@/components/layout/Navbar';
 
 export const metadata: Metadata = {
   title: 'AI Laser Recruiter',
@@ -15,6 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased" suppressHydrationWarning>
+        <Navbar />
         {children}
         <AIChat />
       </body>
