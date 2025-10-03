@@ -23,8 +23,8 @@ export default function Home() {
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session?.user) {
-          // Redirect to login if not authenticated
-          router.push('/login');
+          // Redirect to homepage (landing page with login) if not authenticated
+          router.push('/');
           return;
         }
 
