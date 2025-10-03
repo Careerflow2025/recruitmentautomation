@@ -26,49 +26,81 @@ export default function MatchesPage() {
         }
         setError(null);
 
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!user) throw new Error('Not authenticated');
+
+        console.log('🔍 Fetching matches for user:', user.id);
+
         const { data: matchesData, error: matchesError} = await supabase
           .from('matches')
           .select('*')
+          .eq('user_id', user.id)
           .order('commute_minutes', { ascending: true });
 
-        if (matchesError) throw matchesError;
+        if (matchesError) {
+          console.error('❌ Error fetching matches:', matchesError);
+          throw matchesError;
+        }
+
+        console.log('✅ Matches found:', matchesData?.length || 0);
+        console.log('📊 Matches data:', matchesData);
 
         const { data: candidatesData, error: candidatesError } = await supabase
           .from('candidates')
-          .select('*');
+          .select('*')
+          .eq('user_id', user.id);
 
         if (candidatesError) throw candidatesError;
 
         const { data: clientsData, error: clientsError } = await supabase
           .from('clients')
-          .select('*');
+          .select('*')
+          .eq('user_id', user.id);
 
         if (clientsError) throw clientsError;
 
         const candidatesMap = new Map(candidatesData.map(c => [c.id, c]));
         const clientsMap = new Map(clientsData.map(c => [c.id, c]));
 
-        const transformedMatches: Match[] = matchesData.map(m => {
-          const candidate = candidatesMap.get(m.candidate_id);
-          const client = clientsMap.get(m.client_id);
+        console.log('👥 Candidates map size:', candidatesMap.size);
+        console.log('🏥 Clients map size:', clientsMap.size);
 
-          return {
-            candidate: {
-              ...candidate,
-              added_at: new Date(candidate.added_at),
-            } as Candidate,
-            client: {
-              ...client,
-              added_at: new Date(client.added_at),
-            } as Client,
-            commute_minutes: m.commute_minutes,
-            commute_display: m.commute_display,
-            commute_band: m.commute_band as any,
-            role_match: m.role_match,
-            role_match_display: m.role_match_display,
-          };
-        });
+        const transformedMatches: Match[] = matchesData
+          .map(m => {
+            const candidate = candidatesMap.get(m.candidate_id);
+            const client = clientsMap.get(m.client_id);
 
+            if (!candidate) {
+              console.warn(`⚠️ Candidate not found for match: ${m.candidate_id}`);
+              return null;
+            }
+
+            if (!client) {
+              console.warn(`⚠️ Client not found for match: ${m.client_id}`);
+              return null;
+            }
+
+            return {
+              candidate: {
+                ...candidate,
+                added_at: new Date(candidate.added_at),
+              } as Candidate,
+              client: {
+                ...client,
+                added_at: new Date(client.added_at),
+              } as Client,
+              commute_minutes: m.commute_minutes,
+              commute_display: m.commute_display,
+              commute_band: m.commute_band as any,
+              role_match: m.role_match,
+              role_match_display: m.role_match_display,
+            };
+          })
+          .filter(m => m !== null) as Match[];
+
+        console.log('✅ Transformed matches:', transformedMatches.length);
         setMatches(transformedMatches);
       } catch (err: any) {
         console.error('Error fetching matches:', err);
