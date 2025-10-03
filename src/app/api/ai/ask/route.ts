@@ -95,7 +95,7 @@ export async function POST(request: Request) {
     // Create AI assistant with tools for database operations
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 8192,  // Increased for handling multiple clients at once
+      max_tokens: 16384,  // Maximum allowed - for large batches of candidates/clients
       tools: [
         {
           name: 'add_candidate',
