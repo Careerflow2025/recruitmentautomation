@@ -237,6 +237,11 @@ export default function LandingPage() {
 
                   <button
                     type="submit"
+                    onClick={(e) => {
+                      console.log('🖱️ Login button clicked!');
+                      console.log('Email:', email);
+                      console.log('Password length:', password.length);
+                    }}
                     disabled={loading}
                     className={`w-full py-4 rounded-xl text-white font-bold text-lg transition-all shadow-lg ${
                       loading
