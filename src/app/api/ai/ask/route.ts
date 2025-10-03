@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { askAssistant } from '@/lib/ai-service';
-import { createClient } from '@supabase/supabase-js';
+import Anthropic from '@anthropic-ai/sdk';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
   try {
@@ -20,64 +21,169 @@ export async function POST(request: Request) {
       );
     }
 
-    // Fetch data from Supabase
-    const supabase = createClient(
+    // Create Supabase client with auth
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
     );
 
-    // Get all candidates
-    const { data: candidates, error: candidatesError } = await supabase
+    // Get authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'You must be logged in to use AI assistant' },
+        { status: 401 }
+      );
+    }
+
+    // Get all candidates for current user
+    const { data: candidates } = await supabase
       .from('candidates')
       .select('*')
+      .eq('user_id', user.id)
       .order('added_at', { ascending: false });
 
-    if (candidatesError) {
-      console.error('Error fetching candidates:', candidatesError);
-    }
-
-    // Get all clients
-    const { data: clients, error: clientsError } = await supabase
+    // Get all clients for current user
+    const { data: clients } = await supabase
       .from('clients')
       .select('*')
+      .eq('user_id', user.id)
       .order('added_at', { ascending: false });
 
-    if (clientsError) {
-      console.error('Error fetching clients:', clientsError);
-    }
+    // Initialize Anthropic
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
 
-    // Get all matches (if match_statuses table exists)
-    const { data: matches, error: matchesError } = await supabase
-      .from('match_statuses')
-      .select('*');
+    // Create AI assistant with tools for database operations
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 4096,
+      tools: [
+        {
+          name: 'add_candidate',
+          description: 'Add a new candidate to the database. Use this when the user asks to add/create/insert a candidate.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'Candidate ID (e.g., CAN001)' },
+              role: { type: 'string', description: 'Job role (e.g., Dental Nurse, Dentist)' },
+              postcode: { type: 'string', description: 'UK postcode' },
+              salary: { type: 'string', description: 'Salary expectation (e.g., £15-£17)' },
+              days: { type: 'string', description: 'Working days (e.g., Mon-Wed)' },
+              phone: { type: 'string', description: 'Phone number (optional)' },
+              notes: { type: 'string', description: 'Additional notes (optional)' },
+            },
+            required: ['id', 'role', 'postcode', 'salary', 'days'],
+          },
+        },
+        {
+          name: 'add_client',
+          description: 'Add a new client/surgery to the database. Use this when the user asks to add/create/insert a client or surgery.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'Client ID (e.g., CL001)' },
+              surgery: { type: 'string', description: 'Surgery/practice name' },
+              role: { type: 'string', description: 'Role needed' },
+              postcode: { type: 'string', description: 'UK postcode' },
+              pay: { type: 'string', description: 'Pay offered (e.g., £16-£18)' },
+              days: { type: 'string', description: 'Days needed (e.g., Mon-Fri)' },
+            },
+            required: ['id', 'surgery', 'role', 'postcode', 'pay', 'days'],
+          },
+        },
+      ],
+      messages: [
+        {
+          role: 'user',
+          content: `You are an AI assistant for a dental recruitment system. You can view and analyze data, AND you can add new candidates and clients to the database.
 
-    if (matchesError) {
-      console.warn('Match statuses not available:', matchesError);
-    }
+Current data:
+- Candidates: ${candidates?.length || 0}
+- Clients: ${clients?.length || 0}
 
-    // Prepare context for AI
-    const context = {
-      candidates: candidates || [],
-      clients: clients || [],
-      matches: matches || [],
-      stats: {
-        totalCandidates: candidates?.length || 0,
-        totalClients: clients?.length || 0,
-        totalMatches: matches?.length || 0,
+Candidates data:
+${JSON.stringify(candidates || [], null, 2)}
+
+Clients data:
+${JSON.stringify(clients || [], null, 2)}
+
+User question: ${question}
+
+If the user asks you to add/create/insert a candidate or client, use the appropriate tool. Extract all information from their message and call the tool with the data.`,
+        },
+      ],
+    });
+
+    let finalAnswer = '';
+    const toolResults = [];
+
+    // Process AI response and execute tool calls
+    for (const block of response.content) {
+      if (block.type === 'text') {
+        finalAnswer += block.text;
+      } else if (block.type === 'tool_use') {
+        const toolName = block.name;
+        const toolInput = block.input as Record<string, string>;
+
+        if (toolName === 'add_candidate') {
+          // Add candidate to database
+          const { error } = await supabase.from('candidates').insert({
+            ...toolInput,
+            user_id: user.id,
+            added_at: new Date().toISOString(),
+          });
+
+          if (error) {
+            toolResults.push(`Error adding candidate: ${error.message}`);
+          } else {
+            toolResults.push(`✅ Successfully added candidate ${toolInput.id}`);
+          }
+        } else if (toolName === 'add_client') {
+          // Add client to database
+          const { error } = await supabase.from('clients').insert({
+            ...toolInput,
+            user_id: user.id,
+            added_at: new Date().toISOString(),
+          });
+
+          if (error) {
+            toolResults.push(`Error adding client: ${error.message}`);
+          } else {
+            toolResults.push(`✅ Successfully added client ${toolInput.id}`);
+          }
+        }
       }
-    };
+    }
 
-    // Ask Claude AI
-    const answer = await askAssistant(question, context);
+    // Combine answer with tool results
+    const combinedAnswer = toolResults.length > 0
+      ? `${finalAnswer}\n\n${toolResults.join('\n')}`
+      : finalAnswer;
 
     return NextResponse.json({
       success: true,
       question,
-      answer,
+      answer: combinedAnswer,
+      toolsUsed: toolResults.length,
       dataUsed: {
-        candidates: context.candidates.length,
-        clients: context.clients.length,
-        matches: context.matches.length,
+        candidates: candidates?.length || 0,
+        clients: clients?.length || 0,
       }
     });
 
