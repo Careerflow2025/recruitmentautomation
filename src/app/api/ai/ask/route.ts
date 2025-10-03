@@ -233,15 +233,17 @@ IMPORTANT DATA EXTRACTION RULES:
 
 CRITICAL ID GENERATION RULES:
 5. **GLOBALLY UNIQUE IDs**: IDs must be unique across ALL users in the system
-6. **Use UUID-style IDs**: Generate IDs using timestamp + random to ensure global uniqueness
-   - Format: PREFIX + TIMESTAMP + RANDOM (e.g., CAN_1704654789_ABC, CL_1704654789_XYZ)
-   - This ensures NO duplicate IDs even if multiple users add data simultaneously
-7. **Alternative: Sequential with User Check**:
-   - Start from a high number base per user (e.g., User 1: CAN100000+, User 2: CAN200000+)
-   - Or use format: CAN_${userId.slice(0,4)}_001 to make IDs user-specific
-8. **SIMPLE SOLUTION**: Use format CAN${Date.now()}${Math.random().toString(36).slice(2,5).toUpperCase()}
-   - Example: CAN1704654789ABC, CL1704654789XYZ
-   - Guaranteed unique across all users and time
+6. **Generate timestamp-based IDs**: Use current timestamp + random letters for uniqueness
+   - Candidates: CAN + 10-digit-number + 3-uppercase-letters (e.g., CAN1704654789ABC)
+   - Clients: CL + 10-digit-number + 3-uppercase-letters (e.g., CL1704654789XYZ)
+7. **How to generate**:
+   - Take current timestamp in milliseconds (e.g., 1704654789123)
+   - Add 3 random uppercase letters (e.g., ABC, XYZ, QWE)
+   - Combine: CAN1704654789ABC or CL1704654789XYZ
+8. **Multiple records**: For each record, generate a NEW timestamp-based ID
+   - Record 1: CAN1704654789ABC
+   - Record 2: CAN1704654790DEF (different timestamp/letters)
+   - This guarantees NO duplicates across all users
 
 Extract all information from their message and call the appropriate tool with the data. NEVER leave required fields empty - use sensible defaults or placeholders.`,
         },
