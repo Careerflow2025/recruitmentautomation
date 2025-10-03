@@ -3,6 +3,29 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
+/**
+ * Get the highest ID from a list of candidates or clients
+ */
+function getHighestId(items: any[], prefix: string): string {
+  if (!items || items.length === 0) return prefix + '001';
+
+  const numbers = items
+    .map(item => {
+      const id = item.id || '';
+      if (id.startsWith(prefix)) {
+        const numPart = id.substring(prefix.length);
+        return parseInt(numPart, 10);
+      }
+      return 0;
+    })
+    .filter(num => !isNaN(num) && num > 0);
+
+  if (numbers.length === 0) return prefix + '001';
+
+  const maxNum = Math.max(...numbers);
+  return prefix + String(maxNum).padStart(3, '0');
+}
+
 export async function POST(request: Request) {
   try {
     const { question } = await request.json();
@@ -182,6 +205,9 @@ Current data:
 - Candidates: ${candidates?.length || 0}
 - Clients: ${clients?.length || 0}
 
+${candidates?.length > 0 ? `Highest Candidate ID: ${getHighestId(candidates, 'CAN')}` : 'No candidates yet - start with CAN001'}
+${clients?.length > 0 ? `Highest Client ID: ${getHighestId(clients, 'CL')}` : 'No clients yet - start with CL001'}
+
 Candidates data:
 ${JSON.stringify(candidates || [], null, 2)}
 
@@ -204,6 +230,16 @@ IMPORTANT DATA EXTRACTION RULES:
    - "£12.44 - 15.50" → budget: "£12.44-£15.50"
 3. **Handle incomplete data gracefully**: Always provide a value even if it's a placeholder like "TBD", "Contact for details", "Not specified"
 4. **Smart extraction**: Read the entire message and extract relevant information even if it's scattered or informal
+
+CRITICAL ID GENERATION RULES:
+5. **NEVER reuse IDs**: Generate unique IDs by checking existing data first
+6. **Auto-increment IDs**:
+   - For candidates: Find the highest CAN number (e.g., CAN299092) and add 1 → CAN299093
+   - For clients: Find the highest CL number (e.g., CL009) and add 1 → CL010
+7. **ID Format**:
+   - Candidates: CAN followed by numbers (e.g., CAN001, CAN100001)
+   - Clients: CL followed by numbers (e.g., CL001, CL010)
+8. **When adding multiple records**: Increment the ID for each one sequentially
 
 Extract all information from their message and call the appropriate tool with the data. NEVER leave required fields empty - use sensible defaults or placeholders.`,
         },
