@@ -70,17 +70,20 @@ CREATE POLICY "Allow all operations on clients" ON clients
 -- =====================================================
 CREATE TABLE IF NOT EXISTS matches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   candidate_id TEXT NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
   client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
   commute_minutes INTEGER,
   commute_display TEXT,
+  commute_band TEXT,
   role_match BOOLEAN,
   role_match_display TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(candidate_id, client_id)
+  UNIQUE(user_id, candidate_id, client_id)
 );
 
 -- Create indexes for matches
+CREATE INDEX IF NOT EXISTS idx_matches_user ON matches(user_id);
 CREATE INDEX IF NOT EXISTS idx_matches_candidate ON matches(candidate_id);
 CREATE INDEX IF NOT EXISTS idx_matches_client ON matches(client_id);
 CREATE INDEX IF NOT EXISTS idx_matches_commute ON matches(commute_minutes);
@@ -88,9 +91,18 @@ CREATE INDEX IF NOT EXISTS idx_matches_commute ON matches(commute_minutes);
 -- Enable RLS on matches
 ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
 
--- Allow all operations for now
-CREATE POLICY "Allow all operations on matches" ON matches
-  FOR ALL USING (true) WITH CHECK (true);
+-- RLS Policies for matches (user isolation)
+CREATE POLICY "Users can view their own matches" ON matches
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own matches" ON matches
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own matches" ON matches
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own matches" ON matches
+  FOR DELETE USING (auth.uid() = user_id);
 
 
 -- 4. CREATE MATCH_STATUSES TABLE
