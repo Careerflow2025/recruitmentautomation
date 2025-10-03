@@ -30,13 +30,13 @@ export function Navbar() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Don't show navbar on login/signup pages when authenticated
-  if (pathname === '/login' || pathname === '/signup') {
+  // Don't show navbar on public homepage (it has its own auth UI)
+  if (pathname === '/') {
     return null;
   }
 
   const navLinks = [
-    { href: '/', label: 'Home', icon: '🏠' },
+    { href: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { href: '/candidates', label: 'Candidates', icon: '👥' },
     { href: '/clients', label: 'Clients', icon: '🏥' },
     { href: '/matches', label: 'Matches', icon: '🎯' },
@@ -46,9 +46,9 @@ export function Navbar() {
     <nav className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo / Home Link */}
+          {/* Logo / Dashboard Link */}
           <Link
-            href="/"
+            href="/dashboard"
             className="flex items-center gap-2 font-bold text-xl hover:opacity-90 transition-opacity"
           >
             <span className="text-2xl">⚡</span>

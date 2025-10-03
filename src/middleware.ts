@@ -44,23 +44,23 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Define public routes (no auth required)
-  const publicRoutes = ['/', '/login', '/signup', '/test-auth'];
+  // Define public routes (no auth required - homepage with login/signup)
+  const publicRoutes = ['/'];
   const isPublicRoute = publicRoutes.some((route) =>
     request.nextUrl.pathname === route
   );
 
-  // Redirect to login if not authenticated and trying to access protected route
+  // Redirect to homepage if not authenticated and trying to access protected route
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = '/login';
+    url.pathname = '/';
     return NextResponse.redirect(url);
   }
 
-  // Redirect to home if authenticated and trying to access login/signup
-  if (user && (path === '/login' || path === '/signup')) {
+  // Redirect to dashboard if authenticated and on homepage
+  if (user && path === '/') {
     const url = request.nextUrl.clone();
-    url.pathname = '/';
+    url.pathname = '/dashboard';
     return NextResponse.redirect(url);
   }
 

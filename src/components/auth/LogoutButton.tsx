@@ -26,8 +26,8 @@ export function LogoutButton() {
       // Clear local storage
       localStorage.clear();
 
-      // Force redirect with full page reload to clear all state
-      window.location.href = '/login';
+      // Force redirect with full page reload to homepage (landing page)
+      window.location.href = '/';
     } catch (error) {
       console.error('Error signing out:', error);
       alert('Failed to sign out. Please try again.');
