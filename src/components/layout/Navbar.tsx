@@ -33,9 +33,9 @@ export function Navbar() {
             <span className="sm:hidden">AIR</span>
           </Link>
 
-          {/* Navigation Links */}
+          {/* Navigation Links - Skip Home link since logo already links to home */}
           <div className="flex items-center gap-1 md:gap-2">
-            {navLinks.slice(1).map((link) => ( {/* Skip Home link - already have logo */}
+            {navLinks.slice(1).map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
