@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login - Direct</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .login-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .fill-btn {
+            background: #4CAF50;
+            color: white;
+        }
+        .test-btn {
+            background: #FF9800;
+            color: white;
+        }
+        .success {
+            color: green;
+            padding: 10px;
+            border: 1px solid green;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            color: red;
+            padding: 10px;
+            border: 1px solid red;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        #result {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Direct Login Test</h1>
+
+        <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+            <strong>Test Credentials:</strong><br>
+            Email: admin@test.com<br>
+            Password: Test123456!
+        </div>
+
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+
+        <button class="fill-btn" onclick="fillCredentials()">Fill Test Credentials</button>
+        <button class="test-btn" onclick="testDirectAPI()">Test Direct API</button>
+        <button class="login-btn" onclick="doLogin()">Login via API</button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function fillCredentials() {
+            document.getElementById('email').value = 'admin@test.com';
+            document.getElementById('password').value = 'Test123456!';
+            showResult('Credentials filled!', 'success');
+        }
+
+        function showResult(message, type = 'info') {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = type === 'error' ? 'error' : (type === 'success' ? 'success' : '');
+            resultDiv.textContent = message;
+        }
+
+        async function testDirectAPI() {
+            showResult('Testing direct Supabase connection...', 'info');
+
+            try {
+                const response = await fetch('https://lfoapqybmhxctqdqxxoa.supabase.co/auth/v1/token?grant_type=password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxmb2FwcXlibWh4Y3RxZHF4eG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyODQ1MDIsImV4cCI6MjA3NDg2MDUwMn0.TOVqF_SqyXNzEPOhdey9E3kTHM8m2tOnQ2HwVmbUXX0'
+                    },
+                    body: JSON.stringify({
+                        email: document.getElementById('email').value,
+                        password: document.getElementById('password').value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('✅ Direct API Success! Token: ' + data.access_token.substring(0, 50) + '...', 'success');
+                } else {
+                    showResult('❌ Direct API Error: ' + (data.message || data.error), 'error');
+                }
+            } catch (error) {
+                showResult('❌ Network Error: ' + error.message, 'error');
+            }
+        }
+
+        async function doLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                showResult('Please enter email and password', 'error');
+                return;
+            }
+
+            showResult('Logging in...', 'info');
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.session) {
+                    showResult('✅ Login successful! Redirecting...', 'success');
+                    localStorage.setItem('sb-auth-token', data.session.access_token);
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                } else {
+                    showResult('❌ Login failed: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showResult('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        // Auto-fill on load
+        window.onload = fillCredentials;
+    </script>
+</body>
+</html>

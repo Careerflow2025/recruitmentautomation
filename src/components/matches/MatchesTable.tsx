@@ -1,0 +1,1169 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { Match, Candidate, Client } from '@/types';
+import { CommuteBadge } from '../ui/CommuteBadge';
+import { RoleMatchBadge } from '../ui/RoleMatchBadge';
+import { NewItemIndicator } from '../ui/NewItemIndicator';
+import { CommuteMapModal } from './CommuteMapModal';
+import { supabase } from '@/lib/supabase/client';
+import { getCurrentUserId } from '@/lib/auth-helpers';
+
+interface MatchesTableProps {
+  matches: Match[];
+}
+
+interface ModalInstance {
+  id: string;
+  type: 'candidate' | 'client';
+  data: Candidate | Client;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+}
+
+type MatchStatus = 'placed' | 'in-progress' | 'rejected' | null;
+
+interface MatchNote {
+  id: string;
+  text: string;
+  timestamp: string;
+}
+
+interface MatchStatusData {
+  status: MatchStatus;
+  notes: MatchNote[];
+}
+
+export function MatchesTable({ matches }: MatchesTableProps) {
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [openModals, setOpenModals] = useState<ModalInstance[]>([]);
+  const [draggingModalId, setDraggingModalId] = useState<string | null>(null);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [matchStatuses, setMatchStatuses] = useState<Record<string, MatchStatusData>>({});
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [selectedMatchForNote, setSelectedMatchForNote] = useState<Match | null>(null);
+  const [noteText, setNoteText] = useState('');
+  const [noteModalPosition, setNoteModalPosition] = useState({ x: 150, y: 150 });
+  const [noteModalSize, setNoteModalSize] = useState({ width: 600, height: 500 });
+  const [isDraggingNote, setIsDraggingNote] = useState(false);
+  const [noteDragStart, setNoteDragStart] = useState({ x: 0, y: 0 });
+  const [isResizing, setIsResizing] = useState<string | null>(null);
+  const [resizeStart, setResizeStart] = useState({ mouseX: 0, mouseY: 0, x: 0, y: 0, width: 0, height: 0 });
+  const openModalsRef = useRef(openModals);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    openModalsRef.current = openModals;
+  }, [openModals]);
+
+  // Global mouse move and up handlers for resize
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+
+      // Handle note modal resize
+      if (isResizing.startsWith('note-')) {
+        const direction = isResizing.split('-')[1];
+        const deltaX = e.clientX - resizeStart.mouseX;
+        const deltaY = e.clientY - resizeStart.mouseY;
+
+        setNoteModalSize(prevSize => {
+          setNoteModalPosition(prevPos => {
+            let newWidth = prevSize.width;
+            let newHeight = prevSize.height;
+            let newX = prevPos.x;
+            let newY = prevPos.y;
+
+            if (direction.includes('e')) {
+              newWidth = Math.max(300, resizeStart.width + deltaX);
+            }
+            if (direction.includes('s')) {
+              newHeight = Math.max(200, resizeStart.height + deltaY);
+            }
+            if (direction.includes('w')) {
+              const widthChange = resizeStart.width - deltaX;
+              if (widthChange >= 300) {
+                newWidth = widthChange;
+                newX = resizeStart.x - (resizeStart.width - widthChange);
+              }
+            }
+            if (direction.includes('n')) {
+              const heightChange = resizeStart.height - deltaY;
+              if (heightChange >= 200) {
+                newHeight = heightChange;
+                newY = resizeStart.y - (resizeStart.height - heightChange);
+              }
+            }
+
+            return { x: newX, y: newY };
+          });
+
+          let newWidth = prevSize.width;
+          let newHeight = prevSize.height;
+
+          if (direction.includes('e')) {
+            newWidth = Math.max(300, resizeStart.width + deltaX);
+          }
+          if (direction.includes('s')) {
+            newHeight = Math.max(200, resizeStart.height + deltaY);
+          }
+          if (direction.includes('w')) {
+            newWidth = Math.max(300, resizeStart.width - deltaX);
+          }
+          if (direction.includes('n')) {
+            newHeight = Math.max(200, resizeStart.height - deltaY);
+          }
+
+          return { width: newWidth, height: newHeight };
+        });
+      } else {
+        // Handle candidate/client modal resize
+        const modalId = isResizing.split('-').slice(0, -1).join('-');
+        const direction = isResizing.split('-').slice(-1)[0];
+        const deltaX = e.clientX - resizeStart.mouseX;
+        const deltaY = e.clientY - resizeStart.mouseY;
+
+        setOpenModals(prev => prev.map(modal => {
+          if (modal.id !== modalId) return modal;
+
+          let newWidth = resizeStart.width;
+          let newHeight = resizeStart.height;
+          let newX = resizeStart.x;
+          let newY = resizeStart.y;
+
+          // East (right edge) - increase width
+          if (direction.includes('e')) {
+            newWidth = Math.max(300, resizeStart.width + deltaX);
+          }
+
+          // South (bottom edge) - increase height
+          if (direction.includes('s')) {
+            newHeight = Math.max(200, resizeStart.height + deltaY);
+          }
+
+          // West (left edge) - adjust width and position
+          if (direction.includes('w')) {
+            const potentialWidth = resizeStart.width - deltaX;
+            if (potentialWidth >= 300) {
+              newWidth = potentialWidth;
+              newX = resizeStart.x + deltaX;
+            } else {
+              newWidth = 300;
+              newX = resizeStart.x + resizeStart.width - 300;
+            }
+          }
+
+          // North (top edge) - adjust height and position
+          if (direction.includes('n')) {
+            const potentialHeight = resizeStart.height - deltaY;
+            if (potentialHeight >= 200) {
+              newHeight = potentialHeight;
+              newY = resizeStart.y + deltaY;
+            } else {
+              newHeight = 200;
+              newY = resizeStart.y + resizeStart.height - 200;
+            }
+          }
+
+          return {
+            ...modal,
+            size: { width: newWidth, height: newHeight },
+            position: { x: newX, y: newY }
+          };
+        }));
+      }
+    };
+
+    const handleGlobalMouseUp = () => {
+      setIsResizing(null);
+    };
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleGlobalMouseMove);
+      window.addEventListener('mouseup', handleGlobalMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isResizing, resizeStart]);
+
+  // Load match statuses from Supabase on component mount
+  useEffect(() => {
+    loadMatchStatusesFromDB();
+  }, []);
+
+  const loadMatchStatusesFromDB = async () => {
+    try {
+      // Fetch match statuses from database
+      const { data: statuses, error: statusError } = await supabase
+        .from('match_statuses')
+        .select('*');
+
+      if (statusError) throw statusError;
+
+      // Fetch all notes
+      const { data: notes, error: notesError } = await supabase
+        .from('match_notes')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (notesError) throw notesError;
+
+      // Build match statuses object
+      const statusMap: Record<string, MatchStatusData> = {};
+
+      statuses?.forEach(status => {
+        const key = `${status.candidate_id}-${status.client_id}`;
+        const matchNotes = notes?.filter(
+          n => n.candidate_id === status.candidate_id && n.client_id === status.client_id
+        ).map(n => ({
+          id: n.id,
+          text: n.note_text,
+          timestamp: n.created_at
+        })) || [];
+
+        statusMap[key] = {
+          status: status.status,
+          notes: matchNotes
+        };
+      });
+
+      setMatchStatuses(statusMap);
+    } catch (error) {
+      console.error('Failed to load match statuses from database:', error);
+    }
+  };
+
+  const handleCommuteClick = (match: Match) => {
+    setSelectedMatch(match);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedMatch(null);
+  };
+
+  const handleCandidateClick = (candidate: Candidate) => {
+    const newModal: ModalInstance = {
+      id: `candidate-${candidate.id}-${Date.now()}`,
+      type: 'candidate',
+      data: candidate,
+      position: { x: 100 + (openModals.length * 30), y: 100 + (openModals.length * 30) },
+      size: { width: 650, height: 750 }
+    };
+    setOpenModals(prev => [...prev, newModal]);
+  };
+
+  const handleClientClick = (client: Client) => {
+    const newModal: ModalInstance = {
+      id: `client-${client.id}-${Date.now()}`,
+      type: 'client',
+      data: client,
+      position: { x: 100 + (openModals.length * 30), y: 100 + (openModals.length * 30) },
+      size: { width: 650, height: 700 }
+    };
+    setOpenModals(prev => [...prev, newModal]);
+  };
+
+  const handleCloseModal_Detail = (modalId: string) => {
+    setOpenModals(prev => prev.filter(m => m.id !== modalId));
+  };
+
+  const handleModalMouseDown = (e: React.MouseEvent, modalId: string) => {
+    // Only start dragging if not resizing
+    if (!isResizing) {
+      setDraggingModalId(modalId);
+      setDragStart({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleModalMouseMove = (e: React.MouseEvent, modalId: string) => {
+    // Prioritize resizing over dragging
+    if (isResizing && isResizing.startsWith(modalId)) {
+      return; // Resize handler will handle this
+    }
+
+    if (draggingModalId !== modalId) return;
+    const deltaX = e.clientX - dragStart.x;
+    const deltaY = e.clientY - dragStart.y;
+    setOpenModals(prev => prev.map(modal =>
+      modal.id === modalId
+        ? { ...modal, position: { x: modal.position.x + deltaX, y: modal.position.y + deltaY } }
+        : modal
+    ));
+    setDragStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleModalMouseUp = () => {
+    setDraggingModalId(null);
+  };
+
+  const getMatchKey = (match: Match) => {
+    return `${match.candidate.id}-${match.client.id}`;
+  };
+
+  const handleStatusClick = async (match: Match, status: MatchStatus) => {
+    const key = getMatchKey(match);
+    const currentData = matchStatuses[key] || { status: null, notes: [] };
+
+    try {
+      // Get current user ID
+      const userId = await getCurrentUserId();
+      if (!userId) {
+        alert('You must be logged in to update match status');
+        return;
+      }
+
+      // Toggle status off if clicking the same one
+      if (currentData.status === status) {
+        // Delete from database
+        const { error } = await supabase
+          .from('match_statuses')
+          .delete()
+          .eq('candidate_id', match.candidate.id)
+          .eq('client_id', match.client.id);
+
+        if (error) throw error;
+
+        // Update local state
+        setMatchStatuses(prev => ({
+          ...prev,
+          [key]: { ...currentData, status: null }
+        }));
+      } else {
+        // Upsert to database
+        const { error } = await supabase
+          .from('match_statuses')
+          .upsert({
+            candidate_id: match.candidate.id,
+            client_id: match.client.id,
+            status: status,
+            user_id: userId
+          }, {
+            onConflict: 'candidate_id,client_id'
+          });
+
+        if (error) throw error;
+
+        // Update local state
+        setMatchStatuses(prev => ({
+          ...prev,
+          [key]: { ...currentData, status }
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to update match status:', error);
+      alert('Failed to update status. Please try again.');
+    }
+  };
+
+  const handleNoteClick = (match: Match) => {
+    setSelectedMatchForNote(match);
+    setNoteText('');
+    setNoteModalOpen(true);
+  };
+
+  const handleSaveNote = async () => {
+    if (selectedMatchForNote && noteText.trim()) {
+      const key = getMatchKey(selectedMatchForNote);
+      const currentData = matchStatuses[key] || { status: null, notes: [] };
+
+      try {
+        // Get current user ID
+        const userId = await getCurrentUserId();
+        if (!userId) {
+          alert('You must be logged in to add notes');
+          return;
+        }
+
+        // Insert note into database
+        const { data, error } = await supabase
+          .from('match_notes')
+          .insert({
+            candidate_id: selectedMatchForNote.candidate.id,
+            client_id: selectedMatchForNote.client.id,
+            note_text: noteText.trim(),
+            user_id: userId
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Create local note object
+        const newNote: MatchNote = {
+          id: data.id,
+          text: data.note_text,
+          timestamp: data.created_at
+        };
+
+        // Update local state
+        setMatchStatuses(prev => ({
+          ...prev,
+          [key]: {
+            ...currentData,
+            notes: [...currentData.notes, newNote]
+          }
+        }));
+      } catch (error) {
+        console.error('Failed to save note:', error);
+        alert('Failed to save note. Please try again.');
+      }
+    }
+    setNoteModalOpen(false);
+    setSelectedMatchForNote(null);
+    setNoteText('');
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    if (selectedMatchForNote) {
+      const key = getMatchKey(selectedMatchForNote);
+      const currentData = matchStatuses[key];
+
+      if (currentData) {
+        try {
+          // Delete from database
+          const { error } = await supabase
+            .from('match_notes')
+            .delete()
+            .eq('id', noteId);
+
+          if (error) throw error;
+
+          // Update local state
+          setMatchStatuses(prev => ({
+            ...prev,
+            [key]: {
+              ...currentData,
+              notes: currentData.notes.filter(n => n.id !== noteId)
+            }
+          }));
+        } catch (error) {
+          console.error('Failed to delete note:', error);
+          alert('Failed to delete note. Please try again.');
+        }
+      }
+    }
+  };
+
+  const handleNoteMouseDown = (e: React.MouseEvent) => {
+    // Only start dragging if not resizing
+    if (!isResizing) {
+      setIsDraggingNote(true);
+      setNoteDragStart({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleNoteMouseMove = (e: React.MouseEvent) => {
+    // Prioritize resizing over dragging
+    if (isResizing && isResizing.startsWith('note-')) {
+      return; // Resize handler will handle this
+    }
+
+    if (!isDraggingNote) return;
+    const deltaX = e.clientX - noteDragStart.x;
+    const deltaY = e.clientY - noteDragStart.y;
+    setNoteModalPosition(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
+    setNoteDragStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleNoteMouseUp = () => {
+    setIsDraggingNote(false);
+  };
+
+  // Resize handlers for candidate/client modals
+  const handleResizeMouseDown = (e: React.MouseEvent, modalId: string, direction: string) => {
+    e.stopPropagation();
+    const modal = openModals.find(m => m.id === modalId);
+    if (modal) {
+      setIsResizing(`${modalId}-${direction}`);
+      setResizeStart({
+        mouseX: e.clientX,
+        mouseY: e.clientY,
+        x: modal.position.x,
+        y: modal.position.y,
+        width: modal.size.width,
+        height: modal.size.height
+      });
+    }
+  };
+
+  // Resize handlers for note modal
+  const handleNoteResizeMouseDown = (e: React.MouseEvent, direction: string) => {
+    e.stopPropagation();
+    setIsResizing(`note-${direction}`);
+    setResizeStart({
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      x: noteModalPosition.x,
+      y: noteModalPosition.y,
+      width: noteModalSize.width,
+      height: noteModalSize.height
+    });
+  };
+
+  const getRowStyle = (match: Match) => {
+    const key = getMatchKey(match);
+    const statusData = matchStatuses[key];
+
+    if (!statusData || !statusData.status) return {};
+
+    if (statusData.status === 'placed') {
+      return { backgroundColor: '#bbf7d0' }; // green-200
+    } else if (statusData.status === 'in-progress') {
+      return { backgroundColor: '#fed7aa' }; // orange-200
+    } else if (statusData.status === 'rejected') {
+      return { backgroundColor: '#fecaca' }; // red-200
+    }
+
+    return {};
+  };
+
+  if (matches.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+        <p className="text-gray-900 font-medium">No matches found with current filters.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-xl border border-gray-200">
+      {/* Table Header Info */}
+      <div className="px-6 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+        <span className="text-sm text-gray-600">
+          💡 Click commute time to view route | Edit data on{' '}
+          <Link href="/candidates" className="text-blue-600 hover:underline font-medium">
+            Candidates
+          </Link>
+          {' '}or{' '}
+          <Link href="/clients" className="text-blue-600 hover:underline font-medium">
+            Clients
+          </Link>
+          {' '}pages
+        </span>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gradient-to-r from-blue-600 to-blue-700">
+              {/* Match Info Section */}
+              <th className="px-3 py-2 text-left text-xs font-bold text-white uppercase tracking-wide border-r border-blue-500">
+                Commute
+              </th>
+              <th className="px-3 py-2 text-left text-xs font-bold text-white uppercase tracking-wide border-r-4 border-white">
+                Role Match
+              </th>
+
+              {/* Alternating Candidate/Client Columns */}
+              <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-700 border-r border-blue-600">
+                CAN ID
+              </th>
+              <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-800 border-r border-blue-700">
+                CL ID
+              </th>
+
+              <th className="px-2 py-2 text-left text-xs font-bold text-white uppercase tracking-wide bg-blue-700 border-r border-blue-600">
+                CAN Postcode
+              </th>
+              <th className="px-2 py-2 text-left text-xs font-bold text-white uppercase tracking-wide bg-blue-800 border-r border-blue-700">
+                CL Postcode
+              </th>
+
+              <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-700 border-r border-blue-600">
+                CAN Salary
+              </th>
+              <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-800 border-r border-blue-700">
+                CL Budget
+              </th>
+
+              <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-700 border-r border-blue-600">
+                CAN Role
+              </th>
+              <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-800 border-r border-blue-700">
+                CL Role
+              </th>
+
+              <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-700 border-r border-blue-600">
+                CAN Availability
+              </th>
+              <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-800 border-r border-blue-700">
+                CL Requirement
+              </th>
+
+              <th className="px-2 py-2 text-center text-[10px] font-bold text-white uppercase tracking-wide bg-blue-800">
+                Status
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {matches.map((match, index) => (
+              <tr
+                key={`${match.candidate.id}-${match.client.id}`}
+                className={`transition-colors hover:bg-blue-50 ${
+                  index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                }`}
+                style={getRowStyle(match)}
+              >
+                {/* Match Info */}
+                <td className="px-3 py-2 whitespace-nowrap border-r border-gray-200">
+                  <button
+                    onClick={() => handleCommuteClick(match)}
+                    className="w-full text-left hover:scale-105 transition-transform cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                  >
+                    <CommuteBadge
+                      display={match.commute_display}
+                      band={match.commute_band}
+                      minutes={match.commute_minutes}
+                    />
+                  </button>
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap border-r-4 border-gray-300">
+                  <RoleMatchBadge
+                    isMatch={match.role_match}
+                    display={match.role_match_display}
+                  />
+                </td>
+
+                {/* Alternating Candidate/Client Columns */}
+                {/* CAN ID */}
+                <td className="px-2 py-2 whitespace-nowrap text-xs font-bold text-gray-900 border-r border-gray-200">
+                  <button
+                    onClick={() => handleCandidateClick(match.candidate)}
+                    className="hover:text-blue-600 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                  >
+                    <NewItemIndicator
+                      id={match.candidate.id}
+                      addedAt={match.candidate.added_at}
+                    />
+                  </button>
+                </td>
+                {/* CL ID */}
+                <td className="px-2 py-2 whitespace-nowrap text-xs font-bold text-gray-900 border-r border-gray-200">
+                  <button
+                    onClick={() => handleClientClick(match.client)}
+                    className="hover:text-blue-600 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                  >
+                    <NewItemIndicator
+                      id={match.client.id}
+                      addedAt={match.client.added_at}
+                    />
+                  </button>
+                </td>
+
+                {/* CAN Postcode */}
+                <td className={`px-2 py-2 whitespace-nowrap font-mono text-sm font-bold text-gray-900 border-r border-gray-200 ${match.commute_minutes <= 80 ? 'border-2 border-green-500' : ''}`}>
+                  {match.candidate.postcode}
+                </td>
+                {/* CL Postcode */}
+                <td className={`px-2 py-2 whitespace-nowrap font-mono text-sm font-bold text-gray-900 border-r border-gray-200 ${match.commute_minutes <= 80 ? 'border-2 border-green-500' : ''}`}>
+                  {match.client.postcode}
+                </td>
+
+                {/* CAN Salary */}
+                <td className="px-2 py-2 whitespace-nowrap text-xs font-semibold text-green-700 border-r border-gray-200">
+                  {match.candidate.salary}
+                </td>
+                {/* CL Budget */}
+                <td className="px-2 py-2 whitespace-nowrap text-xs font-semibold text-green-700 border-r border-gray-200">
+                  {match.client.budget}
+                </td>
+
+                {/* CAN Role */}
+                <td className={`px-2 py-2 whitespace-nowrap text-xs font-medium text-gray-800 border-r border-gray-200 ${match.role_match ? 'border-2 border-green-500' : ''}`}>
+                  {match.candidate.role}
+                </td>
+                {/* CL Role */}
+                <td className={`px-2 py-2 whitespace-nowrap text-xs font-medium text-gray-800 border-r border-gray-200 ${match.role_match ? 'border-2 border-green-500' : ''}`}>
+                  {match.client.role}
+                </td>
+
+                {/* CAN Availability */}
+                <td className={`px-2 py-2 whitespace-nowrap text-xs text-gray-700 border-r border-gray-200 ${match.candidate.days === match.client.requirement ? 'border-2 border-green-500' : ''}`}>
+                  {match.candidate.days}
+                </td>
+                {/* CL Requirement */}
+                <td className={`px-2 py-2 whitespace-nowrap text-xs text-gray-700 border-r border-gray-200 ${match.candidate.days === match.client.requirement ? 'border-2 border-green-500' : ''}`}>
+                  {match.client.requirement}
+                </td>
+
+                {/* Status */}
+                <td className="px-2 py-2 whitespace-nowrap text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    {/* Placed - Green Check */}
+                    <button
+                      onClick={() => handleStatusClick(match, 'placed')}
+                      className={`w-7 h-7 flex items-center justify-center rounded border-2 transition-all ${
+                        matchStatuses[getMatchKey(match)]?.status === 'placed'
+                          ? 'bg-green-500 border-green-600 text-white'
+                          : 'bg-white border-gray-300 text-gray-400 hover:border-green-500 hover:text-green-500'
+                      }`}
+                      title="Placed"
+                    >
+                      ✓
+                    </button>
+
+                    {/* In Progress - Orange */}
+                    <button
+                      onClick={() => handleStatusClick(match, 'in-progress')}
+                      className={`w-7 h-7 flex items-center justify-center rounded border-2 transition-all ${
+                        matchStatuses[getMatchKey(match)]?.status === 'in-progress'
+                          ? 'bg-orange-500 border-orange-600 text-white'
+                          : 'bg-white border-gray-300 text-gray-400 hover:border-orange-500 hover:text-orange-500'
+                      }`}
+                      title="In Progress"
+                    >
+                      ⏳
+                    </button>
+
+                    {/* Rejected - Red X */}
+                    <button
+                      onClick={() => handleStatusClick(match, 'rejected')}
+                      className={`w-7 h-7 flex items-center justify-center rounded border-2 transition-all ${
+                        matchStatuses[getMatchKey(match)]?.status === 'rejected'
+                          ? 'bg-red-500 border-red-600 text-white'
+                          : 'bg-white border-gray-300 text-gray-400 hover:border-red-500 hover:text-red-500'
+                      }`}
+                      title="Rejected"
+                    >
+                      ✕
+                    </button>
+
+                    {/* Note */}
+                    <button
+                      onClick={() => handleNoteClick(match)}
+                      className={`w-7 h-7 flex items-center justify-center rounded border-2 transition-all ${
+                        matchStatuses[getMatchKey(match)]?.notes?.length > 0
+                          ? 'bg-blue-500 border-blue-600 text-white'
+                          : 'bg-white border-gray-300 text-gray-400 hover:border-blue-500 hover:text-blue-500'
+                      }`}
+                      title={`${matchStatuses[getMatchKey(match)]?.notes?.length || 0} note(s)`}
+                    >
+                      📝
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-t-2 border-gray-200">
+        <p className="text-sm font-bold text-gray-900">
+          Showing <span className="font-bold text-blue-600 text-lg">{matches.length}</span> match{matches.length !== 1 ? 'es' : ''}
+        </p>
+        <p className="text-xs text-gray-600 mt-1">
+          💡 Click on any commute time to see the route on Google Maps
+        </p>
+      </div>
+
+      {/* Commute Map Modal */}
+      {selectedMatch && (
+        <CommuteMapModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          originPostcode={selectedMatch.candidate.postcode}
+          destinationPostcode={selectedMatch.client.postcode}
+          candidateName={`${selectedMatch.candidate.role} (${selectedMatch.candidate.id})`}
+          clientName={`${selectedMatch.client.surgery} (${selectedMatch.client.id})`}
+          commuteMinutes={selectedMatch.commute_minutes}
+          commuteDisplay={selectedMatch.commute_display}
+        />
+      )}
+
+      {/* Multiple Detail Modals */}
+      {openModals.map((modal) => (
+        <div key={modal.id} className="fixed inset-0 z-50 pointer-events-none">
+          {/* Modal */}
+          <div
+            className="absolute bg-white border-2 border-gray-400 shadow-2xl pointer-events-auto flex flex-col cursor-move"
+            style={{
+              left: modal.position.x,
+              top: modal.position.y,
+              width: modal.size.width,
+              height: modal.size.height,
+              overflow: 'hidden'
+            }}
+            onMouseDown={(e) => {
+              // Only start drag if not clicking on resize handles or buttons
+              const target = e.target as HTMLElement;
+              if (!target.closest('button') && !target.classList.contains('resize-handle')) {
+                handleModalMouseDown(e, modal.id);
+              }
+            }}
+            onMouseMove={(e) => handleModalMouseMove(e, modal.id)}
+            onMouseUp={handleModalMouseUp}
+            onMouseLeave={handleModalMouseUp}
+          >
+            {/* Header */}
+            <div
+              className={`${
+                modal.type === 'candidate'
+                  ? 'bg-blue-100 border-b-2 border-blue-400'
+                  : 'bg-orange-100 border-b-2 border-orange-400'
+              } px-3 py-2 flex justify-between items-center flex-shrink-0`}
+            >
+              <h3 className="font-bold text-sm text-gray-900 uppercase">
+                {modal.type === 'candidate' ? '👤 Candidate Details' : '🏢 Client Details'}
+              </h3>
+              <button
+                onClick={() => handleCloseModal_Detail(modal.id)}
+                className={`${
+                  modal.type === 'candidate'
+                    ? 'text-gray-900 hover:text-gray-600 hover:bg-blue-200'
+                    : 'text-gray-900 hover:text-gray-600 hover:bg-orange-200'
+                } text-xl font-bold leading-none px-2 rounded`}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 bg-gray-50 flex-1 overflow-auto" style={{ minHeight: 0 }}>
+              {modal.type === 'candidate' ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white border-2 border-gray-300 p-2">
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">ID</label>
+                      <p className="text-sm font-bold text-gray-900">{(modal.data as Candidate).id}</p>
+                    </div>
+                    <div className="bg-white border-2 border-gray-300 p-2">
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Role</label>
+                      <p className="text-sm font-semibold text-gray-900">{(modal.data as Candidate).role}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white border-2 border-gray-300 p-2">
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">First Name</label>
+                      <p className="text-sm text-gray-900">{(modal.data as Candidate).first_name || 'N/A'}</p>
+                    </div>
+                    <div className="bg-white border-2 border-gray-300 p-2">
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Last Name</label>
+                      <p className="text-sm text-gray-900">{(modal.data as Candidate).last_name || 'N/A'}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white border-2 border-gray-300 p-2">
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Email</label>
+                      <p className="text-sm text-gray-900 break-all">{(modal.data as Candidate).email || 'N/A'}</p>
+                    </div>
+                    <div className="bg-white border-2 border-gray-300 p-2">
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Phone</label>
+                      <p className="text-sm text-gray-900">{(modal.data as Candidate).phone || 'N/A'}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white border-2 border-gray-300 p-2">
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Postcode</label>
+                      <p className="text-sm font-mono font-bold text-gray-900">{(modal.data as Candidate).postcode}</p>
+                    </div>
+                    <div className="bg-white border-2 border-gray-300 p-2">
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Salary</label>
+                      <p className="text-sm font-bold text-green-700">{(modal.data as Candidate).salary}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border-2 border-gray-300 p-2">
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Availability</label>
+                    <p className="text-sm text-gray-900">{(modal.data as Candidate).days}</p>
+                  </div>
+
+                  <div className="bg-white border-2 border-gray-300 p-2">
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Experience</label>
+                    <p className="text-sm text-gray-900">{(modal.data as Candidate).experience || 'N/A'}</p>
+                  </div>
+
+                  <div className="bg-white border-2 border-gray-300 p-2">
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Travel Flexibility</label>
+                    <p className="text-sm text-gray-900">{(modal.data as Candidate).travel_flexibility || 'N/A'}</p>
+                  </div>
+
+                  <div className="bg-white border-2 border-gray-300 p-2">
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Notes</label>
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{(modal.data as Candidate).notes || 'No notes'}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white border-2 border-gray-300 p-2">
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">ID</label>
+                      <p className="text-sm font-bold text-gray-900">{(modal.data as Client).id}</p>
+                    </div>
+                    <div className="bg-white border-2 border-gray-300 p-2">
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Surgery</label>
+                      <p className="text-sm font-semibold text-gray-900">{(modal.data as Client).surgery}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white border-2 border-gray-300 p-2">
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Client Name</label>
+                      <p className="text-sm text-gray-900">{(modal.data as Client).client_name || 'N/A'}</p>
+                    </div>
+                    <div className="bg-white border-2 border-gray-300 p-2">
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Role</label>
+                      <p className="text-sm font-semibold text-gray-900">{(modal.data as Client).role}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white border-2 border-gray-300 p-2">
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Email</label>
+                      <p className="text-sm text-gray-900 break-all">{(modal.data as Client).client_email || 'N/A'}</p>
+                    </div>
+                    <div className="bg-white border-2 border-gray-300 p-2">
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Phone</label>
+                      <p className="text-sm text-gray-900">{(modal.data as Client).client_phone || 'N/A'}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white border-2 border-gray-300 p-2">
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Postcode</label>
+                      <p className="text-sm font-mono font-bold text-gray-900">{(modal.data as Client).postcode}</p>
+                    </div>
+                    <div className="bg-white border-2 border-gray-300 p-2">
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Budget</label>
+                      <p className="text-sm font-bold text-green-700">{(modal.data as Client).budget}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border-2 border-gray-300 p-2">
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Requirement</label>
+                    <p className="text-sm text-gray-900">{(modal.data as Client).requirement}</p>
+                  </div>
+
+                  <div className="bg-white border-2 border-gray-300 p-2">
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">System</label>
+                    <p className="text-sm text-gray-900">{(modal.data as Client).system || 'N/A'}</p>
+                  </div>
+
+                  <div className="bg-white border-2 border-gray-300 p-2">
+                    <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Notes</label>
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{(modal.data as Client).notes || 'No notes'}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Resize Handles - Large and Visible */}
+            {/* Edge handles */}
+            <div
+              className="resize-handle absolute top-0 left-0 right-0 h-1 cursor-n-resize bg-blue-300 hover:bg-blue-500 z-50 opacity-50 hover:opacity-100"
+              onMouseDown={(e) => handleResizeMouseDown(e, modal.id, 'n')}
+              title="Resize from top"
+            />
+            <div
+              className="resize-handle absolute bottom-0 left-0 right-0 h-1 cursor-s-resize bg-blue-300 hover:bg-blue-500 z-50 opacity-50 hover:opacity-100"
+              onMouseDown={(e) => handleResizeMouseDown(e, modal.id, 's')}
+              title="Resize from bottom"
+            />
+            <div
+              className="resize-handle absolute top-0 left-0 bottom-0 w-1 cursor-w-resize bg-blue-300 hover:bg-blue-500 z-50 opacity-50 hover:opacity-100"
+              onMouseDown={(e) => handleResizeMouseDown(e, modal.id, 'w')}
+              title="Resize from left"
+            />
+            <div
+              className="resize-handle absolute top-0 right-0 bottom-0 w-1 cursor-e-resize bg-blue-300 hover:bg-blue-500 z-50 opacity-50 hover:opacity-100"
+              onMouseDown={(e) => handleResizeMouseDown(e, modal.id, 'e')}
+              title="Resize from right"
+            />
+            {/* Corner handles - Larger and more visible */}
+            <div
+              className="resize-handle absolute top-0 left-0 w-3 h-3 cursor-nw-resize bg-blue-500 hover:bg-blue-700 z-50"
+              onMouseDown={(e) => handleResizeMouseDown(e, modal.id, 'nw')}
+              title="Resize from top-left corner"
+            />
+            <div
+              className="resize-handle absolute top-0 right-0 w-3 h-3 cursor-ne-resize bg-blue-500 hover:bg-blue-700 z-50"
+              onMouseDown={(e) => handleResizeMouseDown(e, modal.id, 'ne')}
+              title="Resize from top-right corner"
+            />
+            <div
+              className="resize-handle absolute bottom-0 left-0 w-3 h-3 cursor-sw-resize bg-blue-500 hover:bg-blue-700 z-50"
+              onMouseDown={(e) => handleResizeMouseDown(e, modal.id, 'sw')}
+              title="Resize from bottom-left corner"
+            />
+            <div
+              className="resize-handle absolute bottom-0 right-0 w-3 h-3 cursor-se-resize bg-blue-500 hover:bg-blue-700 z-50"
+              onMouseDown={(e) => handleResizeMouseDown(e, modal.id, 'se')}
+              title="Resize from bottom-right corner"
+            />
+          </div>
+        </div>
+      ))}
+
+      {/* Note Modal */}
+      {noteModalOpen && selectedMatchForNote && (
+        <div className="fixed inset-0 z-50">
+          {/* Modal */}
+          <div
+            className="absolute bg-white border-2 border-gray-400 shadow-2xl pointer-events-auto flex flex-col"
+            style={{
+              left: noteModalPosition.x,
+              top: noteModalPosition.y,
+              width: noteModalSize.width,
+              height: noteModalSize.height,
+              overflow: 'hidden'
+            }}
+            onMouseMove={handleNoteMouseMove}
+            onMouseUp={handleNoteMouseUp}
+            onMouseLeave={handleNoteMouseUp}
+          >
+            {/* Header */}
+            <div
+              className="bg-yellow-100 border-b-2 border-yellow-400 px-3 py-2 cursor-move flex justify-between items-center"
+              onMouseDown={handleNoteMouseDown}
+            >
+              <h3 className="font-bold text-sm text-gray-900 uppercase">
+                📝 Match Notes
+              </h3>
+              <button
+                onClick={() => setNoteModalOpen(false)}
+                className="text-gray-900 hover:text-gray-600 text-xl font-bold leading-none px-2 hover:bg-yellow-200 rounded"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 bg-gray-50 flex-1 overflow-auto" style={{ minHeight: 0 }}>
+              <div className="mb-4">
+                <p className="text-xs text-gray-600 mb-3">
+                  <strong>Candidate:</strong> {selectedMatchForNote.candidate.id} - {selectedMatchForNote.candidate.role}
+                  <br />
+                  <strong>Client:</strong> {selectedMatchForNote.client.id} - {selectedMatchForNote.client.surgery}
+                </p>
+              </div>
+
+              {/* Existing Notes */}
+              {matchStatuses[getMatchKey(selectedMatchForNote)]?.notes?.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-2">
+                    Note History
+                  </label>
+                  <div className="space-y-2">
+                    {matchStatuses[getMatchKey(selectedMatchForNote)].notes.map((note) => (
+                      <div
+                        key={note.id}
+                        className="bg-white border-2 border-gray-300 p-3 rounded"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-[10px] text-gray-500 font-semibold">
+                            {new Date(note.timestamp).toLocaleString('en-GB', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                          <button
+                            onClick={() => handleDeleteNote(note.id)}
+                            className="text-red-500 hover:text-red-700 text-xs font-bold"
+                            title="Delete note"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <p className="text-sm text-gray-900 whitespace-pre-wrap">{note.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Add New Note */}
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-2">
+                  Add New Note
+                </label>
+                <textarea
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  className="w-full h-24 px-3 py-2 border-2 border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:border-blue-500"
+                  placeholder="Enter note about this match (e.g., 'Waiting for client callback', 'Client said no - budget issue')..."
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setNoteModalOpen(false)}
+                  className="px-4 py-2 bg-white border-2 border-gray-400 rounded text-sm font-semibold text-gray-900 hover:bg-gray-100"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={handleSaveNote}
+                  disabled={!noteText.trim()}
+                  className={`px-4 py-2 border-2 rounded text-sm font-semibold ${
+                    noteText.trim()
+                      ? 'bg-blue-500 border-blue-600 text-white hover:bg-blue-600'
+                      : 'bg-gray-200 border-gray-300 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  Add Note
+                </button>
+              </div>
+            </div>
+
+            {/* Resize Handles - Large and Visible */}
+            {/* Edge handles */}
+            <div
+              className="absolute top-0 left-0 right-0 h-1 cursor-n-resize bg-yellow-300 hover:bg-yellow-500 z-50 opacity-50 hover:opacity-100"
+              onMouseDown={(e) => handleNoteResizeMouseDown(e, 'n')}
+              title="Resize from top"
+            />
+            <div
+              className="absolute bottom-0 left-0 right-0 h-1 cursor-s-resize bg-yellow-300 hover:bg-yellow-500 z-50 opacity-50 hover:opacity-100"
+              onMouseDown={(e) => handleNoteResizeMouseDown(e, 's')}
+              title="Resize from bottom"
+            />
+            <div
+              className="absolute top-0 left-0 bottom-0 w-1 cursor-w-resize bg-yellow-300 hover:bg-yellow-500 z-50 opacity-50 hover:opacity-100"
+              onMouseDown={(e) => handleNoteResizeMouseDown(e, 'w')}
+              title="Resize from left"
+            />
+            <div
+              className="absolute top-0 right-0 bottom-0 w-1 cursor-e-resize bg-yellow-300 hover:bg-yellow-500 z-50 opacity-50 hover:opacity-100"
+              onMouseDown={(e) => handleNoteResizeMouseDown(e, 'e')}
+              title="Resize from right"
+            />
+            {/* Corner handles - Larger and more visible */}
+            <div
+              className="absolute top-0 left-0 w-3 h-3 cursor-nw-resize bg-yellow-500 hover:bg-yellow-700 z-50"
+              onMouseDown={(e) => handleNoteResizeMouseDown(e, 'nw')}
+              title="Resize from top-left corner"
+            />
+            <div
+              className="absolute top-0 right-0 w-3 h-3 cursor-ne-resize bg-yellow-500 hover:bg-yellow-700 z-50"
+              onMouseDown={(e) => handleNoteResizeMouseDown(e, 'ne')}
+              title="Resize from top-right corner"
+            />
+            <div
+              className="absolute bottom-0 left-0 w-3 h-3 cursor-sw-resize bg-yellow-500 hover:bg-yellow-700 z-50"
+              onMouseDown={(e) => handleNoteResizeMouseDown(e, 'sw')}
+              title="Resize from bottom-left corner"
+            />
+            <div
+              className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize bg-yellow-500 hover:bg-yellow-700 z-50"
+              onMouseDown={(e) => handleNoteResizeMouseDown(e, 'se')}
+              title="Resize from bottom-right corner"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
