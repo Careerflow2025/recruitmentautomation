@@ -29,7 +29,7 @@ export function Navbar() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Don't show navbar on login/signup pages
+  // Don't show navbar on login/signup pages when authenticated
   if (pathname === '/login' || pathname === '/signup') {
     return null;
   }
@@ -86,18 +86,18 @@ export function Navbar() {
             {/* Show Login/Signup buttons when NOT authenticated */}
             {!isAuthenticated && !loading && (
               <>
-                <Link
-                  href="/login"
-                  className="px-4 py-2 rounded-lg font-bold transition-all text-sm bg-white text-blue-600 hover:bg-blue-50 shadow-md"
+                <button
+                  onClick={() => window.location.href = '/login'}
+                  className="px-4 py-2 rounded-lg font-bold transition-all text-sm bg-white text-blue-600 hover:bg-blue-50 shadow-lg cursor-pointer z-50"
                 >
                   🔐 Login
-                </Link>
-                <Link
-                  href="/signup"
-                  className="px-4 py-2 rounded-lg font-bold transition-all text-sm bg-green-600 text-white hover:bg-green-700 shadow-md"
+                </button>
+                <button
+                  onClick={() => window.location.href = '/signup'}
+                  className="px-4 py-2 rounded-lg font-bold transition-all text-sm bg-green-600 text-white hover:bg-green-700 shadow-lg cursor-pointer z-50"
                 >
                   ✨ Sign Up
-                </Link>
+                </button>
               </>
             )}
           </div>
