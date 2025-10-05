@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/browser';
 import { normalizeRole } from '@/lib/utils/roleNormalizer';
 import { MatchesTable } from '@/components/matches/MatchesTable';
 import { MatchFilters } from '@/components/matches/MatchFilters';
@@ -126,24 +126,130 @@ export default function MatchesPage() {
     setGenerateResult(null);
 
     try {
+      // Start the background match generation
       const response = await fetch('/api/regenerate-matches', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
-      const result = await response.json();
-      setGenerateResult(result);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-      if (result.success) {
+      const responseText = await response.text();
+      if (!responseText) {
+        throw new Error('Empty response from server');
+      }
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse JSON response:', responseText);
+        throw new Error(`Invalid JSON response: ${parseError.message}`);
+      }
+
+      if (!result.success) {
+        setGenerateResult(result);
+        return;
+      }
+
+      // If processing started, begin polling for status
+      if (result.processing) {
+        console.log('✅ Match generation started, beginning status polling...');
+        setGenerateResult({
+          success: true,
+          message: result.message,
+          processing: true,
+          stats: result.stats
+        });
+
+        // Start polling for completion
+        pollMatchStatus();
+      } else {
+        // If not processing, it completed immediately
+        setGenerateResult(result);
         await fetchMatches(false);
       }
     } catch (err: any) {
+      console.error('Error generating matches:', err);
       setGenerateResult({
         success: false,
         message: err.message || 'Failed to generate matches'
       });
-    } finally {
       setGenerating(false);
     }
+  };
+
+  const pollMatchStatus = async () => {
+    let attempts = 0;
+    const maxAttempts = 120; // Poll for up to 10 minutes (120 * 5 seconds)
+    
+    const poll = async () => {
+      try {
+        attempts++;
+        console.log(`🔍 Polling match status (attempt ${attempts}/${maxAttempts})...`);
+
+        const response = await fetch('/api/match-status');
+        if (!response.ok) {
+          throw new Error(`Status check failed: ${response.status}`);
+        }
+
+        const status = await response.json();
+        
+        if (!status.success) {
+          throw new Error(status.message || 'Status check failed');
+        }
+
+        // Update the result with current status
+        setGenerateResult(prev => prev ? {
+          ...prev,
+          message: status.message,
+          processing: status.processing,
+          stats: {
+            ...prev.stats,
+            current_matches: status.stats.current_matches,
+            completion_percentage: status.stats.completion_percentage
+          }
+        } : status);
+
+        // If processing is complete or we've reached max attempts
+        if (!status.processing || attempts >= maxAttempts) {
+          console.log(status.processing ? '⏰ Polling timeout reached' : '✅ Match generation completed');
+          setGenerating(false);
+          
+          // Refresh matches table
+          await fetchMatches(false);
+          
+          // Final status message
+          if (attempts >= maxAttempts && status.processing) {
+            setGenerateResult(prev => prev ? {
+              ...prev,
+              message: 'Match generation is taking longer than expected. Please refresh the page to see current results.',
+              processing: false
+            } : null);
+          }
+          return;
+        }
+
+        // Continue polling after a delay
+        setTimeout(poll, 5000); // Poll every 5 seconds
+
+      } catch (err: any) {
+        console.error('Error polling match status:', err);
+        setGenerateResult(prev => prev ? {
+          ...prev,
+          message: `Status check failed: ${err.message}. Please refresh the page to see current results.`,
+          processing: false
+        } : null);
+        setGenerating(false);
+      }
+    };
+
+    // Start polling after a brief delay
+    setTimeout(poll, 2000);
   };
 
   // Get unique roles from all matches (candidates and clients)
@@ -288,19 +394,66 @@ export default function MatchesPage() {
 
         {/* Generate Result Message */}
         {generateResult && (
-          <div className={`mb-3 p-2 rounded text-sm ${
+          <div className={`mb-3 p-3 rounded text-sm ${
             generateResult.success
-              ? 'bg-green-50 border border-green-300 text-green-900'
+              ? 'bg-blue-50 border border-blue-300 text-blue-900'
               : 'bg-red-50 border border-red-300 text-red-900'
           }`}>
-            {generateResult.success ? '✅' : '❌'} {generateResult.message}
+            <div className="flex items-center gap-2">
+              {generateResult.processing ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              ) : generateResult.success ? (
+                <span>✅</span>
+              ) : (
+                <span>❌</span>
+              )}
+              <span className="font-medium">{generateResult.message}</span>
+            </div>
+            
             {generateResult.stats && (
-              <div className="mt-1 text-xs">
-                <span>Candidates: {generateResult.stats.candidates} | </span>
-                <span>Clients: {generateResult.stats.clients} | </span>
-                <span>Matches: {generateResult.stats.matches_created}</span>
-                {generateResult.stats.excluded_over_80min > 0 && (
-                  <span> | Excluded: {generateResult.stats.excluded_over_80min}</span>
+              <div className="mt-2 text-xs space-y-1">
+                <div className="flex gap-4">
+                  <span>📋 Candidates: {generateResult.stats.candidates}</span>
+                  <span>🏥 Clients: {generateResult.stats.clients}</span>
+                </div>
+                
+                {generateResult.processing && generateResult.stats.total_pairs_to_process && (
+                  <div>
+                    <span>🔄 Processing {generateResult.stats.total_pairs_to_process} candidate-client pairs</span>
+                    {generateResult.stats.estimated_time_seconds && (
+                      <span className="ml-2 text-gray-600">
+                        (Est. time: ~{Math.ceil(generateResult.stats.estimated_time_seconds / 60)} minutes)
+                      </span>
+                    )}
+                  </div>
+                )}
+                
+                {generateResult.stats.current_matches !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <span>📊 Matches found: {generateResult.stats.current_matches}</span>
+                    {generateResult.stats.completion_percentage !== undefined && (
+                      <>
+                        <div className="w-20 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                            style={{ width: `${Math.min(generateResult.stats.completion_percentage, 100)}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs text-gray-600">
+                          {generateResult.stats.completion_percentage}%
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
+                
+                {!generateResult.processing && generateResult.stats.matches_created !== undefined && (
+                  <div>
+                    <span>✅ Total matches created: {generateResult.stats.matches_created}</span>
+                    {generateResult.stats.excluded_over_80min > 0 && (
+                      <span className="ml-3">⊗ Excluded (&gt;80min): {generateResult.stats.excluded_over_80min}</span>
+                    )}
+                  </div>
                 )}
               </div>
             )}

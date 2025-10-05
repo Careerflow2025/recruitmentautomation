@@ -47,3 +47,6 @@ AI_SETUP_GUIDE.md
 MATCH_GENERATION_FIXED.md
 QUICK_START.md
 SYSTEM_STATUS_FINAL.md
+
+# Local Netlify folder
+.netlify

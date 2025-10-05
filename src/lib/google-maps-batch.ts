@@ -1,18 +1,20 @@
 /**
- * SMART BATCHING SYSTEM for Google Maps Distance Matrix API
+ * SMART BATCHING SYSTEM for Google Maps Distance Matrix API with Enhanced Rate Limiting
  *
- * Handles ANY number of candidates and clients:
+ * Handles ANY number of candidates and clients with multi-tenant support:
  * - 12 × 10 = 120 pairs
  * - 3,000 × 3,000 = 9 million pairs
  * - 10,000 × 10,000 = 100 million pairs
  *
- * Google Maps Limits:
- * - Max 25 origins × 25 destinations per request (625 elements)
- * - Max 100 elements per server request
- * - Rate limit: ~10 requests per second recommended
+ * Features:
+ * - Multi-tenant queue management
+ * - Intelligent rate limiting with retries
+ * - Batch optimization for best performance
+ * - Graceful error handling
  */
 
 import { CommuteResult, getCommuteBand, formatCommuteTime } from './google-maps';
+import { rateLimitedGoogleMapsRequest, BatchRequestOptimizer } from './rate-limiter';
 
 interface BatchRequest {
   origins: string[];
@@ -76,51 +78,33 @@ function calculateOptimalBatchSize(totalOrigins: number, totalDestinations: numb
 }
 
 /**
- * Call Google Maps Distance Matrix API with multiple origins and destinations
+ * Call Google Maps Distance Matrix API with rate limiting
  */
 async function callBatchAPI(
   origins: string[],
   destinations: string[],
-  apiKey: string
+  apiKey: string,
+  userId: string,
+  priority: number = 3
 ): Promise<any> {
-  const params = new URLSearchParams({
-    origins: origins.join('|'),
-    destinations: destinations.join('|'),
-    mode: 'driving',
-    units: 'imperial',
-    key: apiKey,
-  });
-
-  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?${params}`;
-
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(`Google Maps API error: ${response.status} ${response.statusText}`);
-  }
-
-  const data = await response.json();
-
-  if (data.status !== 'OK') {
-    throw new Error(`Google Maps API status: ${data.status}`);
-  }
-
-  return data;
+  return rateLimitedGoogleMapsRequest(userId, origins, destinations, apiKey, priority);
 }
 
 /**
- * Process a single batch and return results
+ * Process a single batch and return results with rate limiting
  */
 async function processBatch(
   batch: BatchRequest,
   apiKey: string,
+  userId: string,
   batchNumber: number,
-  totalBatches: number
+  totalBatches: number,
+  priority: number = 3
 ): Promise<BatchResult[]> {
-  console.log(`📦 Processing batch ${batchNumber}/${totalBatches} (${batch.origins.length} origins × ${batch.destinations.length} destinations = ${batch.origins.length * batch.destinations.length} pairs)`);
+  console.log(`📦 Processing batch ${batchNumber}/${totalBatches} for user ${userId} (${batch.origins.length} origins × ${batch.destinations.length} destinations = ${batch.origins.length * batch.destinations.length} pairs)`);
 
   try {
-    const data = await callBatchAPI(batch.origins, batch.destinations, apiKey);
+    const data = await callBatchAPI(batch.origins, batch.destinations, apiKey, userId, priority);
 
     const results: BatchResult[] = [];
 
@@ -180,12 +164,12 @@ async function processBatch(
       }
     }
 
-    console.log(`✅ Batch ${batchNumber}/${totalBatches} complete: ${results.filter(r => r.result !== null).length} valid matches`);
+    console.log(`✅ Batch ${batchNumber}/${totalBatches} complete for user ${userId}: ${results.filter(r => r.result !== null).length} valid matches`);
 
     return results;
 
   } catch (error) {
-    console.error(`❌ Batch ${batchNumber}/${totalBatches} failed:`, error);
+    console.error(`❌ Batch ${batchNumber}/${totalBatches} failed for user ${userId}:`, error);
 
     // Return error results for all pairs in this batch
     const errorResults: BatchResult[] = [];
@@ -204,23 +188,28 @@ async function processBatch(
 }
 
 /**
- * MAIN SMART BATCHING FUNCTION
+ * MAIN SMART BATCHING FUNCTION with Rate Limiting
  *
  * Calculates commute times for ALL candidate-client pairs using intelligent batching
+ * with multi-tenant support and enhanced rate limiting
  *
  * @param candidates Array of {id, postcode}
  * @param clients Array of {id, postcode}
  * @param apiKey Google Maps API key
+ * @param userId User ID for rate limiting and queue management
  * @param onProgress Optional callback for progress updates
+ * @param priority Priority for queue processing (1=highest, 5=lowest)
  */
 export async function calculateAllCommutesSmartBatch(
   candidates: Array<{ id: string; postcode: string }>,
   clients: Array<{ id: string; postcode: string }>,
   apiKey: string,
-  onProgress?: (current: number, total: number, message: string) => void
+  userId: string,
+  onProgress?: (current: number, total: number, message: string) => void,
+  priority: number = 3
 ): Promise<BatchResult[]> {
 
-  console.log('🚀 Starting SMART BATCH processing...');
+  console.log(`🚀 Starting SMART BATCH processing for user ${userId}...`);
   console.log(`📊 Total: ${candidates.length} candidates × ${clients.length} clients = ${candidates.length * clients.length} pairs`);
 
   // Calculate optimal batch configuration
@@ -251,28 +240,36 @@ export async function calculateAllCommutesSmartBatch(
     }
   }
 
-  console.log(`📋 Processing ${batchRequests.length} batches...`);
+  console.log(`📋 Processing ${batchRequests.length} batches with rate limiting...`);
 
-  // Process all batches with rate limiting
-  const allResults: BatchResult[] = [];
-  let batchNumber = 0;
+  // Use the BatchRequestOptimizer for better multi-tenant handling
+  const batchProcessors = batchRequests.map((batch, index) => 
+    () => processBatch(batch, apiKey, userId, index + 1, batchRequests.length, priority)
+  );
 
-  for (const batch of batchRequests) {
-    batchNumber++;
-
-    // Progress callback
+  // Progress tracking
+  let completedBatches = 0;
+  const progressTracker = () => {
+    completedBatches++;
     if (onProgress) {
-      const progress = Math.round((batchNumber / batchRequests.length) * 100);
-      onProgress(batchNumber, batchRequests.length, `Processing batch ${batchNumber}/${batchRequests.length} (${progress}%)`);
+      const progress = Math.round((completedBatches / batchRequests.length) * 100);
+      onProgress(completedBatches, batchRequests.length, `Processing batch ${completedBatches}/${batchRequests.length} (${progress}%)`);
     }
+  };
 
-    // Process batch
-    const batchResults = await processBatch(batch, apiKey, batchNumber, batchRequests.length);
-    allResults.push(...batchResults);
+  // Process all batches with enhanced rate limiting
+  const allBatchResults = await BatchRequestOptimizer.processWithRateLimit(
+    userId, 
+    batchProcessors, 
+    Math.min(3, batchRequests.length), // Process max 3 batches concurrently
+    priority
+  );
 
-    // Rate limiting: Wait 100ms between batches (max 10 requests per second)
-    if (batchNumber < batchRequests.length) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+  // Flatten results
+  const allResults: BatchResult[] = [];
+  for (const batchResult of allBatchResults) {
+    if (batchResult && Array.isArray(batchResult)) {
+      allResults.push(...batchResult);
     }
   }
 
@@ -282,7 +279,7 @@ export async function calculateAllCommutesSmartBatch(
   const excludedByRule2 = allResults.filter(r => r.error?.includes('Over 80 minutes')).length;
 
   console.log('');
-  console.log('✅ SMART BATCH PROCESSING COMPLETE!');
+  console.log(`✅ SMART BATCH PROCESSING COMPLETE for user ${userId}!`);
   console.log(`   📊 Total pairs processed: ${allResults.length}`);
   console.log(`   ✅ Successful matches: ${successCount}`);
   console.log(`   ⊗ Excluded by RULE 2 (>80 min): ${excludedByRule2}`);

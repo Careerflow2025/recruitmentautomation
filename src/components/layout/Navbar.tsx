@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogoutButton } from '@/components/auth/LogoutButton';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/browser';
 
 export function Navbar() {
   const pathname = usePathname();

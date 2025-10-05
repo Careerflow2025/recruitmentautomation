@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/browser';
 
 export default function Home() {
   const [stats, setStats] = useState({

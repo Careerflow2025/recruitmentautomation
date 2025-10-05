@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/browser';
 import { useState } from 'react';
 
 export function LogoutButton() {
