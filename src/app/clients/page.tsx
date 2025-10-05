@@ -93,16 +93,35 @@ export default function ClientsPage() {
       const result = await loadColumnPreferences('clients');
       
       if (result.success) {
+        // Load column widths if available
         if (result.columnWidths) {
           setColumnWidths(result.columnWidths);
+        } else {
+          // No saved widths, keep defaults but save them to database for future use
+          saveColumnPreferences('clients', defaultColumnWidths, false);
         }
         
+        // Load lock state if available
         if (result.isLocked !== null && result.isLocked !== undefined) {
           setIsColumnLayoutLocked(result.isLocked);
+        } else {
+          // No saved lock state, default to unlocked but save to database
+          setIsColumnLayoutLocked(false);
+          saveColumnPreferences('clients', columnWidths, false);
         }
       } else {
-        console.warn('Failed to load column settings from database:', result.error);
-        // Fallback to localStorage for migration purposes
+        console.warn('Failed to load column settings from database, using defaults:', result.error);
+        // Set defaults and try to save them
+        setColumnWidths(defaultColumnWidths);
+        setIsColumnLayoutLocked(false);
+        
+        // Try to save defaults to database for future use
+        const saveResult = await saveColumnPreferences('clients', defaultColumnWidths, false);
+        if (!saveResult.success) {
+          console.warn('Failed to save default preferences to database:', saveResult.error);
+        }
+        
+        // Fallback to localStorage for migration purposes only if database fails
         try {
           const savedWidths = localStorage.getItem('clients-table-column-widths');
           const savedLockState = localStorage.getItem('clients-table-column-locked');
@@ -110,15 +129,11 @@ export default function ClientsPage() {
           if (savedWidths) {
             const parsedWidths = JSON.parse(savedWidths);
             setColumnWidths(parsedWidths);
-            // Migrate to database
-            saveColumnPreferences('clients', parsedWidths, isColumnLayoutLocked);
           }
           
           if (savedLockState) {
             const parsedLockState = JSON.parse(savedLockState);
             setIsColumnLayoutLocked(parsedLockState);
-            // Migrate to database
-            saveColumnPreferences('clients', columnWidths, parsedLockState);
           }
         } catch (localError) {
           console.warn('Failed to load column settings from localStorage:', localError);
@@ -126,6 +141,9 @@ export default function ClientsPage() {
       }
     } catch (error) {
       console.warn('Failed to load column settings:', error);
+      // Use defaults as fallback
+      setColumnWidths(defaultColumnWidths);
+      setIsColumnLayoutLocked(false);
     }
   };
 
@@ -695,14 +713,14 @@ export default function ClientsPage() {
                 <tr>
                   {/* ID Column */}
                   <th
-                    className={`px-3 py-2 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedIds.length > 0 ? 'bg-blue-100' : ''}`}
-                    style={{ width: `${columnWidths.id}%` }}
+                    className={`px-2 py-3 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedIds.length > 0 ? 'bg-blue-100' : ''}`}
+                    style={{ width: `${columnWidths.id}%`, minWidth: '80px' }}
                   >
-                    <div className="flex items-center gap-1">
-                      <span>ID</span>
+                    <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
+                      <span className="truncate flex-shrink-0">ID</span>
                       <button
                         onClick={() => setShowIdFilter(!showIdFilter)}
-                        className="hover:bg-gray-300 px-1 rounded"
+                        className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
                         title="Filter IDs"
                       >
                         ▼
@@ -769,14 +787,14 @@ export default function ClientsPage() {
 
                   {/* Surgery Column */}
                   <th
-                    className={`px-3 py-2 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedSurgeries.length > 0 ? 'bg-blue-100' : ''}`}
-                    style={{ width: `${columnWidths.surgery}%` }}
+                    className={`px-2 py-3 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedSurgeries.length > 0 ? 'bg-blue-100' : ''}`}
+                    style={{ width: `${columnWidths.surgery}%`, minWidth: '120px' }}
                   >
-                    <div className="flex items-center gap-1">
-                      <span>Surgery</span>
+                    <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
+                      <span className="truncate flex-shrink-0">Surgery</span>
                       <button
                         onClick={() => setShowSurgeryFilter(!showSurgeryFilter)}
-                        className="hover:bg-gray-300 px-1 rounded"
+                        className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
                         title="Filter Surgeries"
                       >
                         ▼
@@ -843,14 +861,14 @@ export default function ClientsPage() {
 
                   {/* Client Name Column */}
                   <th
-                    className={`px-3 py-2 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedClientNames.length > 0 ? 'bg-blue-100' : ''}`}
-                    style={{ width: `${columnWidths.client_name}%` }}
+                    className={`px-2 py-3 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedClientNames.length > 0 ? 'bg-blue-100' : ''}`}
+                    style={{ width: `${columnWidths.client_name}%`, minWidth: '110px' }}
                   >
-                    <div className="flex items-center gap-1">
-                      <span>Client Name</span>
+                    <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
+                      <span className="truncate flex-shrink-0">Client Name</span>
                       <button
                         onClick={() => setShowClientNameFilter(!showClientNameFilter)}
-                        className="hover:bg-gray-300 px-1 rounded"
+                        className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
                         title="Filter Client Names"
                       >
                         ▼
@@ -917,14 +935,14 @@ export default function ClientsPage() {
 
                   {/* Client Phone Column */}
                   <th
-                    className={`px-3 py-2 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedClientPhones.length > 0 ? 'bg-blue-100' : ''}`}
-                    style={{ width: `${columnWidths.client_phone}%` }}
+                    className={`px-2 py-3 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedClientPhones.length > 0 ? 'bg-blue-100' : ''}`}
+                    style={{ width: `${columnWidths.client_phone}%`, minWidth: '110px' }}
                   >
-                    <div className="flex items-center gap-1">
-                      <span>Client Phone</span>
+                    <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
+                      <span className="truncate flex-shrink-0">Client Phone</span>
                       <button
                         onClick={() => setShowClientPhoneFilter(!showClientPhoneFilter)}
-                        className="hover:bg-gray-300 px-1 rounded"
+                        className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
                         title="Filter Client Phones"
                       >
                         ▼
@@ -991,14 +1009,14 @@ export default function ClientsPage() {
 
                   {/* Client Email Column */}
                   <th
-                    className={`px-3 py-2 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedClientEmails.length > 0 ? 'bg-blue-100' : ''}`}
-                    style={{ width: `${columnWidths.client_email}%` }}
+                    className={`px-2 py-3 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedClientEmails.length > 0 ? 'bg-blue-100' : ''}`}
+                    style={{ width: `${columnWidths.client_email}%`, minWidth: '120px' }}
                   >
-                    <div className="flex items-center gap-1">
-                      <span>Client Email</span>
+                    <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
+                      <span className="truncate flex-shrink-0">Client Email</span>
                       <button
                         onClick={() => setShowClientEmailFilter(!showClientEmailFilter)}
-                        className="hover:bg-gray-300 px-1 rounded"
+                        className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
                         title="Filter Client Emails"
                       >
                         ▼
@@ -1065,14 +1083,14 @@ export default function ClientsPage() {
 
                   {/* Role Column */}
                   <th
-                    className={`px-3 py-2 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedRoles.length > 0 ? 'bg-blue-100' : ''}`}
-                    style={{ width: `${columnWidths.role}%` }}
+                    className={`px-2 py-3 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedRoles.length > 0 ? 'bg-blue-100' : ''}`}
+                    style={{ width: `${columnWidths.role}%`, minWidth: '100px' }}
                   >
-                    <div className="flex items-center gap-1">
-                      <span>Role</span>
+                    <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
+                      <span className="truncate flex-shrink-0">Role</span>
                       <button
                         onClick={() => setShowRoleFilter(!showRoleFilter)}
-                        className="hover:bg-gray-300 px-1 rounded"
+                        className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
                         title="Filter Roles"
                       >
                         ▼
@@ -1139,14 +1157,14 @@ export default function ClientsPage() {
 
                   {/* Postcode Column */}
                   <th
-                    className={`px-3 py-2 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedPostcodes.length > 0 ? 'bg-blue-100' : ''}`}
-                    style={{ width: `${columnWidths.postcode}%` }}
+                    className={`px-2 py-3 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedPostcodes.length > 0 ? 'bg-blue-100' : ''}`}
+                    style={{ width: `${columnWidths.postcode}%`, minWidth: '90px' }}
                   >
-                    <div className="flex items-center gap-1">
-                      <span>Postcode</span>
+                    <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
+                      <span className="truncate flex-shrink-0">Postcode</span>
                       <button
                         onClick={() => setShowPostcodeFilter(!showPostcodeFilter)}
-                        className="hover:bg-gray-300 px-1 rounded"
+                        className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
                         title="Filter Postcodes"
                       >
                         ▼
@@ -1213,14 +1231,14 @@ export default function ClientsPage() {
 
                   {/* Budget Column */}
                   <th
-                    className={`px-3 py-2 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedBudgets.length > 0 ? 'bg-blue-100' : ''}`}
-                    style={{ width: `${columnWidths.budget}%` }}
+                    className={`px-2 py-3 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedBudgets.length > 0 ? 'bg-blue-100' : ''}`}
+                    style={{ width: `${columnWidths.budget}%`, minWidth: '80px' }}
                   >
-                    <div className="flex items-center gap-1">
-                      <span>Budget</span>
+                    <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
+                      <span className="truncate flex-shrink-0">Budget</span>
                       <button
                         onClick={() => setShowBudgetFilter(!showBudgetFilter)}
-                        className="hover:bg-gray-300 px-1 rounded"
+                        className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
                         title="Filter Budgets"
                       >
                         ▼
@@ -1287,14 +1305,14 @@ export default function ClientsPage() {
 
                   {/* Requirement Column */}
                   <th
-                    className={`px-3 py-2 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedRequirements.length > 0 ? 'bg-blue-100' : ''}`}
-                    style={{ width: `${columnWidths.requirements}%` }}
+                    className={`px-2 py-3 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedRequirements.length > 0 ? 'bg-blue-100' : ''}`}
+                    style={{ width: `${columnWidths.requirements}%`, minWidth: '120px' }}
                   >
-                    <div className="flex items-center gap-1">
-                      <span>Requirement</span>
+                    <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
+                      <span className="truncate flex-shrink-0">Requirement</span>
                       <button
                         onClick={() => setShowRequirementFilter(!showRequirementFilter)}
-                        className="hover:bg-gray-300 px-1 rounded"
+                        className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
                         title="Filter Requirements"
                       >
                         ▼
@@ -1361,14 +1379,14 @@ export default function ClientsPage() {
 
                   {/* System Column */}
                   <th
-                    className={`px-3 py-2 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedSystems.length > 0 ? 'bg-blue-100' : ''}`}
-                    style={{ width: `${columnWidths.system}%` }}
+                    className={`px-2 py-3 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedSystems.length > 0 ? 'bg-blue-100' : ''}`}
+                    style={{ width: `${columnWidths.system}%`, minWidth: '100px' }}
                   >
-                    <div className="flex items-center gap-1">
-                      <span>System</span>
+                    <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
+                      <span className="truncate flex-shrink-0">System</span>
                       <button
                         onClick={() => setShowSystemFilter(!showSystemFilter)}
-                        className="hover:bg-gray-300 px-1 rounded"
+                        className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
                         title="Filter Systems"
                       >
                         ▼
@@ -1434,10 +1452,12 @@ export default function ClientsPage() {
                   </th>
 
                   <th
-                    className="px-3 py-2 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group"
-                    style={{ width: `${columnWidths.notes}%` }}
+                    className="px-2 py-3 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group"
+                    style={{ width: `${columnWidths.notes}%`, minWidth: '100px' }}
                   >
-                    Notes
+                    <div className="min-h-[20px] overflow-hidden">
+                      <span className="truncate block">Notes</span>
+                    </div>
                     {/* Resize Handle */}
                     <div
                       className="absolute top-0 right-0 bottom-0 w-2 cursor-col-resize bg-transparent hover:bg-blue-400"
