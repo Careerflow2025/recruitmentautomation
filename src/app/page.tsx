@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/browser';
 import Link from 'next/link';
 
 export default function LandingPage() {
@@ -46,12 +46,8 @@ export default function LandingPage() {
 
       if (data.session) {
         console.log('✅ Login successful!');
-
-        // Store the session token
-        localStorage.setItem('sb-auth-token', data.session.access_token);
-
         setSuccess('Login successful! Redirecting...');
-
+        
         // Redirect to dashboard
         window.location.href = '/dashboard';
       } else {

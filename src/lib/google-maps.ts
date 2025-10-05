@@ -78,24 +78,58 @@ export async function calculateCommute(
   const destination = destinationPostcode.trim().toUpperCase();
 
   // Build Google Maps Distance Matrix API URL
+  // IMPORTANT: These parameters must match the CommuteMapModal Directions API settings
   const params = new URLSearchParams({
     origins: origin,
     destinations: destination,
-    mode: 'driving', // Car commute
-    units: 'imperial', // UK uses miles
+    mode: 'driving', // Car commute - matches DRIVING in Directions API
+    units: 'imperial', // UK uses miles - matches map display
+    avoid: '', // No restrictions - matches Directions API default
+    traffic_model: 'best_guess', // Use current traffic conditions
+    departure_time: 'now', // Use current time for traffic-aware routing
     key: apiKey,
   });
 
   const url = `https://maps.googleapis.com/maps/api/distancematrix/json?${params}`;
 
   try {
-    const response = await fetch(url);
+    console.log(`🗺️ Calling Google Maps API: ${origin} -> ${destination}`);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Netlify-Function/1.0',
+      }
+    });
 
     if (!response.ok) {
-      throw new Error(`Google Maps API error: ${response.status} ${response.statusText}`);
+      const errorBody = await response.text();
+      console.error(`Google Maps API HTTP error: ${response.status} ${response.statusText}`, errorBody);
+      throw new Error(`Google Maps API HTTP error: ${response.status} ${response.statusText}`);
     }
 
-    const data: GoogleMapsDistanceResponse = await response.json();
+    const data: GoogleMapsDistanceResponse & { status?: string; error_message?: string } = await response.json();
+
+    console.log(`📊 Google Maps API response:`, JSON.stringify(data, null, 2));
+
+    // Check API-level status first
+    if (data.status && data.status !== 'OK') {
+      const errorMsg = data.error_message || `API status: ${data.status}`;
+      console.error(`❌ Google Maps API error:`, errorMsg);
+      
+      if (data.status === 'REQUEST_DENIED') {
+        throw new Error(`Google Maps API access denied. Check API key configuration and billing: ${errorMsg}`);
+      }
+      if (data.status === 'OVER_QUERY_LIMIT') {
+        throw new Error(`Google Maps API quota exceeded: ${errorMsg}`);
+      }
+      if (data.status === 'INVALID_REQUEST') {
+        throw new Error(`Invalid request to Google Maps API: ${errorMsg}`);
+      }
+      
+      throw new Error(`Google Maps API error: ${errorMsg}`);
+    }
 
     // Check if we got valid results
     if (!data.rows || data.rows.length === 0 || !data.rows[0].elements || data.rows[0].elements.length === 0) {
@@ -105,11 +139,14 @@ export async function calculateCommute(
     const element = data.rows[0].elements[0];
 
     if (element.status !== 'OK' || !element.duration || !element.distance) {
+      console.error(`❌ Route element error:`, element);
       throw new Error(`Route calculation failed: ${element.status}`);
     }
 
     // Convert seconds to minutes
     const minutes = Math.round(element.duration.value / 60);
+
+    console.log(`✅ Route calculated: ${origin} -> ${destination} = ${minutes} minutes`);
 
     // RULE 2: Exclude matches over 80 minutes
     if (minutes > 80) {
@@ -124,6 +161,7 @@ export async function calculateCommute(
       duration_text: element.duration.text,
     };
   } catch (error) {
+    console.error(`❌ Google Maps API call failed for ${origin} -> ${destination}:`, error);
     // Re-throw the error with proper message
     if (error instanceof Error) {
       throw error;

@@ -8,6 +8,7 @@ import { AddCandidateModal } from '@/components/forms/AddCandidateModal';
 import Link from 'next/link';
 import { Candidate } from '@/types';
 import { getCurrentUserId } from '@/lib/auth-helpers';
+import { saveColumnPreferences, loadColumnPreferences } from '@/lib/user-preferences';
 
 export default function CandidatesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -53,7 +54,7 @@ export default function CandidatesPage() {
   const [aiResult, setAiResult] = useState<{success: boolean; message: string; count?: number} | null>(null);
 
   // Column resize state - using percentages for flexible layout
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
+  const defaultColumnWidths = {
     id: 8,
     first_name: 10,
     last_name: 10,
@@ -65,16 +66,95 @@ export default function CandidatesPage() {
     days: 10,
     experience: 9,
     notes: 7
-  });
+  };
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(defaultColumnWidths);
   const [resizingColumn, setResizingColumn] = useState<string | null>(null);
   const [resizeStartX, setResizeStartX] = useState(0);
   const [resizeStartWidth, setResizeStartWidth] = useState(0);
   const [tableWidth, setTableWidth] = useState(0);
+  const [isColumnLayoutLocked, setIsColumnLayoutLocked] = useState(false);
   const tableRef = React.useRef<HTMLTableElement>(null);
 
   useEffect(() => {
     fetchCandidates();
+    loadColumnSettings();
   }, []);
+
+  // Load column settings from database
+  const loadColumnSettings = async () => {
+    try {
+      const result = await loadColumnPreferences('candidates');
+      
+      if (result.success) {
+        if (result.columnWidths) {
+          setColumnWidths(result.columnWidths);
+        }
+        
+        if (result.isLocked !== null && result.isLocked !== undefined) {
+          setIsColumnLayoutLocked(result.isLocked);
+        }
+      } else {
+        console.warn('Failed to load column settings from database:', result.error);
+        // Fallback to localStorage for migration purposes
+        try {
+          const savedWidths = localStorage.getItem('candidates-table-column-widths');
+          const savedLockState = localStorage.getItem('candidates-table-column-locked');
+          
+          if (savedWidths) {
+            const parsedWidths = JSON.parse(savedWidths);
+            setColumnWidths(parsedWidths);
+            // Migrate to database
+            saveColumnPreferences('candidates', parsedWidths, isColumnLayoutLocked);
+          }
+          
+          if (savedLockState) {
+            const parsedLockState = JSON.parse(savedLockState);
+            setIsColumnLayoutLocked(parsedLockState);
+            // Migrate to database
+            saveColumnPreferences('candidates', columnWidths, parsedLockState);
+          }
+        } catch (localError) {
+          console.warn('Failed to load column settings from localStorage:', localError);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load column settings:', error);
+    }
+  };
+
+  // Save column settings to database
+  const saveColumnSettings = async (widths: Record<string, number>, locked: boolean) => {
+    try {
+      const result = await saveColumnPreferences('candidates', widths, locked);
+      
+      if (!result.success) {
+        console.warn('Failed to save column settings to database:', result.error);
+        // Fallback to localStorage
+        try {
+          localStorage.setItem('candidates-table-column-widths', JSON.stringify(widths));
+          localStorage.setItem('candidates-table-column-locked', JSON.stringify(locked));
+        } catch (localError) {
+          console.warn('Failed to save column settings to localStorage:', localError);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to save column settings:', error);
+    }
+  };
+
+  // Toggle column layout lock
+  const toggleColumnLock = () => {
+    const newLockState = !isColumnLayoutLocked;
+    setIsColumnLayoutLocked(newLockState);
+    saveColumnSettings(columnWidths, newLockState);
+  };
+
+  // Reset column widths to default
+  const resetColumnWidths = () => {
+    setColumnWidths(defaultColumnWidths);
+    setIsColumnLayoutLocked(false);
+    saveColumnSettings(defaultColumnWidths, false);
+  };
 
   // Update table width on mount and resize
   useEffect(() => {
@@ -133,6 +213,14 @@ export default function CandidatesPage() {
     };
 
     const handleMouseUp = () => {
+      if (resizingColumn && isColumnLayoutLocked) {
+        // Save the new widths if layout is locked
+        setColumnWidths(currentWidths => {
+          // Save asynchronously without blocking state update
+          saveColumnSettings(currentWidths, true);
+          return currentWidths;
+        });
+      }
       setResizingColumn(null);
     };
 
@@ -622,6 +710,26 @@ export default function CandidatesPage() {
               {uploading ? '⏳ Uploading...' : '📤 Upload Excel'}
             </span>
           </label>
+
+          <button
+            onClick={toggleColumnLock}
+            className={`px-3 py-1.5 border border-gray-400 rounded text-sm font-semibold text-gray-900 ${
+              isColumnLayoutLocked 
+                ? 'bg-green-100 hover:bg-green-200' 
+                : 'bg-yellow-100 hover:bg-yellow-200'
+            }`}
+            title={isColumnLayoutLocked ? "Column layout is locked - click to unlock" : "Click to lock column layout"}
+          >
+            {isColumnLayoutLocked ? '🔒 Layout Locked' : '🔓 Lock Layout'}
+          </button>
+
+          <button
+            onClick={resetColumnWidths}
+            className="px-3 py-1.5 bg-gray-100 border border-gray-400 rounded text-sm font-semibold text-gray-900 hover:bg-gray-200"
+            title="Reset column widths to default"
+          >
+            🔄 Reset Columns
+          </button>
 
           <div className="border-l border-gray-300 h-6 mx-1"></div>
 

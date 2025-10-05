@@ -7,7 +7,7 @@ import { CommuteBadge } from '../ui/CommuteBadge';
 import { RoleMatchBadge } from '../ui/RoleMatchBadge';
 import { NewItemIndicator } from '../ui/NewItemIndicator';
 import { CommuteMapModal } from './CommuteMapModal';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/browser';
 import { getCurrentUserId } from '@/lib/auth-helpers';
 
 interface MatchesTableProps {
@@ -514,11 +514,20 @@ export function MatchesTable({ matches }: MatchesTableProps) {
     if (!statusData || !statusData.status) return {};
 
     if (statusData.status === 'placed') {
-      return { backgroundColor: '#bbf7d0' }; // green-200
+      return { 
+        backgroundColor: '#d1fae5', // green-100
+        borderLeft: '4px solid #10b981' // green-500 
+      }; 
     } else if (statusData.status === 'in-progress') {
-      return { backgroundColor: '#fed7aa' }; // orange-200
+      return { 
+        backgroundColor: '#fef3c7', // yellow-100
+        borderLeft: '4px solid #f59e0b' // yellow-500
+      }; 
     } else if (statusData.status === 'rejected') {
-      return { backgroundColor: '#fecaca' }; // red-200
+      return { 
+        backgroundColor: '#fee2e2', // red-100
+        borderLeft: '4px solid #ef4444' // red-500
+      }; 
     }
 
     return {};
@@ -546,6 +555,9 @@ export function MatchesTable({ matches }: MatchesTableProps) {
             Clients
           </Link>
           {' '}pages
+        </span>
+        <span className="text-sm text-blue-600 font-medium">
+          📌 Status column is always visible (sticky)
         </span>
       </div>
 
@@ -597,7 +609,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                 CL Requirement
               </th>
 
-              <th className="px-2 py-2 text-center text-[10px] font-bold text-white uppercase tracking-wide bg-blue-800">
+              <th className="px-4 py-2 text-center text-xs font-bold text-white uppercase tracking-wide bg-blue-800 sticky right-0 z-10 min-w-[140px]">
                 Status
               </th>
             </tr>
@@ -614,8 +626,12 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                 {/* Match Info */}
                 <td className="px-3 py-2 whitespace-nowrap border-r border-gray-200">
                   <button
-                    onClick={() => handleCommuteClick(match)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCommuteClick(match);
+                    }}
                     className="w-full text-left hover:scale-105 transition-transform cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                    title="Click to view commute route on map"
                   >
                     <CommuteBadge
                       display={match.commute_display}
@@ -635,8 +651,12 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                 {/* CAN ID */}
                 <td className="px-2 py-2 whitespace-nowrap text-xs font-bold text-gray-900 border-r border-gray-200">
                   <button
-                    onClick={() => handleCandidateClick(match.candidate)}
-                    className="hover:text-blue-600 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCandidateClick(match.candidate);
+                    }}
+                    className="w-full text-left hover:text-blue-600 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1 bg-blue-50 hover:bg-blue-100 transition-colors"
+                    title="Click to view candidate details"
                   >
                     <NewItemIndicator
                       id={match.candidate.id}
@@ -647,8 +667,12 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                 {/* CL ID */}
                 <td className="px-2 py-2 whitespace-nowrap text-xs font-bold text-gray-900 border-r border-gray-200">
                   <button
-                    onClick={() => handleClientClick(match.client)}
-                    className="hover:text-blue-600 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleClientClick(match.client);
+                    }}
+                    className="w-full text-left hover:text-orange-600 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500 rounded p-1 bg-orange-50 hover:bg-orange-100 transition-colors"
+                    title="Click to view client details"
                   >
                     <NewItemIndicator
                       id={match.client.id}
@@ -694,56 +718,68 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                 </td>
 
                 {/* Status */}
-                <td className="px-2 py-2 whitespace-nowrap text-center">
+                <td className="px-4 py-2 whitespace-nowrap text-center sticky right-0 z-10 bg-inherit min-w-[140px]">
                   <div className="flex items-center justify-center gap-1">
                     {/* Placed - Green Check */}
                     <button
-                      onClick={() => handleStatusClick(match, 'placed')}
-                      className={`w-7 h-7 flex items-center justify-center rounded border-2 transition-all ${
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStatusClick(match, 'placed');
+                      }}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full border-2 transition-all font-bold text-sm ${
                         matchStatuses[getMatchKey(match)]?.status === 'placed'
-                          ? 'bg-green-500 border-green-600 text-white'
-                          : 'bg-white border-gray-300 text-gray-400 hover:border-green-500 hover:text-green-500'
+                          ? 'bg-green-500 border-green-600 text-white shadow-lg scale-110'
+                          : 'bg-white border-gray-400 text-gray-500 hover:border-green-500 hover:text-green-600 hover:bg-green-50'
                       }`}
-                      title="Placed"
+                      title="Mark as Placed"
                     >
                       ✓
                     </button>
 
                     {/* In Progress - Orange */}
                     <button
-                      onClick={() => handleStatusClick(match, 'in-progress')}
-                      className={`w-7 h-7 flex items-center justify-center rounded border-2 transition-all ${
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStatusClick(match, 'in-progress');
+                      }}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full border-2 transition-all font-bold text-sm ${
                         matchStatuses[getMatchKey(match)]?.status === 'in-progress'
-                          ? 'bg-orange-500 border-orange-600 text-white'
-                          : 'bg-white border-gray-300 text-gray-400 hover:border-orange-500 hover:text-orange-500'
+                          ? 'bg-orange-500 border-orange-600 text-white shadow-lg scale-110'
+                          : 'bg-white border-gray-400 text-gray-500 hover:border-orange-500 hover:text-orange-600 hover:bg-orange-50'
                       }`}
-                      title="In Progress"
+                      title="Mark as In Progress"
                     >
                       ⏳
                     </button>
 
                     {/* Rejected - Red X */}
                     <button
-                      onClick={() => handleStatusClick(match, 'rejected')}
-                      className={`w-7 h-7 flex items-center justify-center rounded border-2 transition-all ${
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStatusClick(match, 'rejected');
+                      }}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full border-2 transition-all font-bold text-sm ${
                         matchStatuses[getMatchKey(match)]?.status === 'rejected'
-                          ? 'bg-red-500 border-red-600 text-white'
-                          : 'bg-white border-gray-300 text-gray-400 hover:border-red-500 hover:text-red-500'
+                          ? 'bg-red-500 border-red-600 text-white shadow-lg scale-110'
+                          : 'bg-white border-gray-400 text-gray-500 hover:border-red-500 hover:text-red-600 hover:bg-red-50'
                       }`}
-                      title="Rejected"
+                      title="Mark as Rejected"
                     >
                       ✕
                     </button>
 
                     {/* Note */}
                     <button
-                      onClick={() => handleNoteClick(match)}
-                      className={`w-7 h-7 flex items-center justify-center rounded border-2 transition-all ${
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleNoteClick(match);
+                      }}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full border-2 transition-all font-bold text-sm ${
                         matchStatuses[getMatchKey(match)]?.notes?.length > 0
-                          ? 'bg-blue-500 border-blue-600 text-white'
-                          : 'bg-white border-gray-300 text-gray-400 hover:border-blue-500 hover:text-blue-500'
+                          ? 'bg-blue-500 border-blue-600 text-white shadow-lg scale-110'
+                          : 'bg-white border-gray-400 text-gray-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50'
                       }`}
-                      title={`${matchStatuses[getMatchKey(match)]?.notes?.length || 0} note(s)`}
+                      title={`${matchStatuses[getMatchKey(match)]?.notes?.length || 0} note(s) - Click to add/view`}
                     >
                       📝
                     </button>
@@ -761,6 +797,9 @@ export function MatchesTable({ matches }: MatchesTableProps) {
         </p>
         <p className="text-xs text-gray-600 mt-1">
           💡 Click on any commute time to see the route on Google Maps
+        </p>
+        <p className="text-xs text-gray-600 mt-1">
+          📊 Status Column: <span className="text-green-600">✓ Green = Placed</span> | <span className="text-orange-600">⏳ Orange = In Progress</span> | <span className="text-red-600">✕ Red = Rejected</span> | <span className="text-blue-600">📝 Blue = Notes</span>
         </p>
       </div>
 
@@ -1027,7 +1066,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
               onMouseDown={handleNoteMouseDown}
             >
               <h3 className="font-bold text-sm text-gray-900 uppercase">
-                📝 Match Notes
+                📝 Match Notes - CAN {selectedMatchForNote.candidate.id} ↔ CL {selectedMatchForNote.client.id}
               </h3>
               <button
                 onClick={() => setNoteModalOpen(false)}

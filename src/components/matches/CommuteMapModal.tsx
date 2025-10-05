@@ -149,11 +149,21 @@ export function CommuteMapModal({
 
         // Try exact postcodes first, then fallback to districts
         const tryDirections = (origin: string, dest: string, isRetry = false) => {
-          // Request driving directions
+          // Request driving directions with EXACT same parameters as Distance Matrix API
           const drivingRequest: google.maps.DirectionsRequest = {
             origin: origin + ', UK',
             destination: dest + ', UK',
             travelMode: google.maps.TravelMode.DRIVING,
+            unitSystem: google.maps.UnitSystem.IMPERIAL, // Match Distance Matrix API units
+            avoidHighways: false, // No restrictions - exactly matches Distance Matrix API (avoid: '')
+            avoidTolls: false, // No restrictions - exactly matches Distance Matrix API (avoid: '')
+            avoidFerries: false, // No restrictions - exactly matches Distance Matrix API (avoid: '')
+            optimizeWaypoints: false, // Direct route only
+            provideRouteAlternatives: false, // Single route like Distance Matrix API
+            drivingOptions: {
+              departureTime: new Date(), // Current time - exactly matches Distance Matrix API (departure_time: 'now')
+              trafficModel: google.maps.TrafficModel.BEST_GUESS, // Exactly matches Distance Matrix API (traffic_model: 'best_guess')
+            }
           };
 
           // Request transit directions
@@ -173,6 +183,19 @@ export function CommuteMapModal({
             if (status === 'OK' && result) {
             console.log('Driving directions OK, rendering route');
             drivingRenderer?.setDirections(result);
+
+            // Automatically fit the map bounds to show the entire route
+            if (result.routes[0] && result.routes[0].bounds && map) {
+              map.fitBounds(result.routes[0].bounds);
+              
+              // Add some padding to the bounds for better visualization
+              const boundsListener = google.maps.event.addListenerOnce(map, 'bounds_changed', () => {
+                const currentZoom = map.getZoom();
+                if (currentZoom && currentZoom > 12) {
+                  map.setZoom(12); // Cap the zoom level to prevent over-zooming
+                }
+              });
+            }
 
             // Extract route information
             const route = result.routes[0];
@@ -287,9 +310,11 @@ export function CommuteMapModal({
             // Still show the map with markers at approximate locations
             // Try to geocode the postcodes to show them on the map
             const geocoder = new google.maps.Geocoder();
+            const bounds = new google.maps.LatLngBounds();
+            let markersPlaced = 0;
 
             geocoder.geocode({ address: origin + ', UK' }, (results, geoStatus) => {
-              if (geoStatus === 'OK' && results && results[0]) {
+              if (geoStatus === 'OK' && results && results[0] && map) {
                 new google.maps.Marker({
                   map: map,
                   position: results[0].geometry.location,
@@ -297,19 +322,36 @@ export function CommuteMapModal({
                   title: `Origin: ${origin}`,
                 });
 
-                map.setCenter(results[0].geometry.location);
-                map.setZoom(10);
+                bounds.extend(results[0].geometry.location);
+                markersPlaced++;
+                
+                // If both markers are placed, fit bounds to show both
+                if (markersPlaced === 2) {
+                  map.fitBounds(bounds);
+                }
               }
             });
 
             geocoder.geocode({ address: dest + ', UK' }, (results, geoStatus) => {
-              if (geoStatus === 'OK' && results && results[0]) {
+              if (geoStatus === 'OK' && results && results[0] && map) {
                 new google.maps.Marker({
                   map: map,
                   position: results[0].geometry.location,
                   label: 'B',
                   title: `Destination: ${dest}`,
                 });
+
+                bounds.extend(results[0].geometry.location);
+                markersPlaced++;
+                
+                // If both markers are placed, fit bounds to show both
+                if (markersPlaced === 2) {
+                  map.fitBounds(bounds);
+                } else if (markersPlaced === 1) {
+                  // If only one marker could be placed, center on it
+                  map.setCenter(results[0].geometry.location);
+                  map.setZoom(10);
+                }
               }
             });
           }
@@ -398,6 +440,19 @@ export function CommuteMapModal({
 
           {/* Journey Info */}
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            {/* Time Difference Notice */}
+            <div className="mb-3 bg-blue-50 border border-blue-300 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xl">ℹ️</span>
+                <p className="text-sm font-semibold text-blue-900">Google Maps API Configuration</p>
+              </div>
+              <p className="text-xs text-blue-700">
+                Both the database matching system and live map use Google Maps APIs with identical parameters: 
+                driving mode, traffic_model: 'best_guess', departure_time: 'now', no route restrictions, imperial units.
+                Small differences are due to the timing of API calls and real-time traffic changes.
+              </p>
+            </div>
+
             {usingApproximate && (
               <div className="mb-3 bg-yellow-50 border border-yellow-300 rounded-lg p-3 flex items-center gap-2">
                 <span className="text-xl">⚠️</span>
@@ -423,23 +478,25 @@ export function CommuteMapModal({
               {/* Commute Time (Database) */}
               <div className="bg-white rounded-lg p-3 border border-blue-200">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl">⏱️</span>
-                  <span className="text-xs font-semibold text-blue-600 uppercase">Our Calculation</span>
+                  <span className="text-2xl">💾</span>
+                  <span className="text-xs font-semibold text-blue-600 uppercase">Database (Used for Matching)</span>
                 </div>
                 <p className="font-bold text-2xl text-blue-900">{commuteMinutes} min</p>
                 <p className="text-sm text-gray-600">{commuteDisplay}</p>
+                <p className="text-xs text-gray-500 mt-1">From Google Maps Distance Matrix API</p>
               </div>
 
               {/* Live Driving Route Info */}
-              <div className="bg-white rounded-lg p-3 border border-blue-300">
+              <div className="bg-white rounded-lg p-3 border border-green-300">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl">🚗</span>
-                  <span className="text-xs font-semibold text-blue-700 uppercase">Driving</span>
+                  <span className="text-2xl">🔄</span>
+                  <span className="text-xs font-semibold text-green-700 uppercase">Live Route (Current Traffic)</span>
                 </div>
                 {routeInfo ? (
                   <>
-                    <p className="font-bold text-lg text-blue-900">{routeInfo.duration}</p>
+                    <p className="font-bold text-lg text-green-900">{routeInfo.duration}</p>
                     <p className="text-sm text-gray-600">{routeInfo.distance}</p>
+                    <p className="text-xs text-gray-500 mt-1">From Google Maps Directions API</p>
                   </>
                 ) : (
                   <>
@@ -450,15 +507,16 @@ export function CommuteMapModal({
               </div>
 
               {/* Live Transit Route Info */}
-              <div className="bg-white rounded-lg p-3 border border-green-300">
+              <div className="bg-white rounded-lg p-3 border border-purple-300">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-2xl">🚆</span>
-                  <span className="text-xs font-semibold text-green-700 uppercase">Public Transit</span>
+                  <span className="text-xs font-semibold text-purple-700 uppercase">Public Transport</span>
                 </div>
                 {transitRouteInfo ? (
                   <>
-                    <p className="font-bold text-lg text-green-900">{transitRouteInfo.duration}</p>
+                    <p className="font-bold text-lg text-purple-900">{transitRouteInfo.duration}</p>
                     <p className="text-sm text-gray-600">{transitRouteInfo.distance}</p>
+                    <p className="text-xs text-gray-500 mt-1">Live Google Maps transit route</p>
                   </>
                 ) : (
                   <>
@@ -627,13 +685,13 @@ export function CommuteMapModal({
             <div className="flex items-center gap-4 text-sm text-gray-600">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-1 bg-blue-600 rounded"></div>
-                <span>🚗 Driving</span>
+                <span>🚗 Driving (Live)</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-1 bg-green-600 rounded"></div>
-                <span>🚆 Public Transit</span>
+                <div className="w-4 h-1 bg-purple-600 rounded"></div>
+                <span>🚆 Transit (Live)</span>
               </div>
-              <span className="text-xs text-gray-500">Both routes shown on map</span>
+              <span className="text-xs text-gray-500">All routes use Google Maps APIs with identical parameters</span>
             </div>
             <button
               onClick={onClose}

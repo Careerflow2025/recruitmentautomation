@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { CommuteMapModal } from '../matches/CommuteMapModal';
 
 export function AIChat() {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,7 +10,19 @@ export function AIChat() {
   const [chatHistory, setChatHistory] = useState<Array<{q: string; a: string}>>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  
+  // Map modal state
+  const [mapModalOpen, setMapModalOpen] = useState(false);
+  const [mapModalData, setMapModalData] = useState<{
+    originPostcode: string;
+    destinationPostcode: string;
+    candidateName: string;
+    clientName: string;
+    commuteMinutes: number;
+    commuteDisplay: string;
+  } | null>(null);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -48,6 +61,34 @@ export function AIChat() {
     }
   }, [chatHistory, loading, isOpen]);
 
+  // Process AI response for map actions
+  const processMapActions = (response: string) => {
+    const mapActionMatch = response.match(/MAP_ACTION:({.*?})/);
+    if (mapActionMatch) {
+      try {
+        const mapAction = JSON.parse(mapActionMatch[1]);
+        if (mapAction.action === 'openMap' && mapAction.data) {
+          setMapModalData({
+            originPostcode: mapAction.data.originPostcode,
+            destinationPostcode: mapAction.data.destinationPostcode,
+            candidateName: mapAction.data.candidateName,
+            clientName: mapAction.data.clientName,
+            commuteMinutes: mapAction.data.commuteMinutes,
+            commuteDisplay: mapAction.data.commuteDisplay,
+          });
+          setMapModalOpen(true);
+        }
+      } catch (e) {
+        console.error('Error parsing map action:', e);
+      }
+    }
+  };
+
+  // Clean response text by removing MAP_ACTION markers
+  const cleanResponse = (response: string) => {
+    return response.replace(/MAP_ACTION:{.*?}/g, '').trim();
+  };
+
   const ask = async () => {
     if (!question.trim()) return;
 
@@ -62,7 +103,7 @@ export function AIChat() {
       const response = await fetch('/api/ai/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: currentQuestion })
+        body: JSON.stringify({ question: currentQuestion, sessionId })
       });
 
       // Check if response has content
@@ -90,9 +131,23 @@ export function AIChat() {
       // Update the last message with the answer
       setChatHistory(prev => {
         const newHistory = [...prev];
-        newHistory[newHistory.length - 1].a = result.answer;
+        const cleanedAnswer = cleanResponse(result.answer);
+        newHistory[newHistory.length - 1].a = cleanedAnswer;
         return newHistory;
       });
+
+      // Process any map actions in the response
+      processMapActions(result.answer);
+
+      // Store sessionId for future requests
+      if (result.sessionId && !sessionId) {
+        setSessionId(result.sessionId);
+      }
+
+      // Log context information for debugging
+      if (result.contextInfo && process.env.NODE_ENV === 'development') {
+        console.log('AI Context Info:', result.contextInfo);
+      }
     } catch (err: any) {
       console.error('AI Chat Error:', err);
 
@@ -103,8 +158,16 @@ export function AIChat() {
         errorMessage = '❌ API Key Error: Please check that your Anthropic API key is properly configured in .env.local file';
       } else if (errorMessage.includes('Invalid API Key')) {
         errorMessage = '❌ Invalid API Key: Your Anthropic API key appears to be invalid. Please verify it at https://console.anthropic.com';
-      } else if (errorMessage.includes('Rate Limit')) {
-        errorMessage = '❌ Rate Limit: Too many requests. Please wait a moment and try again.';
+      } else if (errorMessage.includes('Rate Limit') || errorMessage.includes('Service Temporarily Busy') || errorMessage.includes('AI Service Rate Limit')) {
+        errorMessage = '⏳ System is temporarily busy processing multiple user requests. Please try again in a few seconds.';
+      } else if (errorMessage.includes('Daily Limit Reached')) {
+        errorMessage = '📊 Daily API limit reached. Please try again tomorrow or contact support for increased limits.';
+      } else if (errorMessage.includes('Request Too Large')) {
+        errorMessage = '📋 Request too large. Try asking about specific candidates, clients, or matches instead of general queries.';
+      } else if (errorMessage.includes('Empty response')) {
+        errorMessage = '⏳ Server is processing your request. Please try again in a moment.';
+      } else if (errorMessage.includes('timed out')) {
+        errorMessage = '⏳ Request timed out. The server may be busy - please try again in a few seconds.';
       } else if (!errorMessage.includes('❌')) {
         errorMessage = `❌ Error: ${errorMessage}`;
       }
@@ -123,6 +186,7 @@ export function AIChat() {
     if (confirm('Clear all chat history?')) {
       setChatHistory([]);
       setQuestion('');
+      setSessionId(null); // Reset session to start fresh
     }
   };
 
@@ -147,14 +211,28 @@ export function AIChat() {
   };
 
   const exampleQuestions = [
-    "How many dental nurses are available?",
-    "Show me candidates within 30 minutes of SW1A 1AA",
-    "Which clients need a receptionist in London?",
-    "How many new candidates were added this week?",
-    "What are the most common roles?",
-    "Show me all matches for dental nurses",
-    "Which candidates are looking for part-time work?",
-    "List clients with the highest pay rates",
+    "Bring me the candidate phone number the one that matched",
+    "Open the map for the best match and show me the commute route",
+    "Show me all matches with commute routes and map links",
+    "Which candidates are placed and what are their details?",
+    "Show me dental nurses within 20 minutes of central London",
+    "Open the map for CAN1735900014UIO to show their commute route",
+    "What's the average commute time for role matches?",
+    "Show me the route between the best candidate and client",
+    "Which matches are in-progress and need follow-up?",
+    "Show me candidates with phone numbers for quick contact",
+    "Display all matches for CL[ID] with Google Maps routes",
+    "Open the commute map for the shortest travel time match",
+    "Which clients need urgent placement (recent additions)?",
+    "Show me match success rates by role type",
+    "Open the map to visualize the best commute route",
+    "What matches have notes and what do they say?",
+    "Display commute analysis for all current matches",
+    "Show me candidates available for part-time roles",
+    "Open the map for any match under 20 minutes commute",
+    "Which matches were recently marked as placed?",
+    "Get me contact details for candidates in [postcode area]",
+    "Show route visualization for matches under 30 minutes",
   ];
 
   return (
@@ -182,7 +260,7 @@ export function AIChat() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">AI Laser Assistant</h2>
-                  <p className="text-sm opacity-90">Ask me anything about your candidates, clients, and matches</p>
+                  <p className="text-sm opacity-90">Complete access to matches, commutes, maps, and recruitment data</p>
                 </div>
               </div>
               <button
@@ -207,11 +285,12 @@ export function AIChat() {
                       Hello! I'm your AI assistant
                     </h3>
                     <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-                      I can help you find candidates, analyze matches, answer questions about your recruitment data,
-                      and provide insights about your dental practice network. Just ask me anything!
+                      I have full access to your recruitment system including candidate details, client information, 
+                      match data with commute calculations, status tracking, notes, and Google Maps integration. 
+                      I can provide phone numbers, map links, placement status, and comprehensive analytics.
                     </p>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-3xl mx-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-4xl mx-auto">
                       {exampleQuestions.map((q, i) => (
                         <button
                           key={i}
@@ -219,7 +298,7 @@ export function AIChat() {
                           className="text-left px-4 py-3 bg-white border-2 border-purple-200 rounded-lg hover:bg-purple-50 hover:border-purple-400 transition-all shadow-sm hover:shadow-md"
                         >
                           <div className="flex items-start gap-2">
-                            <span className="text-purple-600 font-bold">💡</span>
+                            <span className="text-purple-600 font-bold">🎯</span>
                             <span className="text-sm text-gray-700">{q}</span>
                           </div>
                         </button>
@@ -357,6 +436,23 @@ export function AIChat() {
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Map Modal */}
+      {mapModalData && (
+        <CommuteMapModal
+          isOpen={mapModalOpen}
+          onClose={() => {
+            setMapModalOpen(false);
+            setMapModalData(null);
+          }}
+          originPostcode={mapModalData.originPostcode}
+          destinationPostcode={mapModalData.destinationPostcode}
+          candidateName={mapModalData.candidateName}
+          clientName={mapModalData.clientName}
+          commuteMinutes={mapModalData.commuteMinutes}
+          commuteDisplay={mapModalData.commuteDisplay}
+        />
       )}
     </>
   );
