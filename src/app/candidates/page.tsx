@@ -308,7 +308,7 @@ export default function CandidatesPage() {
   }
 
   // Filter candidates by selected IDs, Roles, and Postcodes
-  let filteredCandidates = candidates;
+  let filteredCandidates = candidates || [];
 
   if (selectedIds.length > 0) {
     filteredCandidates = filteredCandidates.filter(c => selectedIds.includes(c.id));
@@ -350,7 +350,7 @@ export default function CandidatesPage() {
 
   // Get unique IDs that match the filter text
   const getFilteredIdSuggestions = () => {
-    if (!idFilterText) return [];
+    if (!idFilterText || !candidates) return [];
     return candidates
       .map(c => c.id)
       .filter(id => id.toLowerCase().includes(idFilterText.toLowerCase()))
@@ -365,7 +365,7 @@ export default function CandidatesPage() {
 
   // Get unique Roles that match the filter text
   const getFilteredRoleSuggestions = () => {
-    if (!roleFilterText) return [];
+    if (!roleFilterText || !candidates) return [];
     const uniqueRoles = Array.from(new Set(candidates.map(c => normalizeRole(c.role))));
     return uniqueRoles
       .filter(role => role.toLowerCase().includes(roleFilterText.toLowerCase()))
@@ -380,7 +380,7 @@ export default function CandidatesPage() {
 
   // Get unique Postcodes that match the filter text
   const getFilteredPostcodeSuggestions = () => {
-    if (!postcodeFilterText) return [];
+    if (!postcodeFilterText || !candidates) return [];
     const uniquePostcodes = Array.from(new Set(candidates.map(c => c.postcode)));
     return uniquePostcodes
       .filter(postcode => postcode.toLowerCase().includes(postcodeFilterText.toLowerCase()))
@@ -395,7 +395,7 @@ export default function CandidatesPage() {
 
   // Get unique Salaries that match the filter text
   const getFilteredSalarySuggestions = () => {
-    if (!salaryFilterText) return [];
+    if (!salaryFilterText || !candidates) return [];
     const uniqueSalaries = Array.from(new Set(candidates.map(c => c.salary)));
     return uniqueSalaries
       .filter(salary => salary.toLowerCase().includes(salaryFilterText.toLowerCase()))
@@ -410,7 +410,7 @@ export default function CandidatesPage() {
 
   // Get unique Availabilities that match the filter text
   const getFilteredAvailabilitySuggestions = () => {
-    if (!availabilityFilterText) return [];
+    if (!availabilityFilterText || !candidates) return [];
     const uniqueAvailabilities = Array.from(new Set(candidates.map(c => c.days)));
     return uniqueAvailabilities
       .filter(avail => avail.toLowerCase().includes(availabilityFilterText.toLowerCase()))
@@ -425,7 +425,7 @@ export default function CandidatesPage() {
 
   // Get unique Experiences that match the filter text
   const getFilteredExperienceSuggestions = () => {
-    if (!experienceFilterText) return [];
+    if (!experienceFilterText || !candidates) return [];
     const uniqueExperiences = Array.from(new Set(candidates.map(c => c.experience || '').filter(e => e)));
     return uniqueExperiences
       .filter(exp => exp.toLowerCase().includes(experienceFilterText.toLowerCase()))
@@ -653,27 +653,27 @@ export default function CandidatesPage() {
           <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3 bg-white border border-gray-300 rounded p-3">
             <div className="text-center">
               <p className="text-xs text-gray-600">Total</p>
-              <p className="text-xl font-bold text-blue-900">{candidates.length}</p>
+              <p className="text-xl font-bold text-blue-900">{candidates ? candidates.length : 0}</p>
             </div>
             <div className="text-center">
               <p className="text-xs text-gray-600">🟨 New (48h)</p>
               <p className="text-xl font-bold text-green-900">
-                {candidates.filter(c => {
+                {candidates ? candidates.filter(c => {
                   const hours = (new Date().getTime() - c.added_at.getTime()) / (1000 * 60 * 60);
                   return hours <= 48;
-                }).length}
+                }).length : 0}
               </p>
             </div>
             <div className="text-center">
               <p className="text-xs text-gray-600">Dental Nurses</p>
               <p className="text-xl font-bold text-purple-900">
-                {candidates.filter(c => normalizeRole(c.role) === 'Dental Nurse').length}
+                {candidates ? candidates.filter(c => normalizeRole(c.role) === 'Dental Nurse').length : 0}
               </p>
             </div>
             <div className="text-center">
               <p className="text-xs text-gray-600">Dentists</p>
               <p className="text-xl font-bold text-orange-900">
-                {candidates.filter(c => normalizeRole(c.role) === 'Dentist').length}
+                {candidates ? candidates.filter(c => normalizeRole(c.role) === 'Dentist').length : 0}
               </p>
             </div>
           </div>
@@ -1744,7 +1744,7 @@ export default function CandidatesPage() {
 
         {/* Footer */}
         <div className="mt-2 text-sm text-gray-600">
-          Showing {filteredCandidates.length} of {candidates.length} candidates
+          Showing {filteredCandidates.length} of {candidates ? candidates.length : 0} candidates
           {(selectedIds.length > 0 || selectedRoles.length > 0 || selectedPostcodes.length > 0 || selectedSalaries.length > 0 || selectedAvailabilities.length > 0 || selectedExperiences.length > 0) && (
             <span className="ml-2 text-blue-600 font-semibold">
               (Filtered by {[

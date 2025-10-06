@@ -1,3 +1,5 @@
+import { rateLimitedGoogleMapsRequest } from './rate-limiter';
+
 /**
  * Google Maps Distance Matrix API Service
  * RULE 3: Use ONLY Google Maps for distance calculations
@@ -65,7 +67,8 @@ export function formatCommuteTime(minutes: number): string {
  */
 export async function calculateCommute(
   originPostcode: string,
-  destinationPostcode: string
+  destinationPostcode: string,
+  userId: string
 ): Promise<CommuteResult> {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -77,41 +80,17 @@ export async function calculateCommute(
   const origin = originPostcode.trim().toUpperCase();
   const destination = destinationPostcode.trim().toUpperCase();
 
-  // Build Google Maps Distance Matrix API URL
-  // IMPORTANT: These parameters must match the CommuteMapModal Directions API settings
-  const params = new URLSearchParams({
-    origins: origin,
-    destinations: destination,
-    mode: 'driving', // Car commute - matches DRIVING in Directions API
-    units: 'imperial', // UK uses miles - matches map display
-    avoid: '', // No restrictions - matches Directions API default
-    traffic_model: 'best_guess', // Use current traffic conditions
-    departure_time: 'now', // Use current time for traffic-aware routing
-    key: apiKey,
-  });
-
-  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?${params}`;
-
   try {
-    console.log(`🗺️ Calling Google Maps API: ${origin} -> ${destination}`);
+    console.log(`🗺️ Calling Google Maps API via rate limiter: ${origin} -> ${destination} for user ${userId}`);
     
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'Netlify-Function/1.0',
-      }
-    });
+    const data: GoogleMapsDistanceResponse & { status?: string; error_message?: string } = await rateLimitedGoogleMapsRequest(
+      userId,
+      [origin],
+      [destination],
+      apiKey
+    );
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error(`Google Maps API HTTP error: ${response.status} ${response.statusText}`, errorBody);
-      throw new Error(`Google Maps API HTTP error: ${response.status} ${response.statusText}`);
-    }
-
-    const data: GoogleMapsDistanceResponse & { status?: string; error_message?: string } = await response.json();
-
-    console.log(`📊 Google Maps API response:`, JSON.stringify(data, null, 2));
+    console.log(`📊 Google Maps API response for user ${userId}:`, JSON.stringify(data, null, 2));
 
     // Check API-level status first
     if (data.status && data.status !== 'OK') {
@@ -175,13 +154,15 @@ export async function calculateCommute(
  * Uses Google Maps API efficiently with batch requests where possible
  */
 export async function calculateBatchCommutes(
-  pairs: Array<{ origin: string; destination: string }>
+  pairs: Array<{ origin: string; destination: string }>,
+  userId: string
 ): Promise<Array<CommuteResult | null>> {
-  // Google Maps allows up to 25 origins × 25 destinations per request
-  // For simplicity, we'll do individual requests but could optimize later
+  // This is not a true batch implementation, it just sends multiple single requests.
+  // The `google-maps-batch.ts` file has a real batch implementation.
+  // This function is kept for compatibility but should be used with caution.
 
   const results = await Promise.allSettled(
-    pairs.map(pair => calculateCommute(pair.origin, pair.destination))
+    pairs.map(pair => calculateCommute(pair.origin, pair.destination, userId))
   );
 
   return results.map(result => {

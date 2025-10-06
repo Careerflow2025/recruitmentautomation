@@ -36,7 +36,7 @@ class GoogleMapsRateLimiter {
     priority: number = 3
   ): Promise<T> {
     // Check user rate limits
-    if (!this.checkUserRateLimit(userId)) {
+    if (!this.checkAndIncrementUserRateLimit(userId)) {
       throw new Error('User rate limit exceeded. Please try again in a moment.');
     }
 
@@ -69,25 +69,26 @@ class GoogleMapsRateLimiter {
   }
 
   /**
-   * Check if user is within rate limits
+   * Check if user is within rate limits and increment their count
    */
-  private checkUserRateLimit(userId: string): boolean {
+  private checkAndIncrementUserRateLimit(userId: string): boolean {
     const now = Date.now();
-    const userLimits = this.userRequestCounts.get(userId);
+    let userLimits = this.userRequestCounts.get(userId);
 
     if (!userLimits || now > userLimits.resetTime) {
-      // Reset or initialize user limits
-      this.userRequestCounts.set(userId, {
+      userLimits = {
         count: 0,
-        resetTime: now + 60000 // Reset in 1 minute
-      });
-      return true;
+        resetTime: now + 60000, // Reset in 1 minute
+      };
+      this.userRequestCounts.set(userId, userLimits);
     }
 
     if (userLimits.count >= this.maxRequestsPerUserPerMinute) {
+      console.warn(`🚨 User ${userId} rate limit exceeded: ${userLimits.count}/${this.maxRequestsPerUserPerMinute}`);
       return false;
     }
 
+    userLimits.count++;
     return true;
   }
 
@@ -105,10 +106,7 @@ class GoogleMapsRateLimiter {
       const item = this.queue.shift()!;
       
       try {
-        // Update user request count
-        const userLimits = this.userRequestCounts.get(item.userId)!;
-        userLimits.count++;
-
+        // User request count is now incremented on enqueue
         console.log(`🔄 Processing request ${item.id} for user ${item.userId} (retries: ${item.retryCount})`);
         
         // Execute the request

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateCommute } from '@/lib/google-maps';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 /**
  * API Route: Calculate Commute Time
@@ -10,6 +12,23 @@ import { calculateCommute } from '@/lib/google-maps';
  */
 export async function POST(request: NextRequest) {
   try {
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesToSet) => cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)),
+        },
+      }
+    );
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { origin, destination } = body;
 
@@ -21,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate commute using Google Maps API
-    const result = await calculateCommute(origin, destination);
+    const result = await calculateCommute(origin, destination, user.id);
 
     return NextResponse.json({
       success: true,
@@ -60,6 +79,23 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesToSet) => cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)),
+        },
+      }
+    );
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const origin = searchParams.get('origin');
     const destination = searchParams.get('destination');
@@ -71,7 +107,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const result = await calculateCommute(origin, destination);
+    const result = await calculateCommute(origin, destination, user.id);
 
     return NextResponse.json({
       success: true,
