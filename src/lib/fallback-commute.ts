@@ -155,6 +155,7 @@ export function calculateFallbackCommute(
 export async function calculateCommuteWithFallback(
   originPostcode: string,
   destinationPostcode: string,
+  userId: string,
   useGoogleMaps: boolean = true
 ): Promise<CommuteResult & { method: 'google_maps' | 'fallback_estimate' }> {
   
@@ -166,7 +167,7 @@ export async function calculateCommuteWithFallback(
   try {
     // Try Google Maps first
     const { calculateCommute } = await import('./google-maps');
-    const result = await calculateCommute(originPostcode, destinationPostcode);
+    const result = await calculateCommute(originPostcode, destinationPostcode, userId);
     return { ...result, method: 'google_maps' };
     
   } catch (error) {

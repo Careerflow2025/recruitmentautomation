@@ -394,7 +394,7 @@ export default function ClientsPage() {
 
   // Helper functions for filters
   const getFilteredIdSuggestions = () => {
-    if (!idFilterText) return [];
+    if (!idFilterText || !clients) return [];
     return clients.map(c => c.id).filter(id => id.toLowerCase().includes(idFilterText.toLowerCase())).sort();
   };
 

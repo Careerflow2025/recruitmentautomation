@@ -190,7 +190,7 @@ async function processMatchesInBackground(
         console.log(`🧪 Testing with: ${testCandidate.postcode} -> ${testClient.postcode}`);
         
         const { calculateCommute } = await import('@/lib/google-maps');
-        await calculateCommute(testCandidate.postcode, testClient.postcode);
+        await calculateCommute(testCandidate.postcode, testClient.postcode, userId);
         
         console.log('✅ Google Maps API test successful - using Google Maps for all calculations');
         
