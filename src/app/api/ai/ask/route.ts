@@ -525,9 +525,16 @@ ${Object.keys(userFacts).length > 0 ? Object.entries(userFacts).map(([k, v]) => 
 RECENT TURNS (last 6 for context):
 ${recentContext.map((msg, i) => `[Turn ${msg.turn}] USER: ${msg.question}\nAI: ${msg.answer}`).join('\n\n')}
 
-ACTIONS: add_candidate, update_candidate, delete_candidate, add_client, update_client, delete_client, update_match_status, add_match_note (use JSON {"action":"...", "data":{...}} if needed)
+ACTIONS: When user asks to add/edit/delete, respond with confirmation message THEN include action in ```json code block:
 
-STYLE: Professional, conversational, clear structure. Use emojis (✅❌📞🏥⏱️) for clarity. List format: "1. **CAN001** → **Surgery** 📞 phone ⏱️ time". NEVER show raw JSON. Keep concise (2-4 sentences for simple questions).
+Example: "I'll add Alex as a new candidate ✅"
+```json
+{"action": "add_candidate", "data": {"id": "CAN_NEW123", "name": "Alex Test", "role": "Dentist", "email": "alex@gmail.com", "phone": "072245678", "postcode": "WD187DT"}}
+```
+
+Available: add_candidate, update_candidate, delete_candidate, add_client, update_client, delete_client, update_match_status, add_match_note
+
+STYLE: Professional, conversational. Use emojis (✅❌📞🏥⏱️). List format: "1. **CAN001** → **Surgery** 📞 phone ⏱️ time". Keep concise.
 
 CURRENT QUESTION: ${question}`;
 
@@ -571,16 +578,46 @@ CURRENT QUESTION: ${question}`;
 
       // Parse and execute any JSON actions in the AI response
       const actionResults: string[] = [];
-      const jsonActionRegex = /\{"action":\s*"[^"]+",\s*"data":\s*\{[^}]+\}\}/g;
-      const actions = aiAnswer.match(jsonActionRegex);
 
-      if (actions && actions.length > 0) {
-        console.log(`🔧 Found ${actions.length} action(s) to execute`);
+      // Extract JSON actions from code blocks or inline
+      let actionsToExecute: any[] = [];
 
-        for (const actionStr of actions) {
+      // Try to find JSON in code blocks first
+      const codeBlockRegex = /```json\s*([\s\S]*?)\s*```/g;
+      const codeBlockMatches = aiAnswer.matchAll(codeBlockRegex);
+
+      for (const match of codeBlockMatches) {
+        try {
+          const parsed = JSON.parse(match[1]);
+          if (parsed.action && parsed.data) {
+            actionsToExecute.push(parsed);
+          }
+        } catch (e) {
+          console.error('Failed to parse code block JSON:', e);
+        }
+      }
+
+      // Also try inline JSON (simpler regex for single-line)
+      const inlineRegex = /\{\s*"action"\s*:\s*"([^"]+)"\s*,\s*"data"\s*:\s*\{[^}]*\}\s*\}/g;
+      const inlineMatches = aiAnswer.matchAll(inlineRegex);
+
+      for (const match of inlineMatches) {
+        try {
+          const parsed = JSON.parse(match[0]);
+          if (parsed.action && parsed.data) {
+            actionsToExecute.push(parsed);
+          }
+        } catch (e) {
+          console.error('Failed to parse inline JSON:', e);
+        }
+      }
+
+      if (actionsToExecute.length > 0) {
+        console.log(`🔧 Found ${actionsToExecute.length} action(s) to execute`);
+
+        for (const action of actionsToExecute) {
           try {
-            const action = JSON.parse(actionStr);
-            console.log(`Executing action: ${action.action}`);
+            console.log(`Executing action: ${action.action}`, JSON.stringify(action.data));
 
             switch (action.action) {
               case 'add_candidate': {
@@ -735,8 +772,8 @@ CURRENT QUESTION: ${question}`;
           }
         }
 
-        // Remove JSON actions from the answer and append results
-        aiAnswer = aiAnswer.replace(jsonActionRegex, '').trim();
+        // Remove JSON code blocks from the answer and append results
+        aiAnswer = aiAnswer.replace(/```json\s*[\s\S]*?\s*```/g, '').trim();
         if (actionResults.length > 0) {
           aiAnswer += '\n\n' + actionResults.join('\n');
         }
