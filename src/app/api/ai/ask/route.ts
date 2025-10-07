@@ -532,13 +532,16 @@ REQUIRED: id, role, postcode
 OPTIONAL: first_name, last_name, email, phone, salary, days, notes, experience, travel_flexibility
 
 CLIENT SCHEMA (only include fields user provides):
-REQUIRED: id, surgery, role, postcode
-OPTIONAL: client_name, client_phone, client_email, budget, requirement, system, notes
+REQUIRED: id, surgery, postcode
+OPTIONAL: client_name, client_phone, client_email, role, budget, requirement, system, notes
 
-Example: "Add candidate Alex Test, dentist, phone 072245678, postcode WD187DT"
+Example 1 - Candidate: "Add candidate Alex Test, dentist, phone 072245678, postcode WD187DT"
 [json code block]: {"action": "add_candidate", "data": {"id": "CAN_NEW123", "first_name": "Alex", "last_name": "Test", "phone": "072245678", "postcode": "WD187DT", "role": "Dentist"}}
 
-IMPORTANT: Only include fields the user mentioned. Do NOT add fields with empty or null values.
+Example 2 - Client: "Add client GP Surgery, phone 07223445, postcode WD187DT, system SOE"
+[json code block]: {"action": "add_client", "data": {"id": "CL_NEW456", "surgery": "GP Surgery", "client_phone": "07223445", "postcode": "WD187DT", "system": "SOE"}}
+
+IMPORTANT: Only include fields the user mentioned. Do NOT add fields with empty or null values. For clients use client_phone NOT phone.
 
 Available actions: add_candidate, update_candidate, delete_candidate, add_client, update_client, delete_client, update_match_status, add_match_note
 
