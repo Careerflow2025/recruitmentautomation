@@ -525,12 +525,11 @@ ${Object.keys(userFacts).length > 0 ? Object.entries(userFacts).map(([k, v]) => 
 RECENT TURNS (last 6 for context):
 ${recentContext.map((msg, i) => `[Turn ${msg.turn}] USER: ${msg.question}\nAI: ${msg.answer}`).join('\n\n')}
 
-ACTIONS: When user asks to add/edit/delete, respond with confirmation message THEN include action in ```json code block:
+ACTIONS: When user asks to add/edit/delete, respond with confirmation message THEN include action in triple-backtick json code block.
 
-Example: "I'll add Alex as a new candidate ✅"
-```json
-{"action": "add_candidate", "data": {"id": "CAN_NEW123", "name": "Alex Test", "role": "Dentist", "email": "alex@gmail.com", "phone": "072245678", "postcode": "WD187DT"}}
-```
+Example format:
+"I'll add Alex as a new candidate"
+[then json code block with]: {"action": "add_candidate", "data": {"id": "CAN_NEW123", "name": "Alex Test", "role": "Dentist", "email": "alex@gmail.com", "phone": "072245678", "postcode": "WD187DT"}}
 
 Available: add_candidate, update_candidate, delete_candidate, add_client, update_client, delete_client, update_match_status, add_match_note
 
