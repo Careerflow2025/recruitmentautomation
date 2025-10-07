@@ -422,9 +422,11 @@ export async function POST(request: Request) {
         relevantCandidates = candidates.filter(c => candidateIds.has(c.id));
       } else {
         // General question - show recent data only (MUCH SMALLER)
-        relevantCandidates = candidates.slice(0, 10); // Only 10 recent candidates
-        relevantClients = clients.slice(0, 10); // Only 10 recent clients
-        relevantMatches = enrichedMatches.slice(0, 15); // Only 15 recent matches
+        // If user has massive dataset (300+), show even less
+        const maxItems = candidates.length > 200 ? 5 : 10;
+        relevantCandidates = candidates.slice(0, maxItems);
+        relevantClients = clients.slice(0, maxItems);
+        relevantMatches = enrichedMatches.slice(0, maxItems);
       }
 
       // Build compact data representation (reduce JSON verbosity)
@@ -502,13 +504,29 @@ You can perform these actions by including JSON commands in your response:
 {"action": "add_match_note", "data": {"candidate_id": "CAN001", "client_id": "CL001", "note": "Called candidate, interested"}}
 
 INSTRUCTIONS:
-- Answer questions directly and concisely
-- When asked for matches, include candidate ID, phone, postcode, client name, commute time, and status
-- When asked for phone numbers, provide ONLY the phone numbers requested
-- When user asks to add/edit/delete, include the appropriate JSON action in your response
-- All data is isolated to this user - you're seeing only their candidates, clients, and matches
-- Commute times are calculated by Google Maps (driving, morning traffic)
-- Be helpful and professional
+- Use professional, conversational tone (like a helpful recruitment assistant)
+- Format responses with clear structure: headers, bullet points, numbered lists
+- Use emojis sparingly for visual clarity (✅ ❌ 📞 🏥 etc)
+- When listing matches, format nicely:
+  "📋 **In-Progress Matches:**
+
+   1. **CAN001** (Dental Nurse) → **Smile Dental**
+      📞 07123456789
+      📍 SW1A 1AA → W1A 0AX
+      ⏱️ 25 minutes
+
+   2. ..."
+
+- For phone numbers, present them clearly:
+  "📞 **Contact Numbers:**
+   • CAN001: 07123456789
+   • CAN002: 07987654321"
+
+- NEVER show raw JSON in the response (only use internally for actions)
+- If executing actions, mention them naturally: "I've updated the status to in-progress ✅"
+- Keep responses concise but friendly (2-4 sentences for simple questions)
+- All data is isolated to this user only
+- Commute times are from Google Maps (driving, morning traffic)
 
 CURRENT QUESTION: ${question}`;
 
@@ -532,7 +550,7 @@ CURRENT QUESTION: ${question}`;
           messages: [
             { role: 'user', content: combinedPrompt }
           ],
-          max_tokens: 1500,
+          max_tokens: 600, // Reduced from 1500 to fit within 4096 context limit
           temperature: 0.7,
           stream: false
         }),
