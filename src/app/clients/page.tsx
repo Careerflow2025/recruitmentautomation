@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/browser';
 import { normalizeRole } from '@/lib/utils/roleNormalizer';
 import { NewItemIndicator } from '@/components/ui/NewItemIndicator';
 import { AddClientModal } from '@/components/forms/AddClientModal';
+import { HoverableCell } from '@/components/ui/HoverableCell';
 import Link from 'next/link';
 import { Client } from '@/types';
 import { saveColumnPreferences, loadColumnPreferences } from '@/lib/user-preferences';
@@ -1493,7 +1494,7 @@ export default function ClientsPage() {
                           className="px-2 py-1 border border-gray-400 rounded w-full text-sm font-medium text-gray-900"
                         />
                       ) : (
-                        client.surgery
+                        <HoverableCell value={client.surgery} label="Surgery" />
                       )}
                     </td>
                     <td
@@ -1509,7 +1510,7 @@ export default function ClientsPage() {
                           className="px-2 py-1 border border-gray-400 rounded w-full text-sm font-medium text-gray-900"
                         />
                       ) : (
-                        client.client_name || '-'
+                        <HoverableCell value={client.client_name} label="Client Name" />
                       )}
                     </td>
                     <td
@@ -1573,7 +1574,7 @@ export default function ClientsPage() {
                           className="px-2 py-1 border border-gray-400 rounded w-full text-sm font-medium text-gray-900"
                         />
                       ) : (
-                        normalizeRole(client.role)
+                        <HoverableCell value={normalizeRole(client.role)} label="Role" />
                       )}
                     </td>
                     <td
@@ -1589,7 +1590,7 @@ export default function ClientsPage() {
                           className="px-2 py-1 border border-gray-400 rounded w-full font-mono text-sm font-bold text-gray-900"
                         />
                       ) : (
-                        client.postcode
+                        <HoverableCell value={client.postcode} label="Postcode" />
                       )}
                     </td>
                     <td
@@ -1605,7 +1606,7 @@ export default function ClientsPage() {
                           className="px-2 py-1 border border-gray-400 rounded w-full text-sm font-medium text-gray-900"
                         />
                       ) : (
-                        client.budget || '-'
+                        <HoverableCell value={client.budget} label="Budget" />
                       )}
                     </td>
                     <td
@@ -1621,7 +1622,7 @@ export default function ClientsPage() {
                           className="px-2 py-1 border border-gray-400 rounded w-full text-sm font-medium text-gray-900"
                         />
                       ) : (
-                        client.requirement || '-'
+                        <HoverableCell value={client.requirement} label="Requirement" />
                       )}
                     </td>
                     {/* System Column */}
@@ -1638,7 +1639,7 @@ export default function ClientsPage() {
                           className="px-2 py-1 border border-gray-400 rounded w-full text-sm font-medium text-gray-900"
                         />
                       ) : (
-                        client.system || '-'
+                        <HoverableCell value={client.system} label="System" />
                       )}
                     </td>
                     <td
