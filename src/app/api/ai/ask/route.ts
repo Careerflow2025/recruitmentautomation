@@ -73,21 +73,20 @@ function asArray<T>(x: T[] | null | undefined): T[] {
  * Centralized database data fetcher with RLS enforcement
  * Uses userClient (with JWT) to ensure RLS policies are applied
  */
-export async function getAllData(userClient: ReturnType<typeof createServerClient>) {
-  // DEBUG: Test if auth.uid() is working in queries
-  const { data: authTest } = await userClient.rpc('auth.uid');
-  console.log('🔍 Auth context in queries:', authTest);
+export async function getAllData(userClient: ReturnType<typeof createServerClient>, userId: string) {
+  console.log('🔒 FORCING user_id filter in queries for user:', userId.substring(0, 8));
 
+  // BYPASS BROKEN RLS: Filter by user_id explicitly in the query
   const [{ data: candsRaw, error: cErr },
          { data: clientsRaw, error: cliErr },
          { data: matchesRaw, error: mErr },
          { data: statusesRaw, error: sErr },
          { data: notesRaw, error: nErr }] = await Promise.all([
-    userClient.from('candidates').select('*').order('added_at', { ascending: false }),
-    userClient.from('clients').select('*').order('added_at', { ascending: false }),
-    userClient.from('matches').select('*').order('commute_minutes', { ascending: true }),
-    userClient.from('match_statuses').select('*'),
-    userClient.from('match_notes').select('*').order('created_at', { ascending: false })
+    userClient.from('candidates').select('*').eq('user_id', userId).order('added_at', { ascending: false }),
+    userClient.from('clients').select('*').eq('user_id', userId).order('added_at', { ascending: false }),
+    userClient.from('matches').select('*').eq('user_id', userId).order('commute_minutes', { ascending: true }),
+    userClient.from('match_statuses').select('*').eq('user_id', userId),
+    userClient.from('match_notes').select('*').eq('user_id', userId).order('created_at', { ascending: false })
   ]);
 
   if (cErr)  console.error('DB candidates:', cErr);
@@ -363,8 +362,8 @@ export async function POST(request: Request) {
         await updateSummary(user.id, currentSessionId, newSummary, turnCount);
       }
 
-      // Get all data using RLS-protected userClient (scoped to THIS request only)
-      const { candidates, clients, matches, matchStatuses, matchNotes } = await getAllData(userClient);
+      // Get all data using explicit user_id filter (RLS is broken, so we filter manually)
+      const { candidates, clients, matches, matchStatuses, matchNotes } = await getAllData(userClient, user.id);
 
       console.log(`📊 RLS CHECK - User ${user.id.substring(0, 8)}:`);
       console.log(`   Loaded: ${candidates.length} candidates, ${clients.length} clients, ${matches.length} matches`);
