@@ -525,19 +525,11 @@ ${Object.keys(userFacts).length > 0 ? Object.entries(userFacts).map(([k, v]) => 
 RECENT TURNS (last 6 for context):
 ${recentContext.map((msg, i) => `[Turn ${msg.turn}] USER: ${msg.question}\nAI: ${msg.answer}`).join('\n\n')}
 
-ACTIONS - CREATE JSON IN CODE BLOCK:
-
-If user says "add phone to X" or "update X" = SEARCH data for existing ID, use update_client/update_candidate
-If user says "add new client X" or "create client X" = Generate new ID, use add_client/add_candidate
-
-ADD: {"action":"add_client","data":{"id":"CL${user.id.substring(0,8)}${Date.now()}","surgery":"New Surgery","client_phone":"073","postcode":"WD18"}}
-UPDATE: {"action":"update_client","data":{"id":"FIND_EXISTING_ID_FROM_DATA","client_phone":"new_phone"}}
-DELETE: {"action":"delete_client","data":{"id":"FIND_ID_FROM_DATA"}}
-
-IMPORTANT: Search through Clients/Candidates data to find existing IDs before updating/deleting!
-Only include fields user mentioned. NO nulls. Use client_phone for clients.
-Candidate: id,first_name,last_name,email,phone,role,postcode,salary,days,notes,experience
-Client: id,surgery,client_name,client_phone,client_email,role,postcode,budget,requirement,system,notes
+ACTIONS (json code block):
+ADD new: {"action":"add_client","data":{"id":"CL${user.id.substring(0,8)}${Date.now()}","surgery":"X","postcode":"Y"}}
+UPDATE existing: Find ID in data, {"action":"update_client","data":{"id":"existing_id","field":"value"}}
+DELETE: Find ID, {"action":"delete_client","data":{"id":"id"}}
+Only fields user gave. NO nulls. client_phone not phone.
 
 CURRENT QUESTION: ${question}`;
 
