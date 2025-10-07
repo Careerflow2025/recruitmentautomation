@@ -1,4 +1,4 @@
-// Type definitions for Dental Recruitment Matcher
+// Type definitions for Recruitment Matcher
 
 export type CanonicalRole =
   | 'Dentist'

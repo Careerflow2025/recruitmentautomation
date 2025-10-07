@@ -66,11 +66,11 @@ export default function Home() {
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">
-            ⚡ Laser-Focused Recruitment
+            🤖 AI Matcher Recruitment
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Fast. Precise. Powerful. AI-driven matching based on role compatibility and commute time.
-            Target the perfect candidates with laser precision.
+            Match the perfect candidates with AI precision.
           </p>
         </div>
 
@@ -149,7 +149,7 @@ export default function Home() {
               Candidates
             </h3>
             <p className="text-green-100">
-              View dental professionals seeking positions
+              View professionals seeking positions
             </p>
             <div className="mt-4 text-sm font-medium">
               → View Candidates
@@ -164,7 +164,7 @@ export default function Home() {
               Clients
             </h3>
             <p className="text-purple-100">
-              View dental surgeries with open positions
+              View businesses with open positions
             </p>
             <div className="mt-4 text-sm font-medium">
               → View Clients
@@ -202,7 +202,7 @@ export default function Home() {
         {/* Phase Notice */}
         <div className="mt-6 bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg p-4 text-center">
           <p className="text-sm text-purple-900 font-medium">
-            <strong>✅ AI Laser Recruiter:</strong> Multi-user authentication enabled!
+            <strong>✅ AI Matcher Recruiter:</strong> Multi-user authentication enabled!
             <br />
             <strong>⚡ AI Features:</strong> Smart Paste, AI Chat, and Voice Input ready to use!
           </p>
