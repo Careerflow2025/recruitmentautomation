@@ -951,7 +951,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                           type="text"
                           value={(editData as Candidate).role || ''}
                           onChange={(e) => handleFieldChange('role', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                          className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                         />
                       ) : (
                         <p className="text-sm font-semibold text-gray-900">{(modal.data as Candidate).role}</p>
@@ -967,7 +967,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                           type="text"
                           value={(editData as Candidate).first_name || ''}
                           onChange={(e) => handleFieldChange('first_name', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                          className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                         />
                       ) : (
                         <p className="text-sm text-gray-900">{(modal.data as Candidate).first_name || 'N/A'}</p>
@@ -980,7 +980,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                           type="text"
                           value={(editData as Candidate).last_name || ''}
                           onChange={(e) => handleFieldChange('last_name', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                          className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                         />
                       ) : (
                         <p className="text-sm text-gray-900">{(modal.data as Candidate).last_name || 'N/A'}</p>
@@ -996,7 +996,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                           type="email"
                           value={(editData as Candidate).email || ''}
                           onChange={(e) => handleFieldChange('email', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                          className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                         />
                       ) : (
                         <p className="text-sm text-gray-900 break-all">{(modal.data as Candidate).email || 'N/A'}</p>
@@ -1009,7 +1009,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                           type="tel"
                           value={(editData as Candidate).phone || ''}
                           onChange={(e) => handleFieldChange('phone', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                          className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                         />
                       ) : (
                         <p className="text-sm text-gray-900">{(modal.data as Candidate).phone || 'N/A'}</p>
@@ -1025,7 +1025,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                           type="text"
                           value={(editData as Candidate).postcode || ''}
                           onChange={(e) => handleFieldChange('postcode', e.target.value)}
-                          className="w-full px-2 py-1 text-sm font-mono border border-gray-400 rounded"
+                          className="w-full px-2 py-1 text-sm font-mono text-gray-900 border border-gray-400 rounded"
                         />
                       ) : (
                         <p className="text-sm font-mono font-bold text-gray-900">{(modal.data as Candidate).postcode}</p>
@@ -1038,7 +1038,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                           type="text"
                           value={(editData as Candidate).salary || ''}
                           onChange={(e) => handleFieldChange('salary', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                          className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                         />
                       ) : (
                         <p className="text-sm font-bold text-green-700">{(modal.data as Candidate).salary}</p>
@@ -1053,7 +1053,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                         type="text"
                         value={(editData as Candidate).days || ''}
                         onChange={(e) => handleFieldChange('days', e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                       />
                     ) : (
                       <p className="text-sm text-gray-900">{(modal.data as Candidate).days}</p>
@@ -1067,7 +1067,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                         type="text"
                         value={(editData as Candidate).experience || ''}
                         onChange={(e) => handleFieldChange('experience', e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                       />
                     ) : (
                       <p className="text-sm text-gray-900">{(modal.data as Candidate).experience || 'N/A'}</p>
@@ -1081,7 +1081,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                         type="text"
                         value={(editData as Candidate).travel_flexibility || ''}
                         onChange={(e) => handleFieldChange('travel_flexibility', e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                       />
                     ) : (
                       <p className="text-sm text-gray-900">{(modal.data as Candidate).travel_flexibility || 'N/A'}</p>
@@ -1095,7 +1095,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                         value={(editData as Candidate).notes || ''}
                         onChange={(e) => handleFieldChange('notes', e.target.value)}
                         rows={3}
-                        className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                       />
                     ) : (
                       <p className="text-sm text-gray-900 whitespace-pre-wrap">{(modal.data as Candidate).notes || 'No notes'}</p>
@@ -1116,7 +1116,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                           type="text"
                           value={(editData as Client).surgery || ''}
                           onChange={(e) => handleFieldChange('surgery', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                          className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                         />
                       ) : (
                         <p className="text-sm font-semibold text-gray-900">{(modal.data as Client).surgery}</p>
@@ -1132,7 +1132,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                           type="text"
                           value={(editData as Client).client_name || ''}
                           onChange={(e) => handleFieldChange('client_name', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                          className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                         />
                       ) : (
                         <p className="text-sm text-gray-900">{(modal.data as Client).client_name || 'N/A'}</p>
@@ -1145,7 +1145,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                           type="text"
                           value={(editData as Client).role || ''}
                           onChange={(e) => handleFieldChange('role', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                          className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                         />
                       ) : (
                         <p className="text-sm font-semibold text-gray-900">{(modal.data as Client).role}</p>
@@ -1161,7 +1161,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                           type="email"
                           value={(editData as Client).client_email || ''}
                           onChange={(e) => handleFieldChange('client_email', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                          className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                         />
                       ) : (
                         <p className="text-sm text-gray-900 break-all">{(modal.data as Client).client_email || 'N/A'}</p>
@@ -1174,7 +1174,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                           type="tel"
                           value={(editData as Client).client_phone || ''}
                           onChange={(e) => handleFieldChange('client_phone', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                          className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                         />
                       ) : (
                         <p className="text-sm text-gray-900">{(modal.data as Client).client_phone || 'N/A'}</p>
@@ -1190,7 +1190,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                           type="text"
                           value={(editData as Client).postcode || ''}
                           onChange={(e) => handleFieldChange('postcode', e.target.value)}
-                          className="w-full px-2 py-1 text-sm font-mono border border-gray-400 rounded"
+                          className="w-full px-2 py-1 text-sm font-mono text-gray-900 border border-gray-400 rounded"
                         />
                       ) : (
                         <p className="text-sm font-mono font-bold text-gray-900">{(modal.data as Client).postcode}</p>
@@ -1203,7 +1203,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                           type="text"
                           value={(editData as Client).budget || ''}
                           onChange={(e) => handleFieldChange('budget', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                          className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                         />
                       ) : (
                         <p className="text-sm font-bold text-green-700">{(modal.data as Client).budget}</p>
@@ -1218,7 +1218,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                         type="text"
                         value={(editData as Client).requirement || ''}
                         onChange={(e) => handleFieldChange('requirement', e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                       />
                     ) : (
                       <p className="text-sm text-gray-900">{(modal.data as Client).requirement}</p>
@@ -1232,7 +1232,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                         type="text"
                         value={(editData as Client).system || ''}
                         onChange={(e) => handleFieldChange('system', e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                       />
                     ) : (
                       <p className="text-sm text-gray-900">{(modal.data as Client).system || 'N/A'}</p>
@@ -1246,7 +1246,7 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                         value={(editData as Client).notes || ''}
                         onChange={(e) => handleFieldChange('notes', e.target.value)}
                         rows={3}
-                        className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-400 rounded"
                       />
                     ) : (
                       <p className="text-sm text-gray-900 whitespace-pre-wrap">{(modal.data as Client).notes || 'No notes'}</p>

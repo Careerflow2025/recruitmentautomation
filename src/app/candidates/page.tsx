@@ -1516,14 +1516,15 @@ export default function CandidatesPage() {
                     <td
                       className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 overflow-hidden text-ellipsis"
                       style={{ width: `${columnWidths.id}%` }}
-                      title={candidate.id}
                     >
-                      <div
-                        className="cursor-pointer hover:text-blue-600"
-                        onClick={() => {
-                          navigator.clipboard.writeText(candidate.id);
-                        }}
-                      >
+                      <div className="flex items-center">
+                        <HoverableCell 
+                          value={candidate.id} 
+                          label="Candidate ID"
+                          onCopy={() => {
+                            console.log(`Copied candidate ID: ${candidate.id}`);
+                          }}
+                        />
                         <NewItemIndicator id={candidate.id} addedAt={candidate.added_at} />
                       </div>
                     </td>

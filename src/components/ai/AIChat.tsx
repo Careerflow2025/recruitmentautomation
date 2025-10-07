@@ -215,7 +215,7 @@ export function AIChat() {
     "Open the map for the best match and show me the commute route",
     "Show me all matches with commute routes and map links",
     "Which candidates are placed and what are their details?",
-    "Show me dental nurses within 20 minutes of central London",
+    "Show me nurses within 20 minutes of central London",
     "Open the map for CAN1735900014UIO to show their commute route",
     "What's the average commute time for role matches?",
     "Show me the route between the best candidate and client",
@@ -244,7 +244,7 @@ export function AIChat() {
           className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-full shadow-2xl hover:shadow-purple-500/50 hover:scale-110 transition-all duration-200 flex items-center justify-center text-3xl z-50 border-4 border-white"
           title="Open AI Assistant"
         >
-          ⚡
+          🤖
         </button>
       )}
 
@@ -256,10 +256,10 @@ export function AIChat() {
             <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-blue-600 text-white p-6 flex justify-between items-center shadow-lg">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-3xl">
-                  ⚡
+                  🤖
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold">AI Laser Assistant</h2>
+                  <h2 className="text-2xl font-bold">AI Matcher Assistant</h2>
                   <p className="text-sm opacity-90">Complete access to matches, commutes, maps, and recruitment data</p>
                 </div>
               </div>

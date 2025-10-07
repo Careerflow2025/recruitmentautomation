@@ -52,7 +52,7 @@ export function Navbar() {
             className="flex items-center gap-2 font-bold text-xl hover:opacity-90 transition-opacity"
           >
             <span className="text-2xl">⚡</span>
-            <span className="hidden sm:inline">AI Laser Recruiter</span>
+            <span className="hidden sm:inline">AI Matcher Recruiter</span>
             <span className="sm:hidden">AIR</span>
           </Link>
 

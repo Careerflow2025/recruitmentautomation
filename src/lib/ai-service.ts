@@ -59,7 +59,7 @@ async function callVLLM(systemPrompt: string, userPrompt: string, temperature: n
  */
 export async function parseCandidates(rawText: string) {
   try {
-    const systemPrompt = `You are a UK dental recruitment data extraction expert. Extract ALL candidates from text.
+    const systemPrompt = `You are a UK recruitment data extraction expert. Extract ALL candidates from text.
 
 EXTRACTION RULES:
 1. Each candidate has: id, role, postcode, phone, notes, salary, days, experience
@@ -106,7 +106,7 @@ Example output:
  */
 export async function parseClients(rawText: string) {
   try {
-    const systemPrompt = `You are a UK dental recruitment data extraction expert. Extract ALL clients/surgeries from text.
+    const systemPrompt = `You are a UK recruitment data extraction expert. Extract ALL clients/surgeries from text.
 
 EXTRACTION RULES:
 1. Each client has: id, surgery (practice name), role (needed), postcode, budget (pay rate), days (needed), requirement, notes
@@ -158,7 +158,7 @@ export async function askAssistant(
   }
 ) {
   try {
-    const systemPrompt = `You are an AI assistant for a UK dental recruitment system. Answer questions about candidates, clients, and matches.
+    const systemPrompt = `You are an AI assistant for a UK recruitment system. Answer questions about candidates, clients, and matches.
 
 SYSTEM KNOWLEDGE:
 - Candidates have: id, role, postcode, phone, salary, days, experience, notes, added_at
