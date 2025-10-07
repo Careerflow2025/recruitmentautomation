@@ -610,6 +610,7 @@ CURRENT QUESTION: ${question}`;
       let aiAnswer = vllmData.choices?.[0]?.message?.content || 'No response generated';
 
       console.log(`✅ Received response from RunPod vLLM (${aiAnswer.length} chars)`);
+      console.log('📝 AI Response:', aiAnswer.substring(0, 500));
 
       // Parse and execute any JSON actions in the AI response
       const actionResults: string[] = [];
@@ -623,12 +624,15 @@ CURRENT QUESTION: ${question}`;
 
       for (const match of codeBlockMatches) {
         try {
+          console.log('🔍 Found JSON code block:', match[1]);
           const parsed = JSON.parse(match[1]);
           if (parsed.action && parsed.data) {
+            console.log('✅ Parsed action:', JSON.stringify(parsed));
             actionsToExecute.push(parsed);
           }
         } catch (e) {
-          console.error('Failed to parse code block JSON:', e);
+          console.error('❌ Failed to parse code block JSON:', e);
+          console.error('Raw JSON was:', match[1]);
         }
       }
 
