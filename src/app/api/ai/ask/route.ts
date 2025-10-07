@@ -352,7 +352,7 @@ export async function POST(request: Request) {
       const inProgressMatches = matchStatuses.filter(s => s.status === 'in-progress').length;
       const rejectedMatches = matchStatuses.filter(s => s.status === 'rejected').length;
 
-      // Build system prompt
+      // Build system prompt with AI tools support
       const systemPrompt = `You are a helpful AI assistant for dental recruitment. You help match dental candidates with client surgeries.
 
 USER CONTEXT:
@@ -363,19 +363,48 @@ USER CONTEXT:
 - Placed: ${placedMatches}, In-Progress: ${inProgressMatches}, Rejected: ${rejectedMatches}
 
 AVAILABLE DATA:
-Candidates: ${JSON.stringify(candidates.slice(0, 50), null, 1)}
-Clients: ${JSON.stringify(clients.slice(0, 50), null, 1)}
-Matches: ${JSON.stringify(enrichedMatches.slice(0, 100), null, 1)}
+Candidates: ${JSON.stringify(candidates, null, 1)}
+Clients: ${JSON.stringify(clients, null, 1)}
+Matches: ${JSON.stringify(enrichedMatches, null, 1)}
 
 CONVERSATION HISTORY:
 ${conversationHistory.map((msg, i) => `[${i + 1}] USER: ${msg.question}\nASSISTANT: ${msg.answer}`).join('\n\n')}
 
+AVAILABLE ACTIONS (use JSON format):
+You can perform these actions by including JSON commands in your response:
+
+1. ADD CANDIDATE:
+{"action": "add_candidate", "data": {"id": "CAN###", "role": "Dental Nurse", "postcode": "SW1A 1AA", "phone": "07123456789", "salary": "£15-17", "days": "Mon-Fri", "notes": "..."}}
+
+2. UPDATE CANDIDATE:
+{"action": "update_candidate", "data": {"id": "CAN001", "phone": "07999888777", "salary": "£18", ...}}
+
+3. DELETE CANDIDATE:
+{"action": "delete_candidate", "data": {"id": "CAN001"}}
+
+4. ADD CLIENT:
+{"action": "add_client", "data": {"id": "CL###", "surgery": "Smile Dental", "role": "Dental Nurse", "postcode": "SW1A 1AA", "budget": "£16-18", "days": "Mon-Fri", "notes": "..."}}
+
+5. UPDATE CLIENT:
+{"action": "update_client", "data": {"id": "CL001", "budget": "£17-19", ...}}
+
+6. DELETE CLIENT:
+{"action": "delete_client", "data": {"id": "CL001"}}
+
+7. UPDATE MATCH STATUS:
+{"action": "update_match_status", "data": {"candidate_id": "CAN001", "client_id": "CL001", "status": "in-progress"}}
+(statuses: "placed", "in-progress", "rejected")
+
+8. ADD MATCH NOTE:
+{"action": "add_match_note", "data": {"candidate_id": "CAN001", "client_id": "CL001", "note": "Called candidate, interested"}}
+
 INSTRUCTIONS:
 - Answer questions directly and concisely
-- When asked for matches, provide candidate ID, phone, postcode, client name, and commute time
-- When asked for phone numbers, provide ONLY the phone numbers
-- Match statuses can be: "placed", "in-progress", "rejected", or null (pending)
+- When asked for matches, include candidate ID, phone, postcode, client name, commute time, and status
+- When asked for phone numbers, provide ONLY the phone numbers requested
+- When user asks to add/edit/delete, include the appropriate JSON action in your response
 - All data is isolated to this user - you're seeing only their candidates, clients, and matches
+- Commute times are calculated by Google Maps (driving, morning traffic)
 - Be helpful and professional
 
 CURRENT QUESTION: ${question}`;
@@ -409,9 +438,182 @@ CURRENT QUESTION: ${question}`;
       }
 
       const vllmData = await vllmResponse.json();
-      const aiAnswer = vllmData.choices?.[0]?.message?.content || 'No response generated';
+      let aiAnswer = vllmData.choices?.[0]?.message?.content || 'No response generated';
 
       console.log(`✅ Received response from RunPod vLLM (${aiAnswer.length} chars)`);
+
+      // Parse and execute any JSON actions in the AI response
+      const actionResults: string[] = [];
+      const jsonActionRegex = /\{"action":\s*"[^"]+",\s*"data":\s*\{[^}]+\}\}/g;
+      const actions = aiAnswer.match(jsonActionRegex);
+
+      if (actions && actions.length > 0) {
+        console.log(`🔧 Found ${actions.length} action(s) to execute`);
+
+        for (const actionStr of actions) {
+          try {
+            const action = JSON.parse(actionStr);
+            console.log(`Executing action: ${action.action}`);
+
+            switch (action.action) {
+              case 'add_candidate': {
+                const { data: existingCandidate } = await userClient
+                  .from('candidates')
+                  .select('id')
+                  .eq('id', action.data.id)
+                  .single();
+
+                if (existingCandidate) {
+                  actionResults.push(`⚠️ Candidate ${action.data.id} already exists`);
+                } else {
+                  const { error } = await userClient.from('candidates').insert({
+                    ...action.data,
+                    user_id: user.id,
+                    added_at: new Date().toISOString(),
+                  });
+                  if (error) {
+                    actionResults.push(`❌ Error adding candidate: ${error.message}`);
+                  } else {
+                    actionResults.push(`✅ Successfully added candidate ${action.data.id}`);
+                  }
+                }
+                break;
+              }
+
+              case 'update_candidate': {
+                const { id, ...updateData } = action.data;
+                const { error } = await userClient
+                  .from('candidates')
+                  .update(updateData)
+                  .eq('id', id);
+
+                if (error) {
+                  actionResults.push(`❌ Error updating candidate: ${error.message}`);
+                } else {
+                  actionResults.push(`✅ Updated candidate ${id}`);
+                }
+                break;
+              }
+
+              case 'delete_candidate': {
+                const { error } = await userClient
+                  .from('candidates')
+                  .delete()
+                  .eq('id', action.data.id);
+
+                if (error) {
+                  actionResults.push(`❌ Error deleting candidate: ${error.message}`);
+                } else {
+                  actionResults.push(`✅ Deleted candidate ${action.data.id}`);
+                }
+                break;
+              }
+
+              case 'add_client': {
+                const { data: existingClient } = await userClient
+                  .from('clients')
+                  .select('id')
+                  .eq('id', action.data.id)
+                  .single();
+
+                if (existingClient) {
+                  actionResults.push(`⚠️ Client ${action.data.id} already exists`);
+                } else {
+                  const { error } = await userClient.from('clients').insert({
+                    ...action.data,
+                    user_id: user.id,
+                    added_at: new Date().toISOString(),
+                  });
+                  if (error) {
+                    actionResults.push(`❌ Error adding client: ${error.message}`);
+                  } else {
+                    actionResults.push(`✅ Successfully added client ${action.data.id}`);
+                  }
+                }
+                break;
+              }
+
+              case 'update_client': {
+                const { id, ...updateData } = action.data;
+                const { error } = await userClient
+                  .from('clients')
+                  .update(updateData)
+                  .eq('id', id);
+
+                if (error) {
+                  actionResults.push(`❌ Error updating client: ${error.message}`);
+                } else {
+                  actionResults.push(`✅ Updated client ${id}`);
+                }
+                break;
+              }
+
+              case 'delete_client': {
+                const { error } = await userClient
+                  .from('clients')
+                  .delete()
+                  .eq('id', action.data.id);
+
+                if (error) {
+                  actionResults.push(`❌ Error deleting client: ${error.message}`);
+                } else {
+                  actionResults.push(`✅ Deleted client ${action.data.id}`);
+                }
+                break;
+              }
+
+              case 'update_match_status': {
+                const { error } = await userClient
+                  .from('match_statuses')
+                  .upsert({
+                    candidate_id: action.data.candidate_id,
+                    client_id: action.data.client_id,
+                    status: action.data.status,
+                    user_id: user.id,
+                    updated_at: new Date().toISOString(),
+                  });
+
+                if (error) {
+                  actionResults.push(`❌ Error updating match status: ${error.message}`);
+                } else {
+                  actionResults.push(`✅ Updated match status to '${action.data.status}'`);
+                }
+                break;
+              }
+
+              case 'add_match_note': {
+                const { error } = await userClient
+                  .from('match_notes')
+                  .insert({
+                    candidate_id: action.data.candidate_id,
+                    client_id: action.data.client_id,
+                    note_text: action.data.note,
+                    user_id: user.id,
+                    created_at: new Date().toISOString(),
+                  });
+
+                if (error) {
+                  actionResults.push(`❌ Error adding note: ${error.message}`);
+                } else {
+                  actionResults.push(`✅ Added note to match`);
+                }
+                break;
+              }
+
+              default:
+                console.warn(`Unknown action: ${action.action}`);
+            }
+          } catch (parseError) {
+            console.error('Error parsing/executing action:', parseError);
+          }
+        }
+
+        // Remove JSON actions from the answer and append results
+        aiAnswer = aiAnswer.replace(jsonActionRegex, '').trim();
+        if (actionResults.length > 0) {
+          aiAnswer += '\n\n' + actionResults.join('\n');
+        }
+      }
 
       return {
         answer: aiAnswer,
@@ -425,6 +627,7 @@ CURRENT QUESTION: ${question}`;
         placedMatches,
         inProgressMatches,
         rejectedMatches,
+        actionsExecuted: actionResults.length,
         optimization: {
           processingTime: Date.now() - startTime,
           contextOptimization: true,
