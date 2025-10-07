@@ -525,16 +525,15 @@ ${Object.keys(userFacts).length > 0 ? Object.entries(userFacts).map(([k, v]) => 
 RECENT TURNS (last 6 for context):
 ${recentContext.map((msg, i) => `[Turn ${msg.turn}] USER: ${msg.question}\nAI: ${msg.answer}`).join('\n\n')}
 
-WHEN USER SAYS "ADD"/"DELETE"/"UPDATE" - CREATE JSON ACTION:
-Confirm briefly, then json code block with action.
+ADD/DELETE/UPDATE = CREATE JSON ACTION IN CODE BLOCK
 
-CRITICAL: Generate UNIQUE ID every time! Use timestamp or random number.
-Format: CL67419abb_1759821234567 or CAN67419abb_9876543210
+ID must be UNIQUE! Use: CL${user.id.substring(0,8)}${Date.now()} or CAN${user.id.substring(0,8)}${Date.now()}
 
-Example add: {"action":"add_client","data":{"id":"CL${user.id.substring(0,8)}_${Date.now()}","surgery":"GP Surgery","client_phone":"073456","postcode":"WD187DT"}}
+Example: {"action":"add_client","data":{"id":"CL67419abb1759821234567","surgery":"GP Surgery","client_phone":"073456","postcode":"WD187DT"}}
 
-RULES: "data" key. Only user's fields. NO nulls. client_phone not phone.
-Fields: Candidate={id,first_name,last_name,email,phone,role,postcode,salary,days,notes,experience} Client={id,surgery,client_name,client_phone,client_email,role,postcode,budget,requirement,system,notes}
+Only include fields user mentioned. NO null values. Use client_phone for clients (not phone).
+Candidate: id,first_name,last_name,email,phone,role,postcode,salary,days,notes,experience
+Client: id,surgery,client_name,client_phone,client_email,role,postcode,budget,requirement,system,notes
 
 CURRENT QUESTION: ${question}`;
 
@@ -620,8 +619,10 @@ CURRENT QUESTION: ${question}`;
 
       for (const match of codeBlockMatches) {
         try {
-          console.log('🔍 Found JSON code block:', match[1]);
-          const parsed = JSON.parse(match[1]);
+          // Remove escaped underscores and backslashes that AI sometimes adds
+          const cleanJson = match[1].replace(/\\_/g, '_').replace(/\\\\/g, '\\');
+          console.log('🔍 Found JSON code block:', cleanJson);
+          const parsed = JSON.parse(cleanJson);
           if (parsed.action && parsed.data) {
             console.log('✅ Parsed action:', JSON.stringify(parsed));
             actionsToExecute.push(parsed);
