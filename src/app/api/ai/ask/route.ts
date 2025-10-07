@@ -36,12 +36,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number, timeoutError = new Erro
   });
 }
 
-// "Can't-crash" guard: Define data variables in module scope to prevent ReferenceError
-let candidates: any[] = [];
-let clients: any[] = [];
-let matches: any[] = [];
-let matchStatuses: any[] = [];
-let matchNotes: any[] = [];
+// NOTE: Data variables are now SCOPED PER REQUEST to prevent cross-user contamination
+// Previously they were module-scoped which caused User A to see User B's data!
 
 /**
  * Get the highest ID from a list of candidates or clients
@@ -360,8 +356,8 @@ export async function POST(request: Request) {
         await updateSummary(user.id, currentSessionId, newSummary, turnCount);
       }
 
-      // Get all data using RLS-protected userClient
-      ({ candidates, clients, matches, matchStatuses, matchNotes } = await getAllData(userClient));
+      // Get all data using RLS-protected userClient (scoped to THIS request only)
+      const { candidates, clients, matches, matchStatuses, matchNotes } = await getAllData(userClient);
 
       console.log(`📊 Loaded: ${candidates.length} candidates, ${clients.length} clients, ${matches.length} matches for user ${user.id.substring(0, 8)}...`);
 
@@ -521,58 +517,9 @@ ${Object.keys(userFacts).length > 0 ? Object.entries(userFacts).map(([k, v]) => 
 RECENT TURNS (last 6 for context):
 ${recentContext.map((msg, i) => `[Turn ${msg.turn}] USER: ${msg.question}\nAI: ${msg.answer}`).join('\n\n')}
 
-AVAILABLE ACTIONS (use JSON format):
-You can perform these actions by including JSON commands in your response:
+ACTIONS: add_candidate, update_candidate, delete_candidate, add_client, update_client, delete_client, update_match_status, add_match_note (use JSON {"action":"...", "data":{...}} if needed)
 
-1. ADD CANDIDATE:
-{"action": "add_candidate", "data": {"id": "CAN###", "role": "Dental Nurse", "postcode": "SW1A 1AA", "phone": "07123456789", "salary": "£15-17", "days": "Mon-Fri", "notes": "..."}}
-
-2. UPDATE CANDIDATE:
-{"action": "update_candidate", "data": {"id": "CAN001", "phone": "07999888777", "salary": "£18", ...}}
-
-3. DELETE CANDIDATE:
-{"action": "delete_candidate", "data": {"id": "CAN001"}}
-
-4. ADD CLIENT:
-{"action": "add_client", "data": {"id": "CL###", "surgery": "Smile Dental", "role": "Dental Nurse", "postcode": "SW1A 1AA", "budget": "£16-18", "days": "Mon-Fri", "notes": "..."}}
-
-5. UPDATE CLIENT:
-{"action": "update_client", "data": {"id": "CL001", "budget": "£17-19", ...}}
-
-6. DELETE CLIENT:
-{"action": "delete_client", "data": {"id": "CL001"}}
-
-7. UPDATE MATCH STATUS:
-{"action": "update_match_status", "data": {"candidate_id": "CAN001", "client_id": "CL001", "status": "in-progress"}}
-(statuses: "placed", "in-progress", "rejected")
-
-8. ADD MATCH NOTE:
-{"action": "add_match_note", "data": {"candidate_id": "CAN001", "client_id": "CL001", "note": "Called candidate, interested"}}
-
-INSTRUCTIONS:
-- Use professional, conversational tone (like a helpful recruitment assistant)
-- Format responses with clear structure: headers, bullet points, numbered lists
-- Use emojis sparingly for visual clarity (✅ ❌ 📞 🏥 etc)
-- When listing matches, format nicely:
-  "📋 **In-Progress Matches:**
-
-   1. **CAN001** (Dental Nurse) → **Smile Dental**
-      📞 07123456789
-      📍 SW1A 1AA → W1A 0AX
-      ⏱️ 25 minutes
-
-   2. ..."
-
-- For phone numbers, present them clearly:
-  "📞 **Contact Numbers:**
-   • CAN001: 07123456789
-   • CAN002: 07987654321"
-
-- NEVER show raw JSON in the response (only use internally for actions)
-- If executing actions, mention them naturally: "I've updated the status to in-progress ✅"
-- Keep responses concise but friendly (2-4 sentences for simple questions)
-- All data is isolated to this user only
-- Commute times are from Google Maps (driving, morning traffic)
+STYLE: Professional, conversational, clear structure. Use emojis (✅❌📞🏥⏱️) for clarity. List format: "1. **CAN001** → **Surgery** 📞 phone ⏱️ time". NEVER show raw JSON. Keep concise (2-4 sentences for simple questions).
 
 CURRENT QUESTION: ${question}`;
 
