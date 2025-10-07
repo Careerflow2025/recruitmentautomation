@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/browser';
 import { normalizeRole } from '@/lib/utils/roleNormalizer';
 import { NewItemIndicator } from '@/components/ui/NewItemIndicator';
 import { AddCandidateModal } from '@/components/forms/AddCandidateModal';
+import { HoverableCell } from '@/components/ui/HoverableCell';
 import Link from 'next/link';
 import { Candidate } from '@/types';
 import { getCurrentUserId } from '@/lib/auth-helpers';
@@ -1531,7 +1532,7 @@ export default function CandidatesPage() {
                           className="px-2 py-1 border border-gray-400 rounded w-full text-sm font-medium text-gray-900"
                         />
                       ) : (
-                        candidate.first_name || '-'
+                        <HoverableCell value={candidate.first_name} label="First Name" />
                       )}
                     </td>
                     <td
