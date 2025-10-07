@@ -4,6 +4,16 @@ import { cookies } from 'next/headers';
 import { conversationStorage } from '@/lib/conversation-storage';
 import { createHash } from 'crypto';
 import { createServiceClient, createClient } from '@/lib/supabase/server';
+import {
+  getSummary,
+  updateSummary,
+  getFacts,
+  updateFact,
+  generateSummary,
+  extractFacts,
+  shouldRegenerateSummary,
+  getRecentContext
+} from '@/lib/ai-memory';
 
 /**
  * Promise timeout wrapper for enterprise-grade stability
@@ -316,9 +326,39 @@ export async function POST(request: Request) {
 
     // Enqueue the AI request
     const aiResponse = await globalAIQueue.enqueue(user.id, async () => {
-      // Load conversation history
+      // Load conversation history (FULL - for summarization only)
       const currentSessionId = sessionId || await conversationStorage.createSessionId(user.id);
-      const conversationHistory = await conversationStorage.getRecentConversations(user.id, 20, 50);
+      const fullConversationHistory = await conversationStorage.getRecentConversations(user.id, 100, 100);
+
+      // MEMORY SYSTEM - Load summary and facts
+      const existingSummary = await getSummary(user.id, currentSessionId);
+      const userFacts = await getFacts(user.id, currentSessionId);
+
+      // Only send LAST 6 TURNS to AI (not all 100!)
+      const recentContext = getRecentContext(
+        fullConversationHistory.map((msg, i) => ({
+          question: msg.question,
+          answer: msg.answer,
+          turn: i + 1
+        })),
+        6
+      );
+
+      const turnCount = fullConversationHistory.length;
+
+      // Regenerate summary every 10 turns
+      if (shouldRegenerateSummary(turnCount)) {
+        console.log(`🔄 Regenerating summary at turn ${turnCount}...`);
+        const newSummary = await generateSummary(
+          fullConversationHistory.map((msg, i) => ({
+            question: msg.question,
+            answer: msg.answer,
+            turn: i + 1
+          })),
+          existingSummary?.summary
+        );
+        await updateSummary(user.id, currentSessionId, newSummary, turnCount);
+      }
 
       // Get all data using RLS-protected userClient
       ({ candidates, clients, matches, matchStatuses, matchNotes } = await getAllData(userClient));
@@ -472,8 +512,14 @@ Candidates: ${JSON.stringify(compactCandidates)}
 Clients: ${JSON.stringify(compactClients)}
 Matches: ${JSON.stringify(compactMatches)}
 
-CONVERSATION HISTORY (last 3):
-${conversationHistory.slice(-3).map((msg, i) => `[${i + 1}] USER: ${msg.question}\nASSISTANT: ${msg.answer}`).join('\n\n')}
+CONVERSATION SUMMARY (compressed history):
+${existingSummary?.summary || 'No previous conversation.'}
+
+USER FACTS (remembered details):
+${Object.keys(userFacts).length > 0 ? Object.entries(userFacts).map(([k, v]) => `- ${k}: ${v}`).join('\n') : 'None yet.'}
+
+RECENT TURNS (last 6 for context):
+${recentContext.map((msg, i) => `[Turn ${msg.turn}] USER: ${msg.question}\nAI: ${msg.answer}`).join('\n\n')}
 
 AVAILABLE ACTIONS (use JSON format):
 You can perform these actions by including JSON commands in your response:
@@ -550,7 +596,7 @@ CURRENT QUESTION: ${question}`;
           messages: [
             { role: 'user', content: combinedPrompt }
           ],
-          max_tokens: 600, // Reduced from 1500 to fit within 4096 context limit
+          max_tokens: 300, // Concise responses (was 600, then 1500)
           temperature: 0.7,
           stream: false
         }),
@@ -744,7 +790,8 @@ CURRENT QUESTION: ${question}`;
       return {
         answer: aiAnswer,
         currentSessionId,
-        conversationHistory,
+        conversationHistory: recentContext, // Only recent turns
+        turnCount, // For fact extraction
         totalMatches,
         candidates,
         clients,
@@ -757,6 +804,10 @@ CURRENT QUESTION: ${question}`;
         optimization: {
           processingTime: Date.now() - startTime,
           contextOptimization: true,
+          memorySystem: true,
+          summaryActive: !!existingSummary,
+          factsStored: Object.keys(userFacts).length,
+          recentTurns: recentContext.length,
           model: 'mistral-7b-instruct-vllm',
           infrastructure: 'RunPod RTX 4090'
         }
@@ -767,12 +818,20 @@ CURRENT QUESTION: ${question}`;
       answer,
       currentSessionId,
       conversationHistory,
+      turnCount,
       totalMatches,
       optimization
     } = aiResponse;
 
     // Save conversation to storage
     await conversationStorage.saveMessage(user.id, currentSessionId, question, answer);
+
+    // MEMORY SYSTEM - Extract and save facts from this turn
+    const newTurnNumber = turnCount + 1;
+    const factsFromTurn = await extractFacts(question, answer, newTurnNumber);
+    for (const fact of factsFromTurn) {
+      await updateFact(user.id, currentSessionId, fact.fact_key, fact.fact_value, fact.source_turn);
+    }
 
     return NextResponse.json({
       success: true,
