@@ -1516,8 +1516,16 @@ export default function CandidatesPage() {
                     <td
                       className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 overflow-hidden text-ellipsis"
                       style={{ width: `${columnWidths.id}%` }}
+                      title={candidate.id}
                     >
-                      <NewItemIndicator id={candidate.id} addedAt={candidate.added_at} />
+                      <div
+                        className="cursor-pointer hover:text-blue-600"
+                        onClick={() => {
+                          navigator.clipboard.writeText(candidate.id);
+                        }}
+                      >
+                        <NewItemIndicator id={candidate.id} addedAt={candidate.added_at} />
+                      </div>
                     </td>
                     <td
                       className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 overflow-hidden text-ellipsis"
@@ -1678,8 +1686,9 @@ export default function CandidatesPage() {
                       )}
                     </td>
                     <td
-                      className="px-3 py-2 text-sm font-medium text-gray-900 border-r border-gray-300 overflow-hidden text-ellipsis"
-                      style={{ width: `${columnWidths.notes}%` }}
+                      className="px-3 py-2 text-sm font-medium text-gray-900 border-r border-gray-300"
+                      style={{ width: `${columnWidths.notes}%`, maxHeight: '100px', overflow: 'hidden' }}
+                      title={candidate.notes || undefined}
                     >
                       {isEditMode ? (
                         <input
@@ -1696,12 +1705,9 @@ export default function CandidatesPage() {
                             setEditingNote(candidate.notes || '');
                             setModalPosition({ x: 50, y: 50 });
                           }}
-                          className="text-left hover:text-blue-600 cursor-pointer underline"
+                          className="text-left hover:text-blue-600 cursor-pointer underline break-words line-clamp-3"
                         >
-                          {candidate.notes
-                            ? (candidate.notes.split(' ').slice(0, 2).join(' ') + (candidate.notes.split(' ').length > 2 ? '...' : ''))
-                            : '-'
-                          }
+                          {candidate.notes || '-'}
                         </button>
                       )}
                     </td>

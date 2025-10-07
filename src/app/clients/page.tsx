@@ -1478,8 +1478,16 @@ export default function ClientsPage() {
                     <td
                       className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 overflow-hidden text-ellipsis"
                       style={{ width: `${columnWidths.id}%` }}
+                      title={client.id}
                     >
-                      <NewItemIndicator id={client.id} addedAt={client.added_at} />
+                      <div
+                        className="cursor-pointer hover:text-blue-600"
+                        onClick={() => {
+                          navigator.clipboard.writeText(client.id);
+                        }}
+                      >
+                        <NewItemIndicator id={client.id} addedAt={client.added_at} />
+                      </div>
                     </td>
                     <td
                       className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 overflow-hidden text-ellipsis"
@@ -1526,9 +1534,7 @@ export default function ClientsPage() {
                           className="px-2 py-1 border border-gray-400 rounded w-full text-sm font-medium text-gray-900"
                         />
                       ) : (
-                        client.client_phone
-                          ? (client.client_phone.length > 7 ? client.client_phone.substring(0, 7) + '...' : client.client_phone)
-                          : '-'
+                        <HoverableCell value={client.client_phone} label="Client Phone" />
                       )}
                     </td>
                     <td
@@ -1643,8 +1649,9 @@ export default function ClientsPage() {
                       )}
                     </td>
                     <td
-                      className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 overflow-hidden text-ellipsis"
-                      style={{ width: `${columnWidths.notes}%` }}
+                      className="px-3 py-2 text-sm font-medium text-gray-900 border-r border-gray-300"
+                      style={{ width: `${columnWidths.notes}%`, maxHeight: '100px', overflow: 'hidden' }}
+                      title={client.notes || undefined}
                     >
                       {isEditMode ? (
                         <input
@@ -1661,12 +1668,9 @@ export default function ClientsPage() {
                             setEditingNote(client.notes || '');
                             setModalPosition({ x: 50, y: 50 });
                           }}
-                          className="text-left hover:text-blue-600 cursor-pointer underline"
+                          className="text-left hover:text-blue-600 cursor-pointer underline break-words line-clamp-3"
                         >
-                          {client.notes
-                            ? (client.notes.split(' ').slice(0, 2).join(' ') + (client.notes.split(' ').length > 2 ? '...' : ''))
-                            : '-'
-                          }
+                          {client.notes || '-'}
                         </button>
                       )}
                     </td>

@@ -52,6 +52,8 @@ export function MatchesTable({ matches }: MatchesTableProps) {
   const [isResizing, setIsResizing] = useState<string | null>(null);
   const [resizeStart, setResizeStart] = useState({ mouseX: 0, mouseY: 0, x: 0, y: 0, width: 0, height: 0 });
   const openModalsRef = useRef(openModals);
+  const [editingModalId, setEditingModalId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<Partial<Candidate | Client>>({});
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -301,6 +303,50 @@ export function MatchesTable({ matches }: MatchesTableProps) {
 
   const handleModalMouseUp = () => {
     setDraggingModalId(null);
+  };
+
+  const handleEditClick = (modalId: string, data: Candidate | Client) => {
+    setEditingModalId(modalId);
+    setEditData({ ...data });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingModalId(null);
+    setEditData({});
+  };
+
+  const handleSaveEdit = async (modalId: string, type: 'candidate' | 'client') => {
+    try {
+      const userId = await getCurrentUserId();
+      if (!userId) throw new Error('User not authenticated');
+
+      const table = type === 'candidate' ? 'candidates' : 'clients';
+      const { error } = await supabase
+        .from(table)
+        .update(editData)
+        .eq('id', editData.id)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      // Update the modal data
+      setOpenModals(prev => prev.map(modal =>
+        modal.id === modalId ? { ...modal, data: { ...modal.data, ...editData } } : modal
+      ));
+
+      setEditingModalId(null);
+      setEditData({});
+
+      // Show success message (optional)
+      alert(`${type === 'candidate' ? 'Candidate' : 'Client'} updated successfully!`);
+    } catch (error) {
+      console.error('Error saving:', error);
+      alert('Failed to save changes. Please try again.');
+    }
+  };
+
+  const handleFieldChange = (field: string, value: any) => {
+    setEditData(prev => ({ ...prev, [field]: value }));
   };
 
   const getMatchKey = (match: Match) => {
@@ -852,16 +898,41 @@ export function MatchesTable({ matches }: MatchesTableProps) {
               <h3 className="font-bold text-sm text-gray-900 uppercase">
                 {modal.type === 'candidate' ? '👤 Candidate Details' : '🏢 Client Details'}
               </h3>
-              <button
-                onClick={() => handleCloseModal_Detail(modal.id)}
-                className={`${
-                  modal.type === 'candidate'
-                    ? 'text-gray-900 hover:text-gray-600 hover:bg-blue-200'
-                    : 'text-gray-900 hover:text-gray-600 hover:bg-orange-200'
-                } text-xl font-bold leading-none px-2 rounded`}
-              >
-                ×
-              </button>
+              <div className="flex gap-2 items-center">
+                {editingModalId === modal.id ? (
+                  <>
+                    <button
+                      onClick={() => handleSaveEdit(modal.id, modal.type)}
+                      className="px-3 py-1 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="px-3 py-1 bg-gray-600 text-white text-xs font-semibold rounded hover:bg-gray-700"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => handleEditClick(modal.id, modal.data)}
+                    className="px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded hover:bg-blue-700"
+                  >
+                    Edit
+                  </button>
+                )}
+                <button
+                  onClick={() => handleCloseModal_Detail(modal.id)}
+                  className={`${
+                    modal.type === 'candidate'
+                      ? 'text-gray-900 hover:text-gray-600 hover:bg-blue-200'
+                      : 'text-gray-900 hover:text-gray-600 hover:bg-orange-200'
+                  } text-xl font-bold leading-none px-2 rounded`}
+                >
+                  ×
+                </button>
+              </div>
             </div>
 
             {/* Content */}
@@ -875,61 +946,160 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                     </div>
                     <div className="bg-white border-2 border-gray-300 p-2">
                       <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Role</label>
-                      <p className="text-sm font-semibold text-gray-900">{(modal.data as Candidate).role}</p>
+                      {editingModalId === modal.id ? (
+                        <input
+                          type="text"
+                          value={(editData as Candidate).role || ''}
+                          onChange={(e) => handleFieldChange('role', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        />
+                      ) : (
+                        <p className="text-sm font-semibold text-gray-900">{(modal.data as Candidate).role}</p>
+                      )}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-white border-2 border-gray-300 p-2">
                       <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">First Name</label>
-                      <p className="text-sm text-gray-900">{(modal.data as Candidate).first_name || 'N/A'}</p>
+                      {editingModalId === modal.id ? (
+                        <input
+                          type="text"
+                          value={(editData as Candidate).first_name || ''}
+                          onChange={(e) => handleFieldChange('first_name', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        />
+                      ) : (
+                        <p className="text-sm text-gray-900">{(modal.data as Candidate).first_name || 'N/A'}</p>
+                      )}
                     </div>
                     <div className="bg-white border-2 border-gray-300 p-2">
                       <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Last Name</label>
-                      <p className="text-sm text-gray-900">{(modal.data as Candidate).last_name || 'N/A'}</p>
+                      {editingModalId === modal.id ? (
+                        <input
+                          type="text"
+                          value={(editData as Candidate).last_name || ''}
+                          onChange={(e) => handleFieldChange('last_name', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        />
+                      ) : (
+                        <p className="text-sm text-gray-900">{(modal.data as Candidate).last_name || 'N/A'}</p>
+                      )}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-white border-2 border-gray-300 p-2">
                       <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Email</label>
-                      <p className="text-sm text-gray-900 break-all">{(modal.data as Candidate).email || 'N/A'}</p>
+                      {editingModalId === modal.id ? (
+                        <input
+                          type="email"
+                          value={(editData as Candidate).email || ''}
+                          onChange={(e) => handleFieldChange('email', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        />
+                      ) : (
+                        <p className="text-sm text-gray-900 break-all">{(modal.data as Candidate).email || 'N/A'}</p>
+                      )}
                     </div>
                     <div className="bg-white border-2 border-gray-300 p-2">
                       <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Phone</label>
-                      <p className="text-sm text-gray-900">{(modal.data as Candidate).phone || 'N/A'}</p>
+                      {editingModalId === modal.id ? (
+                        <input
+                          type="tel"
+                          value={(editData as Candidate).phone || ''}
+                          onChange={(e) => handleFieldChange('phone', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        />
+                      ) : (
+                        <p className="text-sm text-gray-900">{(modal.data as Candidate).phone || 'N/A'}</p>
+                      )}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-white border-2 border-gray-300 p-2">
                       <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Postcode</label>
-                      <p className="text-sm font-mono font-bold text-gray-900">{(modal.data as Candidate).postcode}</p>
+                      {editingModalId === modal.id ? (
+                        <input
+                          type="text"
+                          value={(editData as Candidate).postcode || ''}
+                          onChange={(e) => handleFieldChange('postcode', e.target.value)}
+                          className="w-full px-2 py-1 text-sm font-mono border border-gray-400 rounded"
+                        />
+                      ) : (
+                        <p className="text-sm font-mono font-bold text-gray-900">{(modal.data as Candidate).postcode}</p>
+                      )}
                     </div>
                     <div className="bg-white border-2 border-gray-300 p-2">
                       <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Salary</label>
-                      <p className="text-sm font-bold text-green-700">{(modal.data as Candidate).salary}</p>
+                      {editingModalId === modal.id ? (
+                        <input
+                          type="text"
+                          value={(editData as Candidate).salary || ''}
+                          onChange={(e) => handleFieldChange('salary', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        />
+                      ) : (
+                        <p className="text-sm font-bold text-green-700">{(modal.data as Candidate).salary}</p>
+                      )}
                     </div>
                   </div>
 
                   <div className="bg-white border-2 border-gray-300 p-2">
                     <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Availability</label>
-                    <p className="text-sm text-gray-900">{(modal.data as Candidate).days}</p>
+                    {editingModalId === modal.id ? (
+                      <input
+                        type="text"
+                        value={(editData as Candidate).days || ''}
+                        onChange={(e) => handleFieldChange('days', e.target.value)}
+                        className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-900">{(modal.data as Candidate).days}</p>
+                    )}
                   </div>
 
                   <div className="bg-white border-2 border-gray-300 p-2">
                     <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Experience</label>
-                    <p className="text-sm text-gray-900">{(modal.data as Candidate).experience || 'N/A'}</p>
+                    {editingModalId === modal.id ? (
+                      <input
+                        type="text"
+                        value={(editData as Candidate).experience || ''}
+                        onChange={(e) => handleFieldChange('experience', e.target.value)}
+                        className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-900">{(modal.data as Candidate).experience || 'N/A'}</p>
+                    )}
                   </div>
 
                   <div className="bg-white border-2 border-gray-300 p-2">
                     <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Travel Flexibility</label>
-                    <p className="text-sm text-gray-900">{(modal.data as Candidate).travel_flexibility || 'N/A'}</p>
+                    {editingModalId === modal.id ? (
+                      <input
+                        type="text"
+                        value={(editData as Candidate).travel_flexibility || ''}
+                        onChange={(e) => handleFieldChange('travel_flexibility', e.target.value)}
+                        className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-900">{(modal.data as Candidate).travel_flexibility || 'N/A'}</p>
+                    )}
                   </div>
 
                   <div className="bg-white border-2 border-gray-300 p-2">
                     <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Notes</label>
-                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{(modal.data as Candidate).notes || 'No notes'}</p>
+                    {editingModalId === modal.id ? (
+                      <textarea
+                        value={(editData as Candidate).notes || ''}
+                        onChange={(e) => handleFieldChange('notes', e.target.value)}
+                        rows={3}
+                        className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{(modal.data as Candidate).notes || 'No notes'}</p>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -941,56 +1111,146 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                     </div>
                     <div className="bg-white border-2 border-gray-300 p-2">
                       <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Surgery</label>
-                      <p className="text-sm font-semibold text-gray-900">{(modal.data as Client).surgery}</p>
+                      {editingModalId === modal.id ? (
+                        <input
+                          type="text"
+                          value={(editData as Client).surgery || ''}
+                          onChange={(e) => handleFieldChange('surgery', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        />
+                      ) : (
+                        <p className="text-sm font-semibold text-gray-900">{(modal.data as Client).surgery}</p>
+                      )}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-white border-2 border-gray-300 p-2">
                       <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Client Name</label>
-                      <p className="text-sm text-gray-900">{(modal.data as Client).client_name || 'N/A'}</p>
+                      {editingModalId === modal.id ? (
+                        <input
+                          type="text"
+                          value={(editData as Client).client_name || ''}
+                          onChange={(e) => handleFieldChange('client_name', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        />
+                      ) : (
+                        <p className="text-sm text-gray-900">{(modal.data as Client).client_name || 'N/A'}</p>
+                      )}
                     </div>
                     <div className="bg-white border-2 border-gray-300 p-2">
                       <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Role</label>
-                      <p className="text-sm font-semibold text-gray-900">{(modal.data as Client).role}</p>
+                      {editingModalId === modal.id ? (
+                        <input
+                          type="text"
+                          value={(editData as Client).role || ''}
+                          onChange={(e) => handleFieldChange('role', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        />
+                      ) : (
+                        <p className="text-sm font-semibold text-gray-900">{(modal.data as Client).role}</p>
+                      )}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-white border-2 border-gray-300 p-2">
                       <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Email</label>
-                      <p className="text-sm text-gray-900 break-all">{(modal.data as Client).client_email || 'N/A'}</p>
+                      {editingModalId === modal.id ? (
+                        <input
+                          type="email"
+                          value={(editData as Client).client_email || ''}
+                          onChange={(e) => handleFieldChange('client_email', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        />
+                      ) : (
+                        <p className="text-sm text-gray-900 break-all">{(modal.data as Client).client_email || 'N/A'}</p>
+                      )}
                     </div>
                     <div className="bg-white border-2 border-gray-300 p-2">
                       <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Phone</label>
-                      <p className="text-sm text-gray-900">{(modal.data as Client).client_phone || 'N/A'}</p>
+                      {editingModalId === modal.id ? (
+                        <input
+                          type="tel"
+                          value={(editData as Client).client_phone || ''}
+                          onChange={(e) => handleFieldChange('client_phone', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        />
+                      ) : (
+                        <p className="text-sm text-gray-900">{(modal.data as Client).client_phone || 'N/A'}</p>
+                      )}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-white border-2 border-gray-300 p-2">
                       <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Postcode</label>
-                      <p className="text-sm font-mono font-bold text-gray-900">{(modal.data as Client).postcode}</p>
+                      {editingModalId === modal.id ? (
+                        <input
+                          type="text"
+                          value={(editData as Client).postcode || ''}
+                          onChange={(e) => handleFieldChange('postcode', e.target.value)}
+                          className="w-full px-2 py-1 text-sm font-mono border border-gray-400 rounded"
+                        />
+                      ) : (
+                        <p className="text-sm font-mono font-bold text-gray-900">{(modal.data as Client).postcode}</p>
+                      )}
                     </div>
                     <div className="bg-white border-2 border-gray-300 p-2">
                       <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Budget</label>
-                      <p className="text-sm font-bold text-green-700">{(modal.data as Client).budget}</p>
+                      {editingModalId === modal.id ? (
+                        <input
+                          type="text"
+                          value={(editData as Client).budget || ''}
+                          onChange={(e) => handleFieldChange('budget', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                        />
+                      ) : (
+                        <p className="text-sm font-bold text-green-700">{(modal.data as Client).budget}</p>
+                      )}
                     </div>
                   </div>
 
                   <div className="bg-white border-2 border-gray-300 p-2">
                     <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Requirement</label>
-                    <p className="text-sm text-gray-900">{(modal.data as Client).requirement}</p>
+                    {editingModalId === modal.id ? (
+                      <input
+                        type="text"
+                        value={(editData as Client).requirement || ''}
+                        onChange={(e) => handleFieldChange('requirement', e.target.value)}
+                        className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-900">{(modal.data as Client).requirement}</p>
+                    )}
                   </div>
 
                   <div className="bg-white border-2 border-gray-300 p-2">
                     <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">System</label>
-                    <p className="text-sm text-gray-900">{(modal.data as Client).system || 'N/A'}</p>
+                    {editingModalId === modal.id ? (
+                      <input
+                        type="text"
+                        value={(editData as Client).system || ''}
+                        onChange={(e) => handleFieldChange('system', e.target.value)}
+                        className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-900">{(modal.data as Client).system || 'N/A'}</p>
+                    )}
                   </div>
 
                   <div className="bg-white border-2 border-gray-300 p-2">
                     <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Notes</label>
-                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{(modal.data as Client).notes || 'No notes'}</p>
+                    {editingModalId === modal.id ? (
+                      <textarea
+                        value={(editData as Client).notes || ''}
+                        onChange={(e) => handleFieldChange('notes', e.target.value)}
+                        rows={3}
+                        className="w-full px-2 py-1 text-sm border border-gray-400 rounded"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{(modal.data as Client).notes || 'No notes'}</p>
+                    )}
                   </div>
                 </div>
               )}
