@@ -527,11 +527,14 @@ ${recentContext.map((msg, i) => `[Turn ${msg.turn}] USER: ${msg.question}\nAI: $
 
 ACTIONS: When user asks to add/edit/delete, respond with confirmation message THEN include action in triple-backtick json code block.
 
-Example format:
-"I'll add Alex as a new candidate"
-[then json code block with]: {"action": "add_candidate", "data": {"id": "CAN_NEW123", "name": "Alex Test", "role": "Dentist", "email": "alex@gmail.com", "phone": "072245678", "postcode": "WD187DT"}}
+CANDIDATE SCHEMA: {id, role, postcode, phone, salary, days, notes, experience, travel_flexibility}
+CLIENT SCHEMA: {id, surgery, role, postcode, pay, days, requirements}
 
-Available: add_candidate, update_candidate, delete_candidate, add_client, update_client, delete_client, update_match_status, add_match_note
+Example: User says "Add candidate Alex Test, dentist, email alex@gmail.com, phone 072245678, postcode WD187DT"
+Reply: "I'll add Alex Test as a new dentist candidate"
+[json code block]: {"action": "add_candidate", "data": {"id": "CAN_NEW123", "role": "Dentist", "phone": "072245678", "postcode": "WD187DT"}}
+
+Available actions: add_candidate, update_candidate, delete_candidate, add_client, update_client, delete_client, update_match_status, add_match_note
 
 STYLE: Professional, conversational. Use emojis like checkmark, phone, building, clock. List format with candidate ID, surgery name, phone and time. Keep concise.
 
