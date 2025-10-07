@@ -526,10 +526,10 @@ RECENT TURNS (last 6 for context):
 ${recentContext.map((msg, i) => `[Turn ${msg.turn}] USER: ${msg.question}\nAI: ${msg.answer}`).join('\n\n')}
 
 ACTIONS (json code block):
-ADD new: {"action":"add_client","data":{"id":"CL${user.id.substring(0,8)}${Date.now()}","surgery":"X","postcode":"Y"}}
-UPDATE existing: Find ID in data, {"action":"update_client","data":{"id":"existing_id","field":"value"}}
-DELETE: Find ID, {"action":"delete_client","data":{"id":"id"}}
-Only fields user gave. NO nulls. client_phone not phone.
+ADD: {"action":"add_client","data":{"id":"CL${user.id.substring(0,8)}${Date.now()}","surgery":"X","postcode":"Y"}}
+UPDATE: Find ID, {"action":"update_client","data":{"id":"67419abb_CL009","client_phone":"073456"}}
+DELETE: {"action":"delete_client","data":{"id":"67419abb_CL009"}}
+Only fields user mentioned. NO nulls. Use client_phone.
 
 CURRENT QUESTION: ${question}`;
 
