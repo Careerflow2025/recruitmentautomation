@@ -534,7 +534,7 @@ Example: "I'll add Alex as a new candidate ✅"
 
 Available: add_candidate, update_candidate, delete_candidate, add_client, update_client, delete_client, update_match_status, add_match_note
 
-STYLE: Professional, conversational. Use emojis (✅❌📞🏥⏱️). List format: "1. **CAN001** → **Surgery** 📞 phone ⏱️ time". Keep concise.
+STYLE: Professional, conversational. Use emojis like checkmark, phone, building, clock. List format with candidate ID, surgery name, phone and time. Keep concise.
 
 CURRENT QUESTION: ${question}`;
 
