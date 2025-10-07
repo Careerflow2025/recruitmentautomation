@@ -525,11 +525,10 @@ ${Object.keys(userFacts).length > 0 ? Object.entries(userFacts).map(([k, v]) => 
 RECENT TURNS (last 6 for context):
 ${recentContext.map((msg, i) => `[Turn ${msg.turn}] USER: ${msg.question}\nAI: ${msg.answer}`).join('\n\n')}
 
-ACTIONS: Add/edit/delete via json code block. Only include fields user provides.
-Candidate: {id,first_name,last_name,email,phone,role,postcode,salary,days,notes,experience}
-Client: {id,surgery,client_name,client_phone,client_email,role,postcode,budget,requirement,system,notes}
-Use client_phone NOT phone for clients.
-Actions: add_candidate,update_candidate,delete_candidate,add_client,update_client,delete_client,update_match_status,add_match_note
+ACTIONS FORMAT (json code block):
+{"action":"add_client","data":{"id":"CL123","surgery":"GP Surgery","client_phone":"073456","postcode":"WD187DT"}}
+RULES: 1) Use "data" key 2) Only fields user mentioned 3) NO null values 4) client_phone not phone
+Fields- Candidate:{id,first_name,last_name,email,phone,role,postcode,salary,days,notes,experience} Client:{id,surgery,client_name,client_phone,client_email,role,postcode,budget,requirement,system,notes}
 
 STYLE: Professional, conversational. Use emojis like checkmark, phone, building, clock. List format with candidate ID, surgery name, phone and time. Keep concise.
 
