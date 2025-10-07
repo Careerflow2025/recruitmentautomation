@@ -527,11 +527,12 @@ ${recentContext.map((msg, i) => `[Turn ${msg.turn}] USER: ${msg.question}\nAI: $
 
 ADD/DELETE/UPDATE = CREATE JSON ACTION IN CODE BLOCK
 
-ID must be UNIQUE! Use: CL${user.id.substring(0,8)}${Date.now()} or CAN${user.id.substring(0,8)}${Date.now()}
+ADD new: {"action":"add_client","data":{"id":"CL${user.id.substring(0,8)}${Date.now()}","surgery":"GP Surgery","client_phone":"073456","postcode":"WD187DT"}}
+UPDATE existing: {"action":"update_client","data":{"id":"existing_client_id","client_phone":"new_phone"}}
+DELETE: {"action":"delete_client","data":{"id":"client_id_to_delete"}}
 
-Example: {"action":"add_client","data":{"id":"CL67419abb1759821234567","surgery":"GP Surgery","client_phone":"073456","postcode":"WD187DT"}}
-
-Only include fields user mentioned. NO null values. Use client_phone for clients (not phone).
+For UPDATE: Find the existing ID from the data first, then only include fields to change.
+Only include fields user mentioned. NO null values. Use client_phone for clients.
 Candidate: id,first_name,last_name,email,phone,role,postcode,salary,days,notes,experience
 Client: id,surgery,client_name,client_phone,client_email,role,postcode,budget,requirement,system,notes
 
