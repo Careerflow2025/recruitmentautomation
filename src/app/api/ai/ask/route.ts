@@ -362,10 +362,10 @@ USER CONTEXT:
 - Total matches: ${totalMatches}
 - Placed: ${placedMatches}, In-Progress: ${inProgressMatches}, Rejected: ${rejectedMatches}
 
-AVAILABLE DATA:
-Candidates: ${JSON.stringify(candidates, null, 1)}
-Clients: ${JSON.stringify(clients, null, 1)}
-Matches: ${JSON.stringify(enrichedMatches, null, 1)}
+AVAILABLE DATA (showing recent/relevant):
+Candidates: ${JSON.stringify(candidates.slice(0, 100), null, 1)}
+Clients: ${JSON.stringify(clients.slice(0, 100), null, 1)}
+Matches: ${JSON.stringify(enrichedMatches.slice(0, 150), null, 1)}
 
 CONVERSATION HISTORY:
 ${conversationHistory.map((msg, i) => `[${i + 1}] USER: ${msg.question}\nASSISTANT: ${msg.answer}`).join('\n\n')}
@@ -415,6 +415,9 @@ CURRENT QUESTION: ${question}`;
       // Note: Mistral doesn't support separate 'system' role, so we combine system prompt + question into one user message
       const combinedPrompt = `${systemPrompt}\n\n${question}`;
 
+      // Log prompt size for debugging
+      console.log(`📊 Prompt size: ${combinedPrompt.length} chars, ~${Math.ceil(combinedPrompt.length / 4)} tokens`);
+
       const vllmResponse = await fetch(`${process.env.VPS_AI_URL}/v1/chat/completions`, {
         method: 'POST',
         headers: {
@@ -426,15 +429,17 @@ CURRENT QUESTION: ${question}`;
           messages: [
             { role: 'user', content: combinedPrompt }
           ],
-          max_tokens: 2000,
+          max_tokens: 1500,
           temperature: 0.7,
           stream: false
-        })
+        }),
+        signal: AbortSignal.timeout(60000) // 60 second timeout
       });
 
       if (!vllmResponse.ok) {
         const errorText = await vllmResponse.text();
-        throw new Error(`vLLM API error (${vllmResponse.status}): ${errorText}`);
+        console.error(`❌ vLLM Error ${vllmResponse.status}:`, errorText);
+        throw new Error(`vLLM API error (${vllmResponse.status}): ${errorText.substring(0, 200)}`);
       }
 
       const vllmData = await vllmResponse.json();
