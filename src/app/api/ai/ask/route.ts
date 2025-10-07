@@ -525,12 +525,20 @@ ${Object.keys(userFacts).length > 0 ? Object.entries(userFacts).map(([k, v]) => 
 RECENT TURNS (last 6 for context):
 ${recentContext.map((msg, i) => `[Turn ${msg.turn}] USER: ${msg.question}\nAI: ${msg.answer}`).join('\n\n')}
 
-ACTIONS FORMAT (json code block):
-{"action":"add_client","data":{"id":"CL123","surgery":"GP Surgery","client_phone":"073456","postcode":"WD187DT"}}
-RULES: 1) Use "data" key 2) Only fields user mentioned 3) NO null values 4) client_phone not phone
-Fields- Candidate:{id,first_name,last_name,email,phone,role,postcode,salary,days,notes,experience} Client:{id,surgery,client_name,client_phone,client_email,role,postcode,budget,requirement,system,notes}
+WHEN USER SAYS "ADD" OR "DELETE" OR "UPDATE" - YOU MUST CREATE JSON ACTION:
 
-STYLE: Professional, conversational. Use emojis like checkmark, phone, building, clock. List format with candidate ID, surgery name, phone and time. Keep concise.
+Step 1: Say brief confirmation (e.g. "I'll add GP Surgery as a client")
+Step 2: Create json code block with action (use triple backticks)
+
+Example - User: "Add client GP Surgery, phone 073456, postcode WD187DT"
+You reply: "I'll add GP Surgery as a client" then json code block:
+{"action":"add_client","data":{"id":"CL_NEW123","surgery":"GP Surgery","client_phone":"073456","postcode":"WD187DT"}}
+
+IMPORTANT: ALWAYS create the json action when user says add/delete/update. Do NOT just talk about it!
+
+RULES: Use "data" key. Only fields user gave. NO null values. client_phone not phone.
+Candidate: id,first_name,last_name,email,phone,role,postcode,salary,days,notes,experience
+Client: id,surgery,client_name,client_phone,client_email,role,postcode,budget,requirement,system,notes
 
 CURRENT QUESTION: ${question}`;
 
