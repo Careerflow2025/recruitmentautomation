@@ -19,6 +19,9 @@ const MODEL = '/workspace/models/mistral-7b-instruct';
 async function callVLLM(systemPrompt: string, userPrompt: string, temperature: number = 0.7, maxTokens: number = 2000) {
   const { url, secret } = getVLLMConfig();
 
+  // Mistral doesn't support separate 'system' role - combine into one user message
+  const combinedPrompt = `${systemPrompt}\n\n${userPrompt}`;
+
   const response = await fetch(`${url}/v1/chat/completions`, {
     method: 'POST',
     headers: {
@@ -28,8 +31,7 @@ async function callVLLM(systemPrompt: string, userPrompt: string, temperature: n
     body: JSON.stringify({
       model: MODEL,
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
+        { role: 'user', content: combinedPrompt }
       ],
       max_tokens: maxTokens,
       temperature: temperature,

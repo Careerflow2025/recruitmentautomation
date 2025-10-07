@@ -383,6 +383,9 @@ CURRENT QUESTION: ${question}`;
       console.log(`📤 Calling RunPod vLLM at ${process.env.VPS_AI_URL}`);
 
       // Call RunPod vLLM server
+      // Note: Mistral doesn't support separate 'system' role, so we combine system prompt + question into one user message
+      const combinedPrompt = `${systemPrompt}\n\n${question}`;
+
       const vllmResponse = await fetch(`${process.env.VPS_AI_URL}/v1/chat/completions`, {
         method: 'POST',
         headers: {
@@ -392,8 +395,7 @@ CURRENT QUESTION: ${question}`;
         body: JSON.stringify({
           model: '/workspace/models/mistral-7b-instruct',
           messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: question }
+            { role: 'user', content: combinedPrompt }
           ],
           max_tokens: 2000,
           temperature: 0.7,
