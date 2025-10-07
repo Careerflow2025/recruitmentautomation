@@ -352,6 +352,109 @@ export async function POST(request: Request) {
       const inProgressMatches = matchStatuses.filter(s => s.status === 'in-progress').length;
       const rejectedMatches = matchStatuses.filter(s => s.status === 'rejected').length;
 
+      // SMART CONTEXT FILTERING - Only send relevant data based on question
+      const questionLower = question.toLowerCase();
+
+      // Detect question type
+      const isAboutInProgress = questionLower.includes('in-progress') || questionLower.includes('follow-up') || questionLower.includes('follow up');
+      const isAboutPlaced = questionLower.includes('placed') || questionLower.includes('hired');
+      const isAboutRejected = questionLower.includes('rejected') || questionLower.includes('declined');
+      const isAboutSpecificCandidate = questionLower.match(/can\d+/i);
+      const isAboutSpecificClient = questionLower.match(/cl\d+/i);
+      const isAboutStats = questionLower.includes('how many') || questionLower.includes('total') || questionLower.includes('count');
+      const isAboutPhones = questionLower.includes('phone') || questionLower.includes('contact') || questionLower.includes('call');
+
+      // Filter data based on question - DRASTICALLY REDUCE CONTEXT
+      let relevantCandidates: any[] = [];
+      let relevantClients: any[] = [];
+      let relevantMatches: any[] = [];
+
+      if (isAboutStats) {
+        // For stats questions, NO detailed data needed - just counts
+        relevantCandidates = [];
+        relevantClients = [];
+        relevantMatches = [];
+      } else if (isAboutInProgress) {
+        // Only in-progress matches
+        const inProgressIds = matchStatuses.filter(s => s.status === 'in-progress');
+        relevantMatches = enrichedMatches.filter(m =>
+          inProgressIds.some(s => s.candidate_id === m.candidate_id && s.client_id === m.client_id)
+        ).slice(0, 20); // Max 20 matches
+
+        // Only candidates/clients involved in these matches
+        const candidateIds = new Set(relevantMatches.map(m => m.candidate_id));
+        const clientIds = new Set(relevantMatches.map(m => m.client_id));
+        relevantCandidates = candidates.filter(c => candidateIds.has(c.id));
+        relevantClients = clients.filter(c => clientIds.has(c.id));
+      } else if (isAboutPlaced) {
+        const placedIds = matchStatuses.filter(s => s.status === 'placed');
+        relevantMatches = enrichedMatches.filter(m =>
+          placedIds.some(s => s.candidate_id === m.candidate_id && s.client_id === m.client_id)
+        ).slice(0, 20);
+
+        const candidateIds = new Set(relevantMatches.map(m => m.candidate_id));
+        const clientIds = new Set(relevantMatches.map(m => m.client_id));
+        relevantCandidates = candidates.filter(c => candidateIds.has(c.id));
+        relevantClients = clients.filter(c => clientIds.has(c.id));
+      } else if (isAboutRejected) {
+        const rejectedIds = matchStatuses.filter(s => s.status === 'rejected');
+        relevantMatches = enrichedMatches.filter(m =>
+          rejectedIds.some(s => s.candidate_id === m.candidate_id && s.client_id === m.client_id)
+        ).slice(0, 20);
+
+        const candidateIds = new Set(relevantMatches.map(m => m.candidate_id));
+        const clientIds = new Set(relevantMatches.map(m => m.client_id));
+        relevantCandidates = candidates.filter(c => candidateIds.has(c.id));
+        relevantClients = clients.filter(c => clientIds.has(c.id));
+      } else if (isAboutSpecificCandidate) {
+        const canId = questionLower.match(/can\d+/i)?.[0].toUpperCase();
+        relevantCandidates = candidates.filter(c => c.id === canId);
+        relevantMatches = enrichedMatches.filter(m => m.candidate_id === canId).slice(0, 10);
+
+        const clientIds = new Set(relevantMatches.map(m => m.client_id));
+        relevantClients = clients.filter(c => clientIds.has(c.id));
+      } else if (isAboutSpecificClient) {
+        const clId = questionLower.match(/cl\d+/i)?.[0].toUpperCase();
+        relevantClients = clients.filter(c => c.id === clId);
+        relevantMatches = enrichedMatches.filter(m => m.client_id === clId).slice(0, 10);
+
+        const candidateIds = new Set(relevantMatches.map(m => m.candidate_id));
+        relevantCandidates = candidates.filter(c => candidateIds.has(c.id));
+      } else {
+        // General question - show recent data only (MUCH SMALLER)
+        relevantCandidates = candidates.slice(0, 10); // Only 10 recent candidates
+        relevantClients = clients.slice(0, 10); // Only 10 recent clients
+        relevantMatches = enrichedMatches.slice(0, 15); // Only 15 recent matches
+      }
+
+      // Build compact data representation (reduce JSON verbosity)
+      const compactCandidates = relevantCandidates.map(c => ({
+        id: c.id,
+        role: c.role,
+        pc: c.postcode,
+        phone: c.phone,
+        sal: c.salary,
+        days: c.days
+      }));
+
+      const compactClients = relevantClients.map(c => ({
+        id: c.id,
+        surgery: c.surgery,
+        role: c.role,
+        pc: c.postcode,
+        pay: c.budget,
+        days: c.days
+      }));
+
+      const compactMatches = relevantMatches.map(m => ({
+        can: m.candidate_id,
+        cl: m.client_id,
+        time: m.commute_display,
+        mins: m.commute_minutes,
+        roleMatch: m.role_match,
+        status: m.status
+      }));
+
       // Build system prompt with AI tools support
       const systemPrompt = `You are a helpful AI assistant for dental recruitment. You help match dental candidates with client surgeries.
 
@@ -362,13 +465,13 @@ USER CONTEXT:
 - Total matches: ${totalMatches}
 - Placed: ${placedMatches}, In-Progress: ${inProgressMatches}, Rejected: ${rejectedMatches}
 
-AVAILABLE DATA (showing recent/relevant):
-Candidates: ${JSON.stringify(candidates.slice(0, 100), null, 1)}
-Clients: ${JSON.stringify(clients.slice(0, 100), null, 1)}
-Matches: ${JSON.stringify(enrichedMatches.slice(0, 150), null, 1)}
+RELEVANT DATA (filtered based on your question):
+Candidates: ${JSON.stringify(compactCandidates)}
+Clients: ${JSON.stringify(compactClients)}
+Matches: ${JSON.stringify(compactMatches)}
 
-CONVERSATION HISTORY:
-${conversationHistory.map((msg, i) => `[${i + 1}] USER: ${msg.question}\nASSISTANT: ${msg.answer}`).join('\n\n')}
+CONVERSATION HISTORY (last 3):
+${conversationHistory.slice(-3).map((msg, i) => `[${i + 1}] USER: ${msg.question}\nASSISTANT: ${msg.answer}`).join('\n\n')}
 
 AVAILABLE ACTIONS (use JSON format):
 You can perform these actions by including JSON commands in your response:
