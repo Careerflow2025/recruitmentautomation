@@ -695,12 +695,17 @@ CURRENT QUESTION: ${question}`;
       statusCode = 503;
     } else if (error.message?.includes('vLLM API error')) {
       errorMessage = 'GPU Server Error';
-      errorDetails = 'RunPod vLLM server returned an error. Please check server logs.';
+      // Show the actual vLLM error in details
+      errorDetails = error.message || 'RunPod vLLM server returned an error. Please check server logs.';
       statusCode = 503;
     } else if (error.message?.toLowerCase().includes('timeout')) {
       errorMessage = 'Request Timeout';
       errorDetails = 'GPU server took too long to respond. Please try again.';
       statusCode = 504;
+    } else if (error.message?.toLowerCase().includes('fetch')) {
+      errorMessage = 'Connection Error';
+      errorDetails = `Cannot connect to RunPod server: ${error.message}`;
+      statusCode = 503;
     }
 
     return NextResponse.json(
@@ -709,7 +714,11 @@ CURRENT QUESTION: ${question}`;
         details: errorDetails,
         queueStats: globalAIQueue.getStats(),
         timestamp: new Date().toISOString(),
-        fullError: process.env.NODE_ENV === 'development' ? error.toString() : undefined
+        debugInfo: {
+          errorType: error.constructor.name,
+          errorMessage: error.message,
+          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        }
       },
       { status: statusCode }
     );
