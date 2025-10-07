@@ -282,14 +282,17 @@ export async function POST(request: Request) {
     const userClient = await createClient();
 
     // Get authenticated user
-    const { data: { user } } = await userClient.auth.getUser();
+    const { data: { user }, error: authError } = await userClient.auth.getUser();
 
-    if (!user) {
+    if (!user || authError) {
+      console.error('❌ Auth error:', authError);
       return NextResponse.json(
         { error: 'You must be logged in to use AI assistant' },
         { status: 401 }
       );
     }
+
+    console.log(`✅ Authenticated user: ${user.id.substring(0, 8)}... (${user.email})`);
 
     // ===== START LOCKING MECHANISM =====
     const serviceClient = createServiceClient();
@@ -359,7 +362,9 @@ export async function POST(request: Request) {
       // Get all data using RLS-protected userClient (scoped to THIS request only)
       const { candidates, clients, matches, matchStatuses, matchNotes } = await getAllData(userClient);
 
-      console.log(`📊 Loaded: ${candidates.length} candidates, ${clients.length} clients, ${matches.length} matches for user ${user.id.substring(0, 8)}...`);
+      console.log(`📊 RLS CHECK - User ${user.id.substring(0, 8)}:`);
+      console.log(`   Loaded: ${candidates.length} candidates, ${clients.length} clients, ${matches.length} matches`);
+      console.log(`   First 3 candidate IDs: ${candidates.slice(0, 3).map(c => c.id).join(', ')}`);
 
       // Build enriched matches
       const enrichedMatches = matches.map(match => {
