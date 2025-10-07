@@ -74,6 +74,10 @@ function asArray<T>(x: T[] | null | undefined): T[] {
  * Uses userClient (with JWT) to ensure RLS policies are applied
  */
 export async function getAllData(userClient: ReturnType<typeof createServerClient>) {
+  // DEBUG: Test if auth.uid() is working in queries
+  const { data: authTest } = await userClient.rpc('auth.uid');
+  console.log('🔍 Auth context in queries:', authTest);
+
   const [{ data: candsRaw, error: cErr },
          { data: clientsRaw, error: cliErr },
          { data: matchesRaw, error: mErr },
