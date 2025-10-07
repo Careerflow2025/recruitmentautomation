@@ -527,12 +527,18 @@ ${recentContext.map((msg, i) => `[Turn ${msg.turn}] USER: ${msg.question}\nAI: $
 
 ACTIONS: When user asks to add/edit/delete, respond with confirmation message THEN include action in triple-backtick json code block.
 
-CANDIDATE SCHEMA: {id, first_name, last_name, email, phone, role, postcode, salary, days, notes, experience, travel_flexibility}
-CLIENT SCHEMA: {id, surgery, client_name, client_phone, client_email, role, postcode, budget, requirement, system, notes}
+CANDIDATE SCHEMA (only include fields user provides):
+REQUIRED: id, role, postcode
+OPTIONAL: first_name, last_name, email, phone, salary, days, notes, experience, travel_flexibility
 
-Example: User says "Add candidate Alex Test, dentist, email alex@gmail.com, phone 072245678, postcode WD187DT"
-Reply: "I'll add Alex Test as a new dentist candidate"
-[json code block]: {"action": "add_candidate", "data": {"id": "CAN_NEW123", "first_name": "Alex", "last_name": "Test", "email": "alex@gmail.com", "phone": "072245678", "postcode": "WD187DT", "role": "Dentist"}}
+CLIENT SCHEMA (only include fields user provides):
+REQUIRED: id, surgery, role, postcode
+OPTIONAL: client_name, client_phone, client_email, budget, requirement, system, notes
+
+Example: "Add candidate Alex Test, dentist, phone 072245678, postcode WD187DT"
+[json code block]: {"action": "add_candidate", "data": {"id": "CAN_NEW123", "first_name": "Alex", "last_name": "Test", "phone": "072245678", "postcode": "WD187DT", "role": "Dentist"}}
+
+IMPORTANT: Only include fields the user mentioned. Do NOT add fields with empty or null values.
 
 Available actions: add_candidate, update_candidate, delete_candidate, add_client, update_client, delete_client, update_match_status, add_match_note
 
