@@ -1,34 +1,73 @@
-<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="32" height="32" rx="6" fill="url(#gradient)"/>
-  
-  <!-- Robot head outline -->
-  <rect x="8" y="7" width="16" height="12" rx="3" stroke="#ffffff" stroke-width="1.5" fill="none"/>
-  
-  <!-- Robot eyes -->
-  <circle cx="12" cy="12" r="2" fill="#ffffff"/>
-  <circle cx="20" cy="12" r="2" fill="#ffffff"/>
-  
-  <!-- AI brain pattern -->
-  <path d="M10 15L12 17L14 15" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <path d="M18 15L20 17L22 15" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  
-  <!-- Connection nodes -->
-  <circle cx="16" cy="21" r="1.5" fill="#ffffff"/>
-  <circle cx="11" cy="23" r="1" fill="#ffffff" opacity="0.8"/>
-  <circle cx="21" cy="23" r="1" fill="#ffffff" opacity="0.8"/>
-  
-  <!-- Connection lines -->
-  <path d="M16 21L11 23" stroke="#ffffff" stroke-width="1" opacity="0.6"/>
-  <path d="M16 21L21 23" stroke="#ffffff" stroke-width="1" opacity="0.6"/>
-  
-  <!-- Matching indicator -->
-  <path d="M14 26L16 28L18 26" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background gradient circle -->
   <defs>
-    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#8B5CF6"/>
-      <stop offset="50%" style="stop-color:#7C3AED"/>
-      <stop offset="100%" style="stop-color:#3B82F6"/>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e40af;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="toothGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f1f5f9;stop-opacity:1" />
     </linearGradient>
   </defs>
+
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="48" fill="url(#bgGradient)" stroke="#1e3a8a" stroke-width="2"/>
+
+  <!-- Tooth icon (simplified dental symbol) -->
+  <g transform="translate(30, 25)">
+    <!-- Main tooth body -->
+    <path d="M 20 5
+             Q 30 5 35 10
+             Q 40 15 40 25
+             L 38 45
+             Q 37 50 35 52
+             L 30 52
+             Q 28 50 28 45
+             L 28 30
+             Q 28 28 26 28
+             L 24 28
+             L 24 30
+             L 24 45
+             Q 24 50 22 52
+             L 17 52
+             Q 15 50 14 45
+             L 12 25
+             Q 12 15 17 10
+             Q 22 5 20 5 Z"
+          fill="url(#toothGradient)"
+          stroke="#cbd5e1"
+          stroke-width="1.5"/>
+
+    <!-- Sparkle/shine effect on tooth -->
+    <circle cx="18" cy="15" r="2.5" fill="#ffffff" opacity="0.8"/>
+    <circle cx="23" cy="12" r="1.5" fill="#ffffff" opacity="0.6"/>
+  </g>
+
+  <!-- Person/recruiter silhouette icon -->
+  <g transform="translate(50, 25)">
+    <!-- Head -->
+    <circle cx="13" cy="12" r="7" fill="#ffffff" opacity="0.95"/>
+
+    <!-- Body/shoulders -->
+    <path d="M 6 20
+             Q 6 25 8 28
+             L 8 35
+             Q 8 37 10 37
+             L 16 37
+             Q 18 37 18 35
+             L 18 28
+             Q 20 25 20 20
+             Z"
+          fill="#ffffff"
+          opacity="0.95"/>
+  </g>
+
+  <!-- Connection line/link between tooth and person -->
+  <line x1="55" y1="55" x2="65" y2="48" stroke="#60a5fa" stroke-width="2" opacity="0.7" stroke-dasharray="2,2"/>
+
+  <!-- Small matching indicator circles -->
+  <circle cx="50" cy="80" r="4" fill="#10b981" opacity="0.9"/>
+  <circle cx="42" cy="80" r="3" fill="#10b981" opacity="0.7"/>
+  <circle cx="58" cy="80" r="3" fill="#10b981" opacity="0.7"/>
 </svg>
