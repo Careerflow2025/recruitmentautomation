@@ -740,6 +740,8 @@ CURRENT QUESTION: ${question}`;
         conversationHistory: recentContext, // Only recent turns
         turnCount, // For fact extraction
         totalMatches,
+        totalCandidates: candidates.length, // For stats
+        totalClients: clients.length, // For stats
         candidates,
         clients,
         enrichedMatches,
@@ -767,6 +769,8 @@ CURRENT QUESTION: ${question}`;
       conversationHistory,
       turnCount,
       totalMatches,
+      totalCandidates,
+      totalClients,
       optimization
     } = aiResponse;
 
@@ -787,8 +791,8 @@ CURRENT QUESTION: ${question}`;
       sessionId: currentSessionId,
       contextInfo: {
         conversationHistory: conversationHistory.length,
-        totalCandidates: candidates.length,
-        totalClients: clients.length,
+        totalCandidates: totalCandidates,
+        totalClients: totalClients,
         totalMatches: totalMatches,
         multiTenantIsolation: true,
         userId: user.id.substring(0, 8) + '...',
