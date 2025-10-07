@@ -541,8 +541,39 @@ CURRENT QUESTION: ${question}`;
       // Note: Mistral doesn't support separate 'system' role, so we combine system prompt + question into one user message
       const combinedPrompt = `${systemPrompt}\n\n${question}`;
 
+      // 🔥 AUTO-CLEANUP: Rolling window memory management
+      // If we're at 70% capacity (2867 tokens), delete oldest 30% of conversation
+      const estimatedTokens = Math.ceil(combinedPrompt.length / 4);
+      const MAX_TOKENS = 4096;
+      const INPUT_RESERVED = 300; // Reserve for response
+      const CLEANUP_THRESHOLD = 0.70; // 70% threshold
+      const CLEANUP_PERCENT = 0.30; // Delete oldest 30%
+
+      if (estimatedTokens > (MAX_TOKENS - INPUT_RESERVED) * CLEANUP_THRESHOLD) {
+        console.log(`⚠️ Token usage at ${Math.round((estimatedTokens / (MAX_TOKENS - INPUT_RESERVED)) * 100)}% - triggering auto-cleanup`);
+
+        // Delete oldest 30% of conversation turns
+        const { data: oldestTurns } = await userClient
+          .from('ai_conversation')
+          .select('turn')
+          .eq('user_id', user.id)
+          .order('turn', { ascending: true })
+          .limit(Math.ceil(recentContext.length * CLEANUP_PERCENT));
+
+        if (oldestTurns && oldestTurns.length > 0) {
+          const turnsToDelete = oldestTurns.map(t => t.turn);
+          await userClient
+            .from('ai_conversation')
+            .delete()
+            .eq('user_id', user.id)
+            .in('turn', turnsToDelete);
+
+          console.log(`🗑️ Auto-deleted oldest ${turnsToDelete.length} turns (${CLEANUP_PERCENT * 100}% of conversation)`);
+        }
+      }
+
       // Log prompt size for debugging
-      console.log(`📊 Prompt size: ${combinedPrompt.length} chars, ~${Math.ceil(combinedPrompt.length / 4)} tokens`);
+      console.log(`📊 Prompt size: ${combinedPrompt.length} chars, ~${estimatedTokens} tokens (${Math.round((estimatedTokens / (MAX_TOKENS - INPUT_RESERVED)) * 100)}% of limit)`);
 
       const vllmResponse = await fetch(`${process.env.VPS_AI_URL}/v1/chat/completions`, {
         method: 'POST',
