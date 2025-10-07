@@ -90,7 +90,7 @@ export function CommuteMapModal({
 
         // Create map
         map = new google.maps.Map(mapRef.current, {
-          zoom: 8,
+          zoom: 4,
           center: { lat: 51.5074, lng: -0.1278 }, // Default to London
           mapTypeControl: true,
           fullscreenControl: true,
@@ -191,8 +191,8 @@ export function CommuteMapModal({
               // Add some padding to the bounds for better visualization
               const boundsListener = google.maps.event.addListenerOnce(map, 'bounds_changed', () => {
                 const currentZoom = map.getZoom();
-                if (currentZoom && currentZoom > 12) {
-                  map.setZoom(12); // Cap the zoom level to prevent over-zooming
+                if (currentZoom && currentZoom > 6) {
+                  map.setZoom(6); // Cap the zoom level to prevent over-zooming
                 }
               });
             }
@@ -350,7 +350,7 @@ export function CommuteMapModal({
                 } else if (markersPlaced === 1) {
                   // If only one marker could be placed, center on it
                   map.setCenter(results[0].geometry.location);
-                  map.setZoom(10);
+                  map.setZoom(5);
                 }
               }
             });
