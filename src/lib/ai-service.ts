@@ -1,40 +1,63 @@
-import Anthropic from '@anthropic-ai/sdk';
+// AI Service - Uses self-hosted RunPod vLLM server instead of Claude API
 
-// Initialize Claude client with better error handling
-const getClient = () => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+const getVLLMConfig = () => {
+  const url = process.env.VPS_AI_URL;
+  const secret = process.env.VPS_AI_SECRET;
 
-  if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY is not set in environment variables');
+  if (!url || !secret) {
+    throw new Error('VPS_AI_URL and VPS_AI_SECRET must be set in environment variables');
   }
 
-  if (!apiKey.startsWith('sk-ant-')) {
-    throw new Error('ANTHROPIC_API_KEY appears to be invalid (should start with sk-ant-)');
-  }
-
-  return new Anthropic({
-    apiKey: apiKey,
-  });
+  return { url, secret };
 };
 
-// Using Claude 3 Haiku - fast and efficient model
-const MODEL = 'claude-3-haiku-20240307';
+const MODEL = '/workspace/models/mistral-7b-instruct';
+
+/**
+ * Call vLLM server with a prompt
+ */
+async function callVLLM(systemPrompt: string, userPrompt: string, temperature: number = 0.7, maxTokens: number = 2000) {
+  const { url, secret } = getVLLMConfig();
+
+  const response = await fetch(`${url}/v1/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${secret}`
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      max_tokens: maxTokens,
+      temperature: temperature,
+      stream: false
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`vLLM API error (${response.status}): ${errorText}`);
+  }
+
+  const data = await response.json();
+  const answer = data.choices?.[0]?.message?.content;
+
+  if (!answer) {
+    throw new Error('No response generated from vLLM');
+  }
+
+  return answer.trim();
+}
 
 /**
  * Parse unstructured text (WhatsApp, emails, etc.) and extract candidate data
  */
 export async function parseCandidates(rawText: string) {
   try {
-    const client = getClient();
-    const message = await client.messages.create({
-      model: MODEL,
-      max_tokens: 4096,
-      messages: [{
-        role: 'user',
-        content: `You are a UK dental recruitment data extraction expert. Extract ALL candidates from this text.
-
-INPUT TEXT:
-${rawText}
+    const systemPrompt = `You are a UK dental recruitment data extraction expert. Extract ALL candidates from text.
 
 EXTRACTION RULES:
 1. Each candidate has: id, role, postcode, phone, notes, salary, days, experience
@@ -61,22 +84,15 @@ Example output:
     "experience": "",
     "notes": "Part time, start from October, any days, travel 5-10 miles, added by AA on 26/9/25"
   }
-]
+]`;
 
-Now extract from the input text above:`
-      }],
-      temperature: 0.3, // Lower temperature for more consistent extraction
-    });
+    const userPrompt = `Extract candidates from this text:\n\n${rawText}`;
 
-    const content = message.content[0];
-    if (content.type === 'text') {
-      const text = content.text.trim();
-      // Remove markdown code blocks if present
-      const jsonText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      return JSON.parse(jsonText);
-    }
+    const response = await callVLLM(systemPrompt, userPrompt, 0.3, 4096);
 
-    throw new Error('Unexpected response format from Claude');
+    // Remove markdown code blocks if present
+    const jsonText = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(jsonText);
   } catch (error) {
     console.error('Error parsing candidates:', error);
     throw new Error('Failed to parse candidates. Please check the input format.');
@@ -88,16 +104,7 @@ Now extract from the input text above:`
  */
 export async function parseClients(rawText: string) {
   try {
-    const client = getClient();
-    const message = await client.messages.create({
-      model: MODEL,
-      max_tokens: 4096,
-      messages: [{
-        role: 'user',
-        content: `You are a UK dental recruitment data extraction expert. Extract ALL clients/surgeries from this text.
-
-INPUT TEXT:
-${rawText}
+    const systemPrompt = `You are a UK dental recruitment data extraction expert. Extract ALL clients/surgeries from text.
 
 EXTRACTION RULES:
 1. Each client has: id, surgery (practice name), role (needed), postcode, budget (pay rate), days (needed), requirement, notes
@@ -123,21 +130,14 @@ Example output:
     "requirement": "GDC registered",
     "notes": "ASAP start, near station"
   }
-]
+]`;
 
-Now extract from the input text above:`
-      }],
-      temperature: 0.3,
-    });
+    const userPrompt = `Extract clients from this text:\n\n${rawText}`;
 
-    const content = message.content[0];
-    if (content.type === 'text') {
-      const text = content.text.trim();
-      const jsonText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      return JSON.parse(jsonText);
-    }
+    const response = await callVLLM(systemPrompt, userPrompt, 0.3, 4096);
 
-    throw new Error('Unexpected response format from Claude');
+    const jsonText = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(jsonText);
   } catch (error) {
     console.error('Error parsing clients:', error);
     throw new Error('Failed to parse clients. Please check the input format.');
@@ -156,16 +156,7 @@ export async function askAssistant(
   }
 ) {
   try {
-    const client = getClient();
-    const message = await client.messages.create({
-      model: MODEL,
-      max_tokens: 4096,
-      messages: [{
-        role: 'user',
-        content: `You are an AI assistant for a UK dental recruitment system. Answer questions about candidates, clients, and matches.
-
-AVAILABLE DATA:
-${JSON.stringify(context, null, 2)}
+    const systemPrompt = `You are an AI assistant for a UK dental recruitment system. Answer questions about candidates, clients, and matches.
 
 SYSTEM KNOWLEDGE:
 - Candidates have: id, role, postcode, phone, salary, days, experience, notes, added_at
@@ -177,27 +168,21 @@ SYSTEM KNOWLEDGE:
 
 INSTRUCTIONS:
 1. Answer the question clearly and concisely
-2. Use the actual data provided above
+2. Use the actual data provided
 3. Include relevant numbers, names, postcodes
 4. Format lists clearly
 5. If data is missing, say so
 6. For location queries, use postcode proximity
-7. Be helpful and professional
+7. Be helpful and professional`;
+
+    const userPrompt = `AVAILABLE DATA:
+${JSON.stringify(context, null, 2)}
 
 USER QUESTION:
-${question}
+${question}`;
 
-YOUR ANSWER:`
-      }],
-      temperature: 0.7,
-    });
-
-    const content = message.content[0];
-    if (content.type === 'text') {
-      return content.text.trim();
-    }
-
-    throw new Error('Unexpected response format from Claude');
+    const response = await callVLLM(systemPrompt, userPrompt, 0.7, 4096);
+    return response;
   } catch (error) {
     console.error('Error asking assistant:', error);
     throw new Error('Failed to get answer from AI assistant.');
@@ -214,7 +199,6 @@ export async function suggestMatches(
   matches: any[]
 ) {
   try {
-    const client = getClient();
     const candidate = candidates.find(c => c.id === candidateId);
     if (!candidate) {
       throw new Error('Candidate not found');
@@ -222,21 +206,7 @@ export async function suggestMatches(
 
     const relevantMatches = matches.filter(m => m.candidate_id === candidateId);
 
-    const message = await client.messages.create({
-      model: MODEL,
-      max_tokens: 2048,
-      messages: [{
-        role: 'user',
-        content: `You are a recruitment AI. Analyze this candidate and suggest the TOP 3 best client matches.
-
-CANDIDATE:
-${JSON.stringify(candidate, null, 2)}
-
-ALL MATCHES FOR THIS CANDIDATE:
-${JSON.stringify(relevantMatches, null, 2)}
-
-ALL CLIENTS:
-${JSON.stringify(clients, null, 2)}
+    const systemPrompt = `You are a recruitment AI. Analyze candidates and suggest the TOP 3 best client matches.
 
 RANKING CRITERIA:
 1. Role match (exact match = highest priority)
@@ -247,19 +217,21 @@ RANKING CRITERIA:
 
 OUTPUT:
 Provide 3 best matches with brief explanation why each is good.
-Format as clear numbered list.
+Format as clear numbered list.`;
 
-YOUR RECOMMENDATIONS:`
-      }],
-      temperature: 0.5,
-    });
+    const userPrompt = `CANDIDATE:
+${JSON.stringify(candidate, null, 2)}
 
-    const content = message.content[0];
-    if (content.type === 'text') {
-      return content.text.trim();
-    }
+ALL MATCHES FOR THIS CANDIDATE:
+${JSON.stringify(relevantMatches, null, 2)}
 
-    throw new Error('Unexpected response format from Claude');
+ALL CLIENTS:
+${JSON.stringify(clients, null, 2)}
+
+Provide your top 3 recommendations:`;
+
+    const response = await callVLLM(systemPrompt, userPrompt, 0.5, 2048);
+    return response;
   } catch (error) {
     console.error('Error suggesting matches:', error);
     throw new Error('Failed to generate match suggestions.');
