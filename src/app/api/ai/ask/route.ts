@@ -542,11 +542,11 @@ CURRENT QUESTION: ${question}`;
       const combinedPrompt = `${systemPrompt}\n\n${question}`;
 
       // 🔥 AUTO-CLEANUP: Rolling window memory management
-      // If we're at 70% capacity (2867 tokens), delete oldest 30% of conversation
+      // If we're at 90% capacity (3686 tokens), delete oldest 30% of conversation
       const estimatedTokens = Math.ceil(combinedPrompt.length / 4);
       const MAX_TOKENS = 4096;
       const INPUT_RESERVED = 300; // Reserve for response
-      const CLEANUP_THRESHOLD = 0.70; // 70% threshold
+      const CLEANUP_THRESHOLD = 0.90; // 90% threshold - keeps more history
       const CLEANUP_PERCENT = 0.30; // Delete oldest 30%
 
       if (estimatedTokens > (MAX_TOKENS - INPUT_RESERVED) * CLEANUP_THRESHOLD) {
