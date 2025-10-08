@@ -81,6 +81,30 @@ export async function addCustomColumn(
   return data;
 }
 
+// Update a custom column
+export async function updateCustomColumn(
+  columnId: string,
+  columnLabel: string,
+  columnType: 'text' | 'number' | 'date' | 'email' | 'phone' | 'url'
+): Promise<CustomColumn> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { data, error } = await supabase
+    .from('custom_columns')
+    .update({
+      column_label: columnLabel,
+      column_type: columnType
+    })
+    .eq('id', columnId)
+    .eq('user_id', user.id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 // Delete a custom column
 export async function deleteCustomColumn(columnId: string): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
