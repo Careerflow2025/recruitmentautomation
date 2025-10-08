@@ -712,13 +712,17 @@ export default function ClientsPage() {
             <table ref={tableRef} className="w-full table-fixed divide-y divide-gray-300">
               <thead className="bg-gray-100">
                 <tr>
+                  {/* Row Number Column Header */}
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 bg-gray-200 border-r-2 border-gray-400 sticky left-0 z-10" style={{ width: '50px', minWidth: '50px' }}>
+                    #
+                  </th>
                   {/* ID Column */}
                   <th
                     className={`px-2 py-3 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedIds.length > 0 ? 'bg-blue-100' : ''}`}
                     style={{ width: `${columnWidths.id}%`, minWidth: '80px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">ID</span>
+                      <span className="truncate flex-shrink-0">A</span>
                       <button
                         onClick={() => setShowIdFilter(!showIdFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -792,7 +796,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.surgery}%`, minWidth: '120px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">Surgery</span>
+                      <span className="truncate flex-shrink-0">B</span>
                       <button
                         onClick={() => setShowSurgeryFilter(!showSurgeryFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -866,7 +870,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.client_name}%`, minWidth: '110px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">Client Name</span>
+                      <span className="truncate flex-shrink-0">C</span>
                       <button
                         onClick={() => setShowClientNameFilter(!showClientNameFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -940,7 +944,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.client_phone}%`, minWidth: '110px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">Client Phone</span>
+                      <span className="truncate flex-shrink-0">D</span>
                       <button
                         onClick={() => setShowClientPhoneFilter(!showClientPhoneFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1014,7 +1018,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.client_email}%`, minWidth: '120px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">Client Email</span>
+                      <span className="truncate flex-shrink-0">E</span>
                       <button
                         onClick={() => setShowClientEmailFilter(!showClientEmailFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1088,7 +1092,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.role}%`, minWidth: '100px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">Role</span>
+                      <span className="truncate flex-shrink-0">F</span>
                       <button
                         onClick={() => setShowRoleFilter(!showRoleFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1162,7 +1166,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.postcode}%`, minWidth: '90px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">Postcode</span>
+                      <span className="truncate flex-shrink-0">G</span>
                       <button
                         onClick={() => setShowPostcodeFilter(!showPostcodeFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1236,7 +1240,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.budget}%`, minWidth: '80px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">Budget</span>
+                      <span className="truncate flex-shrink-0">H</span>
                       <button
                         onClick={() => setShowBudgetFilter(!showBudgetFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1310,7 +1314,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.requirements}%`, minWidth: '120px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">Requirement</span>
+                      <span className="truncate flex-shrink-0">I</span>
                       <button
                         onClick={() => setShowRequirementFilter(!showRequirementFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1384,7 +1388,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.system}%`, minWidth: '100px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">System</span>
+                      <span className="truncate flex-shrink-0">J</span>
                       <button
                         onClick={() => setShowSystemFilter(!showSystemFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1457,7 +1461,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.notes}%`, minWidth: '100px' }}
                   >
                     <div className="min-h-[20px] overflow-hidden">
-                      <span className="truncate block">Notes</span>
+                      <span className="truncate block">K</span>
                     </div>
                     {/* Resize Handle */}
                     <div
@@ -1475,6 +1479,9 @@ export default function ClientsPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredClients.map((client) => (
                   <tr key={client.id} className="hover:bg-gray-50">
+                    <td className="px-2 py-2 text-center text-xs font-semibold text-gray-700 bg-gray-50 border-r-2 border-gray-400 sticky left-0 z-10">
+                      {filteredClients.indexOf(client) + 1}
+                    </td>
                     <td
                       className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 overflow-hidden text-ellipsis"
                       style={{ width: `${columnWidths.id}%` }}
@@ -1692,6 +1699,9 @@ export default function ClientsPage() {
                 {/* Empty rows to maintain table height */}
                 {Array.from({ length: emptyRowsCount }).map((_, index) => (
                   <tr key={`empty-${index}`} className="bg-white">
+                    <td className="px-2 py-2 text-center text-xs font-semibold text-gray-700 bg-gray-50 border-r-2 border-gray-400 sticky left-0 z-10">
+                      {filteredClients.length + index + 1}
+                    </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">&nbsp;</td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">&nbsp;</td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">&nbsp;</td>

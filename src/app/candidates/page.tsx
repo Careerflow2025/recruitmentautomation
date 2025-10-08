@@ -859,12 +859,16 @@ export default function CandidatesPage() {
             <table ref={tableRef} className="w-full table-fixed divide-y divide-gray-300">
               <thead className="bg-gray-100">
                 <tr>
+                  {/* Row number header - Excel style */}
+                  <th className="px-2 py-3 text-center text-xs font-bold text-gray-700 bg-gray-200 border-r-2 border-gray-400 sticky left-0 z-10" style={{ width: '50px', minWidth: '50px' }}>
+                    #
+                  </th>
                   <th
                     className={`px-2 py-3 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group ${selectedIds.length > 0 ? 'bg-blue-100' : ''}`}
                     style={{ width: `${columnWidths.id}%`, minWidth: '80px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">ID</span>
+                      <span className="truncate flex-shrink-0">A</span>
                       <button
                         onClick={() => setShowIdFilter(!showIdFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -960,7 +964,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.first_name}%`, minWidth: '100px' }}
                   >
                     <div className="min-h-[20px] overflow-hidden">
-                      <span className="truncate block">First Name</span>
+                      <span className="truncate block">B</span>
                     </div>
                     <div
                       className="absolute top-0 right-0 bottom-0 w-2 cursor-col-resize bg-transparent hover:bg-blue-400"
@@ -974,7 +978,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.last_name}%`, minWidth: '100px' }}
                   >
                     <div className="min-h-[20px] overflow-hidden">
-                      <span className="truncate block">Last Name</span>
+                      <span className="truncate block">C</span>
                     </div>
                     <div
                       className="absolute top-0 right-0 bottom-0 w-2 cursor-col-resize bg-transparent hover:bg-blue-400"
@@ -988,7 +992,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.email}%`, minWidth: '120px' }}
                   >
                     <div className="min-h-[20px] overflow-hidden">
-                      <span className="truncate block">Email</span>
+                      <span className="truncate block">D</span>
                     </div>
                     <div
                       className="absolute top-0 right-0 bottom-0 w-2 cursor-col-resize bg-transparent hover:bg-blue-400"
@@ -1002,7 +1006,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.phone}%`, minWidth: '100px' }}
                   >
                     <div className="min-h-[20px] overflow-hidden">
-                      <span className="truncate block">Phone</span>
+                      <span className="truncate block">E</span>
                     </div>
                     <div
                       className="absolute top-0 right-0 bottom-0 w-2 cursor-col-resize bg-transparent hover:bg-blue-400"
@@ -1016,7 +1020,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.role}%`, minWidth: '100px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">Role</span>
+                      <span className="truncate flex-shrink-0">F</span>
                       <button
                         onClick={() => setShowRoleFilter(!showRoleFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1112,7 +1116,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.postcode}%`, minWidth: '90px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">Postcode</span>
+                      <span className="truncate flex-shrink-0">G</span>
                       <button
                         onClick={() => setShowPostcodeFilter(!showPostcodeFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1208,7 +1212,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.salary}%`, minWidth: '80px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">Salary</span>
+                      <span className="truncate flex-shrink-0">H</span>
                       <button
                         onClick={() => setShowSalaryFilter(!showSalaryFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1304,7 +1308,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.days}%`, minWidth: '120px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">Availability</span>
+                      <span className="truncate flex-shrink-0">I</span>
                       <button
                         onClick={() => setShowAvailabilityFilter(!showAvailabilityFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1400,7 +1404,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.experience}%`, minWidth: '110px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">Experience</span>
+                      <span className="truncate flex-shrink-0">J</span>
                       <button
                         onClick={() => setShowExperienceFilter(!showExperienceFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1496,7 +1500,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.notes}%`, minWidth: '100px' }}
                   >
                     <div className="min-h-[20px] overflow-hidden">
-                      <span className="truncate block">Notes</span>
+                      <span className="truncate block">K</span>
                     </div>
                     <div
                       className="absolute top-0 right-0 bottom-0 w-2 cursor-col-resize bg-transparent hover:bg-blue-400"
@@ -1513,6 +1517,9 @@ export default function CandidatesPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredCandidates.map((candidate) => (
                   <tr key={candidate.id} className="hover:bg-gray-50">
+                    <td className="px-2 py-2 text-center text-xs font-semibold text-gray-700 bg-gray-50 border-r-2 border-gray-400 sticky left-0 z-10">
+                      {filteredCandidates.indexOf(candidate) + 1}
+                    </td>
                     <td
                       className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 overflow-hidden text-ellipsis"
                       style={{ width: `${columnWidths.id}%` }}
@@ -1729,6 +1736,9 @@ export default function CandidatesPage() {
                 {/* Empty rows to maintain table height */}
                 {Array.from({ length: emptyRowsCount }).map((_, index) => (
                   <tr key={`empty-${index}`} className="bg-white">
+                    <td className="px-2 py-2 text-center text-xs font-semibold text-gray-700 bg-gray-50 border-r-2 border-gray-400 sticky left-0 z-10">
+                      {filteredCandidates.length + index + 1}
+                    </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">&nbsp;</td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">&nbsp;</td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">&nbsp;</td>
