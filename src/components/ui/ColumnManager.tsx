@@ -63,19 +63,19 @@ export default function ColumnManager({ tableName, customColumns, onColumnsChang
 
       {/* Add Column Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Add New Column</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50" onClick={() => setIsAddModalOpen(false)}>
+          <div className="bg-white rounded-lg shadow-2xl p-4 w-80 border-2 border-gray-400" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold mb-3">Add New Column</h2>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+              <div className="mb-3 p-2 bg-red-100 border border-red-400 text-red-700 rounded text-xs">
                 {error}
               </div>
             )}
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Column Name
                 </label>
                 <input
@@ -83,19 +83,19 @@ export default function ColumnManager({ tableName, customColumns, onColumnsChang
                   value={newColumnLabel}
                   onChange={(e) => setNewColumnLabel(e.target.value)}
                   placeholder="e.g., License Number"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   autoFocus
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Column Type
                 </label>
                 <select
                   value={newColumnType}
                   onChange={(e) => setNewColumnType(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="text">Text</option>
                   <option value="number">Number</option>
@@ -107,13 +107,13 @@ export default function ColumnManager({ tableName, customColumns, onColumnsChang
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-2 mt-4">
               <button
                 onClick={handleAddColumn}
                 disabled={isSubmitting}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="flex-1 px-3 py-1.5 text-sm bg-blue-600 text-white font-medium rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? 'Adding...' : 'Add Column'}
+                {isSubmitting ? 'Adding...' : 'Add'}
               </button>
               <button
                 onClick={() => {
@@ -123,7 +123,7 @@ export default function ColumnManager({ tableName, customColumns, onColumnsChang
                   setError(null);
                 }}
                 disabled={isSubmitting}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded hover:bg-gray-300 disabled:cursor-not-allowed"
+                className="flex-1 px-3 py-1.5 text-sm bg-gray-200 text-gray-700 font-medium rounded hover:bg-gray-300 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
