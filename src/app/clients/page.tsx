@@ -11,6 +11,8 @@ import { Client } from '@/types';
 import { saveColumnPreferences, loadColumnPreferences } from '@/lib/user-preferences';
 import { CustomColumn, getCustomColumns, getCustomColumnData, setCustomColumnValue, getColumnLetter } from '@/lib/custom-columns';
 import ColumnManager from '@/components/ui/ColumnManager';
+import ColumnOrderManager from '@/components/ui/ColumnOrderManager';
+import { ColumnOrderItem } from '@/lib/column-order';
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -693,6 +695,14 @@ export default function ClientsPage() {
             tableName="clients"
             customColumns={customColumns}
             onColumnsChange={handleCustomColumnsChange}
+          />
+
+          <ColumnOrderManager
+            tableName="clients"
+            onOrderChange={(order: ColumnOrderItem[]) => {
+              console.log('Column order updated:', order);
+              // TODO: Implement column reordering in table
+            }}
           />
 
           <div className="border-l border-gray-300 h-6 mx-1"></div>

@@ -12,6 +12,8 @@ import { getCurrentUserId } from '@/lib/auth-helpers';
 import { saveColumnPreferences, loadColumnPreferences } from '@/lib/user-preferences';
 import { CustomColumn, getCustomColumns, getCustomColumnData, setCustomColumnValue, getColumnLetter } from '@/lib/custom-columns';
 import ColumnManager from '@/components/ui/ColumnManager';
+import ColumnOrderManager from '@/components/ui/ColumnOrderManager';
+import { ColumnOrderItem } from '@/lib/column-order';
 
 export default function CandidatesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -772,6 +774,14 @@ export default function CandidatesPage() {
             tableName="candidates"
             customColumns={customColumns}
             onColumnsChange={handleCustomColumnsChange}
+          />
+
+          <ColumnOrderManager
+            tableName="candidates"
+            onOrderChange={(order: ColumnOrderItem[]) => {
+              console.log('Column order updated:', order);
+              // TODO: Implement column reordering in table
+            }}
           />
 
           <div className="border-l border-gray-300 h-6 mx-1"></div>
