@@ -148,20 +148,38 @@ export default function ColumnManager({ tableName, customColumns, onColumnsChang
         </div>
       )}
 
-      {/* Add Column Modal - SMALL AND VISIBLE */}
+      {/* Add Column Modal - EXACTLY LIKE NOTES MODAL */}
       {isAddModalOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-[100]"
-          onClick={() => setIsAddModalOpen(false)}
+          className="fixed bg-white border-4 border-blue-600 shadow-2xl z-50 rounded-lg"
+          style={{
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '400px',
+            maxWidth: 'calc(100vw - 100px)'
+          }}
         >
-          <div
-            className="bg-white rounded-lg shadow-2xl p-5 w-[350px] border-4 border-blue-600"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-bold mb-4 text-gray-900">Add New Column</h2>
+          {/* Header */}
+          <div className="p-4 border-b-2 border-gray-300 bg-blue-100 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-gray-900">Add New Column</h2>
+            <button
+              onClick={() => {
+                setIsAddModalOpen(false);
+                setNewColumnLabel('');
+                setNewColumnType('text');
+                setError(null);
+              }}
+              className="text-gray-700 hover:text-gray-900 text-xl font-bold px-2"
+            >
+              ✕
+            </button>
+          </div>
 
+          {/* Content */}
+          <div className="p-4">
             {error && (
-              <div className="mb-3 p-3 bg-red-100 border-2 border-red-500 text-red-800 rounded text-sm font-semibold">
+              <div className="mb-3 p-3 bg-red-100 border-2 border-red-500 text-red-900 rounded text-sm font-semibold">
                 {error}
               </div>
             )}
@@ -176,7 +194,7 @@ export default function ColumnManager({ tableName, customColumns, onColumnsChang
                   value={newColumnLabel}
                   onChange={(e) => setNewColumnLabel(e.target.value)}
                   placeholder="e.g., License Number"
-                  className="w-full px-3 py-2 text-base font-medium text-gray-900 border-2 border-gray-400 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-base font-semibold text-gray-900 bg-white border-2 border-gray-400 rounded focus:outline-none focus:border-blue-600"
                   autoFocus
                 />
               </div>
@@ -188,7 +206,7 @@ export default function ColumnManager({ tableName, customColumns, onColumnsChang
                 <select
                   value={newColumnType}
                   onChange={(e) => setNewColumnType(e.target.value as any)}
-                  className="w-full px-3 py-2 text-base font-medium text-gray-900 border-2 border-gray-400 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-base font-semibold text-gray-900 bg-white border-2 border-gray-400 rounded focus:outline-none focus:border-blue-600"
                 >
                   <option value="text">Text</option>
                   <option value="number">Number</option>
@@ -199,46 +217,64 @@ export default function ColumnManager({ tableName, customColumns, onColumnsChang
                 </select>
               </div>
             </div>
+          </div>
 
-            <div className="flex gap-3 mt-5">
-              <button
-                onClick={handleAddColumn}
-                disabled={isSubmitting}
-                className="flex-1 px-4 py-2 text-base bg-blue-600 text-white font-bold rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? 'Adding...' : 'Add Column'}
-              </button>
-              <button
-                onClick={() => {
-                  setIsAddModalOpen(false);
-                  setNewColumnLabel('');
-                  setNewColumnType('text');
-                  setError(null);
-                }}
-                disabled={isSubmitting}
-                className="flex-1 px-4 py-2 text-base bg-gray-300 text-gray-900 font-bold rounded hover:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-            </div>
+          {/* Footer */}
+          <div className="p-4 border-t-2 border-gray-300 bg-gray-100 flex justify-end gap-3">
+            <button
+              onClick={() => {
+                setIsAddModalOpen(false);
+                setNewColumnLabel('');
+                setNewColumnType('text');
+                setError(null);
+              }}
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-gray-300 border-2 border-gray-500 text-gray-900 font-semibold hover:bg-gray-400"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleAddColumn}
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-blue-500 border-2 border-blue-700 text-white font-semibold hover:bg-blue-600"
+            >
+              {isSubmitting ? 'Adding...' : 'Add Column'}
+            </button>
           </div>
         </div>
       )}
 
-      {/* Edit Column Modal - SMALL AND VISIBLE */}
+      {/* Edit Column Modal - EXACTLY LIKE NOTES MODAL */}
       {isEditModalOpen && editingColumn && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-[100]"
-          onClick={() => setIsEditModalOpen(false)}
+          className="fixed bg-white border-4 border-orange-600 shadow-2xl z-50 rounded-lg"
+          style={{
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '400px',
+            maxWidth: 'calc(100vw - 100px)'
+          }}
         >
-          <div
-            className="bg-white rounded-lg shadow-2xl p-5 w-[350px] border-4 border-orange-600"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-bold mb-4 text-gray-900">Edit Column</h2>
+          {/* Header */}
+          <div className="p-4 border-b-2 border-gray-300 bg-orange-100 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-gray-900">Edit Column</h2>
+            <button
+              onClick={() => {
+                setIsEditModalOpen(false);
+                setEditingColumn(null);
+                setError(null);
+              }}
+              className="text-gray-700 hover:text-gray-900 text-xl font-bold px-2"
+            >
+              ✕
+            </button>
+          </div>
 
+          {/* Content */}
+          <div className="p-4">
             {error && (
-              <div className="mb-3 p-3 bg-red-100 border-2 border-red-500 text-red-800 rounded text-sm font-semibold">
+              <div className="mb-3 p-3 bg-red-100 border-2 border-red-500 text-red-900 rounded text-sm font-semibold">
                 {error}
               </div>
             )}
@@ -253,7 +289,7 @@ export default function ColumnManager({ tableName, customColumns, onColumnsChang
                   value={editColumnLabel}
                   onChange={(e) => setEditColumnLabel(e.target.value)}
                   placeholder="e.g., License Number"
-                  className="w-full px-3 py-2 text-base font-medium text-gray-900 border-2 border-gray-400 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  className="w-full px-3 py-2 text-base font-semibold text-gray-900 bg-white border-2 border-gray-400 rounded focus:outline-none focus:border-orange-600"
                   autoFocus
                 />
               </div>
@@ -265,7 +301,7 @@ export default function ColumnManager({ tableName, customColumns, onColumnsChang
                 <select
                   value={editColumnType}
                   onChange={(e) => setEditColumnType(e.target.value as any)}
-                  className="w-full px-3 py-2 text-base font-medium text-gray-900 border-2 border-gray-400 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  className="w-full px-3 py-2 text-base font-semibold text-gray-900 bg-white border-2 border-gray-400 rounded focus:outline-none focus:border-orange-600"
                 >
                   <option value="text">Text</option>
                   <option value="number">Number</option>
@@ -276,27 +312,28 @@ export default function ColumnManager({ tableName, customColumns, onColumnsChang
                 </select>
               </div>
             </div>
+          </div>
 
-            <div className="flex gap-3 mt-5">
-              <button
-                onClick={handleUpdateColumn}
-                disabled={isSubmitting}
-                className="flex-1 px-4 py-2 text-base bg-orange-600 text-white font-bold rounded hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? 'Updating...' : 'Update'}
-              </button>
-              <button
-                onClick={() => {
-                  setIsEditModalOpen(false);
-                  setEditingColumn(null);
-                  setError(null);
-                }}
-                disabled={isSubmitting}
-                className="flex-1 px-4 py-2 text-base bg-gray-300 text-gray-900 font-bold rounded hover:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-            </div>
+          {/* Footer */}
+          <div className="p-4 border-t-2 border-gray-300 bg-gray-100 flex justify-end gap-3">
+            <button
+              onClick={() => {
+                setIsEditModalOpen(false);
+                setEditingColumn(null);
+                setError(null);
+              }}
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-gray-300 border-2 border-gray-500 text-gray-900 font-semibold hover:bg-gray-400"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleUpdateColumn}
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-orange-500 border-2 border-orange-700 text-white font-semibold hover:bg-orange-600"
+            >
+              {isSubmitting ? 'Updating...' : 'Update'}
+            </button>
           </div>
         </div>
       )}

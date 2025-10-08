@@ -89,23 +89,37 @@ export default function ColumnOrderManager({ tableName, onOrderChange }: ColumnO
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50" onClick={() => setIsOpen(false)}>
-          <div className="bg-white rounded-lg shadow-2xl p-4 w-96 max-h-[600px] border-2 border-gray-400 flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold">Column Order</h2>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-gray-600 hover:text-gray-900 text-xl font-bold"
-              >
-                ✕
-              </button>
-            </div>
+        <div
+          className="fixed bg-white border-4 border-yellow-600 shadow-2xl z-50 rounded-lg flex flex-col"
+          style={{
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '450px',
+            maxWidth: 'calc(100vw - 100px)',
+            maxHeight: 'calc(100vh - 100px)'
+          }}
+        >
+          {/* Header */}
+          <div className="p-4 border-b-2 border-gray-300 bg-yellow-100 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-gray-900">Reorder Columns</h2>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="text-gray-700 hover:text-gray-900 text-xl font-bold px-2"
+            >
+              ✕
+            </button>
+          </div>
 
-            <p className="text-xs text-gray-600 mb-3">
-              Drag columns to reorder, or use arrow buttons
+          {/* Instructions */}
+          <div className="px-4 pt-3 pb-2 bg-blue-50 border-b border-gray-200">
+            <p className="text-xs text-gray-800 font-semibold">
+              💡 Drag columns to reorder, or use ▲ ▼ arrow buttons
             </p>
+          </div>
 
-            <div className="flex-1 overflow-y-auto border border-gray-300 rounded mb-3">
+          {/* Column List */}
+          <div className="flex-1 overflow-y-auto p-3">
               {columns.map((column, index) => (
                 <div
                   key={column.id}
@@ -118,17 +132,17 @@ export default function ColumnOrderManager({ tableName, onOrderChange }: ColumnO
                   } ${column.type === 'custom' ? 'bg-purple-50' : ''}`}
                 >
                   <div className="flex items-center gap-2 flex-1">
-                    <span className="text-gray-400">☰</span>
-                    <span className="text-sm font-medium">{column.label}</span>
+                    <span className="text-gray-500 font-bold">☰</span>
+                    <span className="text-sm font-bold text-gray-900">{column.label}</span>
                     {column.type === 'custom' && (
-                      <span className="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded">Custom</span>
+                      <span className="text-xs bg-purple-200 text-purple-900 px-2 py-0.5 rounded font-semibold">Custom</span>
                     )}
                   </div>
                   <div className="flex gap-1">
                     <button
                       onClick={() => moveUp(index)}
                       disabled={index === 0}
-                      className="px-1.5 py-0.5 text-xs bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="px-2 py-1 text-xs bg-gray-300 text-gray-900 font-bold rounded hover:bg-gray-400 disabled:opacity-30 disabled:cursor-not-allowed"
                       title="Move Up"
                     >
                       ▲
@@ -136,7 +150,7 @@ export default function ColumnOrderManager({ tableName, onOrderChange }: ColumnO
                     <button
                       onClick={() => moveDown(index)}
                       disabled={index === columns.length - 1}
-                      className="px-1.5 py-0.5 text-xs bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="px-2 py-1 text-xs bg-gray-300 text-gray-900 font-bold rounded hover:bg-gray-400 disabled:opacity-30 disabled:cursor-not-allowed"
                       title="Move Down"
                     >
                       ▼
@@ -146,21 +160,21 @@ export default function ColumnOrderManager({ tableName, onOrderChange }: ColumnO
               ))}
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={handleReset}
-                className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 font-medium rounded hover:bg-gray-300"
-              >
-                Reset
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="flex-1 px-3 py-1.5 text-sm bg-blue-600 text-white font-medium rounded hover:bg-blue-700 disabled:bg-gray-400"
-              >
-                {isSaving ? 'Saving...' : 'Save Order'}
-              </button>
-            </div>
+          {/* Footer */}
+          <div className="p-4 border-t-2 border-gray-300 bg-gray-100 flex justify-end gap-3">
+            <button
+              onClick={handleReset}
+              className="px-4 py-2 bg-gray-300 border-2 border-gray-500 text-gray-900 font-semibold hover:bg-gray-400"
+            >
+              🔄 Reset
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="px-4 py-2 bg-blue-500 border-2 border-blue-700 text-white font-semibold hover:bg-blue-600 disabled:bg-gray-400"
+            >
+              {isSaving ? 'Saving...' : '💾 Save Order'}
+            </button>
           </div>
         </div>
       )}
