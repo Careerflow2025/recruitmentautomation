@@ -24,8 +24,7 @@ CREATE TABLE IF NOT EXISTS candidate_custom_data (
   value TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(user_id, candidate_id, column_name),
-  FOREIGN KEY (user_id, candidate_id) REFERENCES candidates(user_id, id) ON DELETE CASCADE
+  UNIQUE(user_id, candidate_id, column_name)
 );
 
 -- Create table to store custom column data for clients
@@ -37,8 +36,7 @@ CREATE TABLE IF NOT EXISTS client_custom_data (
   value TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(user_id, client_id, column_name),
-  FOREIGN KEY (user_id, client_id) REFERENCES clients(user_id, id) ON DELETE CASCADE
+  UNIQUE(user_id, client_id, column_name)
 );
 
 -- Create indexes for faster queries
