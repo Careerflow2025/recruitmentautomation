@@ -9,6 +9,8 @@ import { HoverableCell } from '@/components/ui/HoverableCell';
 import Link from 'next/link';
 import { Client } from '@/types';
 import { saveColumnPreferences, loadColumnPreferences } from '@/lib/user-preferences';
+import { CustomColumn, getCustomColumns, getCustomColumnData, setCustomColumnValue, getColumnLetter } from '@/lib/custom-columns';
+import ColumnManager from '@/components/ui/ColumnManager';
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -61,6 +63,10 @@ export default function ClientsPage() {
   const [systemFilterText, setSystemFilterText] = useState('');
   const [selectedSystems, setSelectedSystems] = useState<string[]>([]);
 
+  // Custom columns state
+  const [customColumns, setCustomColumns] = useState<CustomColumn[]>([]);
+  const [customColumnData, setCustomColumnData] = useState<Record<string, Record<string, string | null>>>({});
+
   // Column resize state - using percentages for flexible layout
   const defaultColumnWidths = {
     id: 6,
@@ -86,7 +92,15 @@ export default function ClientsPage() {
   useEffect(() => {
     fetchClients();
     loadColumnSettings();
+    fetchCustomColumns();
   }, []);
+
+  // Load custom column data when clients change
+  useEffect(() => {
+    if (clients.length > 0) {
+      fetchCustomColumnData();
+    }
+  }, [clients]);
 
   // Load column settings from database
   const loadColumnSettings = async () => {
@@ -308,6 +322,52 @@ export default function ClientsPage() {
       setLoading(false);
     }
   }
+
+  async function fetchCustomColumns() {
+    try {
+      const columns = await getCustomColumns('clients');
+      setCustomColumns(columns);
+    } catch (err) {
+      console.error('Error fetching custom columns:', err);
+    }
+  }
+
+  async function fetchCustomColumnData() {
+    try {
+      const dataMap: Record<string, Record<string, string | null>> = {};
+
+      for (const client of clients) {
+        const data = await getCustomColumnData('clients', client.id);
+        dataMap[client.id] = data;
+      }
+
+      setCustomColumnData(dataMap);
+    } catch (err) {
+      console.error('Error fetching custom column data:', err);
+    }
+  }
+
+  const handleCustomColumnsChange = async () => {
+    await fetchCustomColumns();
+    await fetchCustomColumnData();
+  };
+
+  const handleCustomCellEdit = async (clientId: string, columnName: string, value: string) => {
+    try {
+      await setCustomColumnValue('clients', clientId, columnName, value);
+      // Update local state
+      setCustomColumnData(prev => ({
+        ...prev,
+        [clientId]: {
+          ...prev[clientId],
+          [columnName]: value
+        }
+      }));
+    } catch (err) {
+      console.error('Error updating custom column value:', err);
+      alert('Failed to update column value');
+    }
+  };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -628,6 +688,14 @@ export default function ClientsPage() {
           >
             ➕ Add New
           </button>
+
+          <ColumnManager
+            tableName="clients"
+            customColumns={customColumns}
+            onColumnsChange={handleCustomColumnsChange}
+          />
+
+          <div className="border-l border-gray-300 h-6 mx-1"></div>
 
           <button
             onClick={downloadTemplate}
@@ -1471,6 +1539,21 @@ export default function ClientsPage() {
                       title="Drag to resize"
                     />
                   </th>
+                  {/* Custom Columns */}
+                  {customColumns.map((column, index) => {
+                    const columnLetter = getColumnLetter(11 + index); // Start after K (Notes)
+                    return (
+                      <th
+                        key={column.id}
+                        className="px-2 py-3 text-left text-xs font-bold text-gray-900 uppercase border-r border-gray-300 relative group bg-purple-50"
+                        style={{ minWidth: '120px' }}
+                      >
+                        <div className="min-h-[20px] overflow-hidden">
+                          <span className="truncate block">{columnLetter} - {column.column_label}</span>
+                        </div>
+                      </th>
+                    );
+                  })}
                   {isEditMode && (
                     <th className="px-3 py-2 text-center text-xs font-bold text-gray-900 uppercase">Del</th>
                   )}
@@ -1682,6 +1765,33 @@ export default function ClientsPage() {
                         </button>
                       )}
                     </td>
+                    {/* Custom Column Cells */}
+                    {customColumns.map((column) => {
+                      const cellValue = customColumnData[client.id]?.[column.column_name] || '';
+                      return (
+                        <td
+                          key={column.id}
+                          className="px-3 py-2 text-sm font-medium text-gray-900 border-r border-gray-300 bg-purple-50"
+                          style={{ minWidth: '120px' }}
+                        >
+                          {isEditMode ? (
+                            <input
+                              type={column.column_type === 'number' ? 'number' : column.column_type === 'date' ? 'date' : 'text'}
+                              value={cellValue}
+                              onChange={(e) => handleCustomCellEdit(client.id, column.column_name, e.target.value)}
+                              onBlur={(e) => handleCustomCellEdit(client.id, column.column_name, e.target.value)}
+                              className="px-2 py-1 border border-gray-400 rounded w-full text-sm font-medium text-gray-900"
+                              placeholder={column.column_type}
+                            />
+                          ) : (
+                            <HoverableCell
+                              value={cellValue || '-'}
+                              label={column.column_label}
+                            />
+                          )}
+                        </td>
+                      );
+                    })}
                     {isEditMode && (
                       <td className="px-3 py-2 whitespace-nowrap text-center">
                         <button
@@ -1713,6 +1823,10 @@ export default function ClientsPage() {
                     <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">&nbsp;</td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">&nbsp;</td>
                     <td className="px-3 py-2 text-sm font-medium text-gray-900 max-w-xs border-r border-gray-300">&nbsp;</td>
+                    {/* Custom column empty cells */}
+                    {customColumns.map((column) => (
+                      <td key={column.id} className="px-3 py-2 text-sm font-medium text-gray-900 border-r border-gray-300 bg-purple-50">&nbsp;</td>
+                    ))}
                     {isEditMode && (
                       <td className="px-3 py-2 whitespace-nowrap text-center">&nbsp;</td>
                     )}
