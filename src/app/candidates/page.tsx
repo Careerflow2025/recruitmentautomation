@@ -868,7 +868,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.id}%`, minWidth: '80px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">A</span>
+                      <span className="truncate flex-shrink-0">A - ID</span>
                       <button
                         onClick={() => setShowIdFilter(!showIdFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -964,7 +964,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.first_name}%`, minWidth: '100px' }}
                   >
                     <div className="min-h-[20px] overflow-hidden">
-                      <span className="truncate block">B</span>
+                      <span className="truncate block">B - First Name</span>
                     </div>
                     <div
                       className="absolute top-0 right-0 bottom-0 w-2 cursor-col-resize bg-transparent hover:bg-blue-400"
@@ -978,7 +978,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.last_name}%`, minWidth: '100px' }}
                   >
                     <div className="min-h-[20px] overflow-hidden">
-                      <span className="truncate block">C</span>
+                      <span className="truncate block">C - Last Name</span>
                     </div>
                     <div
                       className="absolute top-0 right-0 bottom-0 w-2 cursor-col-resize bg-transparent hover:bg-blue-400"
@@ -992,7 +992,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.email}%`, minWidth: '120px' }}
                   >
                     <div className="min-h-[20px] overflow-hidden">
-                      <span className="truncate block">D</span>
+                      <span className="truncate block">D - Email</span>
                     </div>
                     <div
                       className="absolute top-0 right-0 bottom-0 w-2 cursor-col-resize bg-transparent hover:bg-blue-400"
@@ -1006,7 +1006,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.phone}%`, minWidth: '100px' }}
                   >
                     <div className="min-h-[20px] overflow-hidden">
-                      <span className="truncate block">E</span>
+                      <span className="truncate block">E - Phone</span>
                     </div>
                     <div
                       className="absolute top-0 right-0 bottom-0 w-2 cursor-col-resize bg-transparent hover:bg-blue-400"
@@ -1020,7 +1020,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.role}%`, minWidth: '100px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">F</span>
+                      <span className="truncate flex-shrink-0">F - Role</span>
                       <button
                         onClick={() => setShowRoleFilter(!showRoleFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1116,7 +1116,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.postcode}%`, minWidth: '90px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">G</span>
+                      <span className="truncate flex-shrink-0">G - Postcode</span>
                       <button
                         onClick={() => setShowPostcodeFilter(!showPostcodeFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1212,7 +1212,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.salary}%`, minWidth: '80px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">H</span>
+                      <span className="truncate flex-shrink-0">H - Salary</span>
                       <button
                         onClick={() => setShowSalaryFilter(!showSalaryFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1308,7 +1308,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.days}%`, minWidth: '120px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">I</span>
+                      <span className="truncate flex-shrink-0">I - Availability</span>
                       <button
                         onClick={() => setShowAvailabilityFilter(!showAvailabilityFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1404,7 +1404,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.experience}%`, minWidth: '110px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">J</span>
+                      <span className="truncate flex-shrink-0">J - Experience</span>
                       <button
                         onClick={() => setShowExperienceFilter(!showExperienceFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1500,7 +1500,7 @@ export default function CandidatesPage() {
                     style={{ width: `${columnWidths.notes}%`, minWidth: '100px' }}
                   >
                     <div className="min-h-[20px] overflow-hidden">
-                      <span className="truncate block">K</span>
+                      <span className="truncate block">K - Notes</span>
                     </div>
                     <div
                       className="absolute top-0 right-0 bottom-0 w-2 cursor-col-resize bg-transparent hover:bg-blue-400"

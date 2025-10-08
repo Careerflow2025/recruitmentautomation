@@ -722,7 +722,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.id}%`, minWidth: '80px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">A</span>
+                      <span className="truncate flex-shrink-0">A - ID</span>
                       <button
                         onClick={() => setShowIdFilter(!showIdFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -796,7 +796,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.surgery}%`, minWidth: '120px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">B</span>
+                      <span className="truncate flex-shrink-0">B - Surgery</span>
                       <button
                         onClick={() => setShowSurgeryFilter(!showSurgeryFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -870,7 +870,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.client_name}%`, minWidth: '110px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">C</span>
+                      <span className="truncate flex-shrink-0">C - Client Name</span>
                       <button
                         onClick={() => setShowClientNameFilter(!showClientNameFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -944,7 +944,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.client_phone}%`, minWidth: '110px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">D</span>
+                      <span className="truncate flex-shrink-0">D - Client Phone</span>
                       <button
                         onClick={() => setShowClientPhoneFilter(!showClientPhoneFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1018,7 +1018,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.client_email}%`, minWidth: '120px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">E</span>
+                      <span className="truncate flex-shrink-0">E - Client Email</span>
                       <button
                         onClick={() => setShowClientEmailFilter(!showClientEmailFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1092,7 +1092,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.role}%`, minWidth: '100px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">F</span>
+                      <span className="truncate flex-shrink-0">F - Role</span>
                       <button
                         onClick={() => setShowRoleFilter(!showRoleFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1166,7 +1166,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.postcode}%`, minWidth: '90px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">G</span>
+                      <span className="truncate flex-shrink-0">G - Postcode</span>
                       <button
                         onClick={() => setShowPostcodeFilter(!showPostcodeFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1240,7 +1240,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.budget}%`, minWidth: '80px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">H</span>
+                      <span className="truncate flex-shrink-0">H - Budget</span>
                       <button
                         onClick={() => setShowBudgetFilter(!showBudgetFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1314,7 +1314,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.requirements}%`, minWidth: '120px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">I</span>
+                      <span className="truncate flex-shrink-0">I - Requirement</span>
                       <button
                         onClick={() => setShowRequirementFilter(!showRequirementFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1388,7 +1388,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.system}%`, minWidth: '100px' }}
                   >
                     <div className="flex items-center gap-1 min-h-[20px] overflow-hidden">
-                      <span className="truncate flex-shrink-0">J</span>
+                      <span className="truncate flex-shrink-0">J - System</span>
                       <button
                         onClick={() => setShowSystemFilter(!showSystemFilter)}
                         className="hover:bg-gray-300 px-1 rounded flex-shrink-0 text-xs leading-none"
@@ -1461,7 +1461,7 @@ export default function ClientsPage() {
                     style={{ width: `${columnWidths.notes}%`, minWidth: '100px' }}
                   >
                     <div className="min-h-[20px] overflow-hidden">
-                      <span className="truncate block">K</span>
+                      <span className="truncate block">K - Notes</span>
                     </div>
                     {/* Resize Handle */}
                     <div
