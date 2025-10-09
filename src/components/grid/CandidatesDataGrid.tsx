@@ -19,10 +19,17 @@ export default function CandidatesDataGrid() {
   const [customData, setCustomData] = useState<Record<string, Record<string, string | null>>>({});
   const [sortColumns, setSortColumns] = useState<readonly SortColumn[]>([]);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
 
   // Get current user
   useEffect(() => {
-    getCurrentUserId().then(setUserId);
+    getCurrentUserId().then(userId => {
+      console.log('[CandidatesGrid] User ID:', userId);
+      setUserId(userId);
+    }).catch(err => {
+      console.error('[CandidatesGrid] Auth error:', err);
+      setError(`Authentication error: ${err.message}`);
+    });
   }, []);
 
   // Column preferences (order, widths, filters)
@@ -60,7 +67,10 @@ export default function CandidatesDataGrid() {
     tableName: 'candidates',
     filters: userId ? { user_id: userId } : {},
     orderBy: { column: 'created_at', ascending: false },
-    onError: (error) => alert(`Error: ${error.message}`),
+    onError: (error) => {
+      console.error('[CandidatesGrid] Supabase error:', error);
+      setError(`Database error: ${error.message}. Check console for details.`);
+    },
   });
 
   // Load custom column data for all candidates
@@ -630,10 +640,49 @@ export default function CandidatesDataGrid() {
     }
   }, [userId, insertRow]);
 
+  // Show error if any
+  if (error) {
+    return (
+      <div className="grid-loading">
+        <div style={{ textAlign: 'center', padding: '40px', color: '#ef4444' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>❌ Error Loading Candidates</h3>
+          <p style={{ marginBottom: '12px' }}>{error}</p>
+          <details style={{ marginTop: '16px', textAlign: 'left', maxWidth: '600px', margin: '0 auto' }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>Troubleshooting Steps</summary>
+            <ol style={{ marginTop: '12px', paddingLeft: '24px', lineHeight: '1.8' }}>
+              <li>Check browser console (F12) for detailed error</li>
+              <li>Verify you're logged in (User ID: {userId || 'NOT LOGGED IN'})</li>
+              <li>Run <code>FIX_REALTIME_AND_RLS.sql</code> in Supabase</li>
+              <li>Check Supabase RLS policies on candidates table</li>
+              <li>Verify NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local</li>
+            </ol>
+          </details>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              marginTop: '20px',
+              padding: '10px 20px',
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            🔄 Reload Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="grid-loading">
         <div className="grid-loading-spinner"></div>
+        <p style={{ marginTop: '16px', color: '#64748b' }}>Loading candidates...</p>
+        {userId && <p style={{ fontSize: '12px', color: '#94a3b8' }}>User ID: {userId}</p>}
       </div>
     );
   }
