@@ -36,82 +36,119 @@ export function Navbar() {
   }
 
   const navLinks = [
-    { href: '/dashboard', label: 'Dashboard', icon: '🏠' },
+    { href: '/dashboard', label: 'Dashboard', icon: '📊' },
     { href: '/candidates', label: 'Candidates', icon: '👥' },
     { href: '/clients', label: 'Clients', icon: '🏥' },
-    { href: '/matches', label: 'Matches', icon: '🎯' },
+    { href: '/matches', label: 'Matches', icon: '✨' },
   ];
 
   return (
-    <nav className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4">
+    <nav className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50 backdrop-blur-lg bg-white/95">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo / Dashboard Link */}
+          {/* Logo / Brand */}
           <Link
             href="/dashboard"
-            className="flex items-center gap-2 font-bold text-xl hover:opacity-90 transition-opacity"
+            className="flex items-center gap-3 group"
           >
-            <span className="text-2xl">⚡</span>
-            <span className="hidden sm:inline">AI Matcher Recruiter</span>
-            <span className="sm:hidden">AIR</span>
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
+              <span className="text-xl">⚡</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="hidden sm:block font-bold text-lg bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                AI Matcher
+              </span>
+              <span className="hidden sm:block text-xs text-gray-500 font-medium -mt-1">
+                Recruitment Platform
+              </span>
+            </div>
           </Link>
 
-          {/* Navigation Links and Auth Buttons */}
-          <div className="flex items-center gap-1 md:gap-2">
-            {/* Only show nav links when authenticated */}
+          {/* Navigation Links and Auth */}
+          <div className="flex items-center gap-2">
+            {/* Navigation Links - Only when authenticated */}
             {isAuthenticated && (
-              <>
-                {navLinks.slice(1).map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`px-3 py-2 rounded-lg font-medium transition-all text-sm ${
-                      pathname === link.href
-                        ? 'bg-white/20'
-                        : 'hover:bg-white/10'
-                    }`}
-                  >
-                    <span className="md:hidden">{link.icon}</span>
-                    <span className="hidden md:inline">{link.icon} {link.label}</span>
-                  </Link>
-                ))}
-
-                {/* Divider */}
-                <div className="hidden md:block w-px h-8 bg-white/30 mx-2"></div>
-
-                {/* Logout Button */}
-                <LogoutButton />
-              </>
+              <div className="hidden md:flex items-center gap-1 mr-2">
+                {navLinks.map((link) => {
+                  const isActive = pathname === link.href;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`
+                        relative px-4 py-2 rounded-lg font-medium text-sm
+                        transition-all duration-200 flex items-center gap-2
+                        ${isActive
+                          ? 'text-blue-600 bg-blue-50'
+                          : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                        }
+                      `}
+                    >
+                      <span className="text-base">{link.icon}</span>
+                      <span>{link.label}</span>
+                      {isActive && (
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
             )}
 
-            {/* Show Login/Signup buttons when NOT authenticated */}
+            {/* Mobile Navigation - Only when authenticated */}
+            {isAuthenticated && (
+              <div className="flex md:hidden items-center gap-1 mr-2">
+                {navLinks.map((link) => {
+                  const isActive = pathname === link.href;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`
+                        p-2 rounded-lg text-xl transition-all duration-200
+                        ${isActive
+                          ? 'bg-blue-50'
+                          : 'hover:bg-gray-50'
+                        }
+                      `}
+                      title={link.label}
+                    >
+                      {link.icon}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Auth Buttons */}
+            {isAuthenticated && <LogoutButton />}
+
+            {/* Show Login/Signup when NOT authenticated */}
             {!isAuthenticated && !loading && (
-              <>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Login button clicked');
                     router.push('/login');
                   }}
                   type="button"
-                  className="px-4 py-2 rounded-lg font-bold transition-all text-sm bg-white text-blue-600 hover:bg-blue-50 shadow-lg cursor-pointer"
+                  className="px-4 py-2 rounded-lg font-semibold text-sm text-gray-700 hover:text-blue-600 hover:bg-gray-50 transition-all duration-200"
                 >
-                  🔐 Login
+                  Login
                 </button>
                 <button
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Signup button clicked');
                     router.push('/signup');
                   }}
                   type="button"
-                  className="px-4 py-2 rounded-lg font-bold transition-all text-sm bg-green-600 text-white hover:bg-green-700 shadow-lg cursor-pointer"
+                  className="px-5 py-2 rounded-lg font-semibold text-sm text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
                 >
-                  ✨ Sign Up
+                  Sign Up
                 </button>
-              </>
+              </div>
             )}
           </div>
         </div>

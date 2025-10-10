@@ -39,22 +39,28 @@ export function LogoutButton() {
     <button
       onClick={handleLogout}
       disabled={loading}
-      className={`px-3 py-2 rounded-lg text-sm font-bold transition-all ${
-        loading
-          ? 'bg-white/10 text-white/50 cursor-not-allowed'
-          : 'bg-red-600 text-white hover:bg-red-700 shadow-md hover:shadow-lg'
-      }`}
+      className={`
+        px-4 py-2 rounded-lg text-sm font-semibold
+        transition-all duration-200
+        flex items-center gap-2
+        ${loading
+          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+          : 'text-gray-700 hover:text-red-600 hover:bg-red-50 border border-gray-200 hover:border-red-200'
+        }
+      `}
       title="Sign out"
     >
       {loading ? (
         <>
-          <span className="md:hidden">⏳</span>
-          <span className="hidden md:inline">⏳ Signing out...</span>
+          <span className="animate-spin">⏳</span>
+          <span className="hidden md:inline">Signing out...</span>
         </>
       ) : (
         <>
-          <span className="md:hidden">🚪</span>
-          <span className="hidden md:inline">🚪 Sign Out</span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span className="hidden md:inline">Sign Out</span>
         </>
       )}
     </button>
