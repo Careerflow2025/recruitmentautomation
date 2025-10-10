@@ -9,7 +9,7 @@ import { useColumnPreferences } from '@/hooks/useColumnPreferences';
 import ColumnFilter from './ColumnFilter';
 import { Candidate } from '@/types';
 import { getCurrentUserId } from '@/lib/auth-helpers';
-import { getCustomColumns, CustomColumn, getCustomColumnData, setCustomColumnValue } from '@/lib/custom-columns';
+import { getCustomColumns, CustomColumn, getCustomColumnData, setCustomColumnValue, updateCustomColumn } from '@/lib/custom-columns';
 import { normalizeRole } from '@/lib/utils/roleNormalizer';
 import { debounce } from 'lodash';
 import CustomColumnManager from './CustomColumnManager';
@@ -21,6 +21,8 @@ export default function CandidatesDataGrid() {
   const [sortColumns, setSortColumns] = useState<readonly SortColumn[]>([]);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [editingHeaderId, setEditingHeaderId] = useState<string | null>(null);
+  const [headerEditValue, setHeaderEditValue] = useState('');
 
   // Get current user
   useEffect(() => {
@@ -156,6 +158,25 @@ export default function CandidatesDataGrid() {
       }, 1500),
     []
   );
+
+  // Handle saving custom column header rename
+  const handleSaveHeaderEdit = useCallback(async (columnId: string, newLabel: string) => {
+    if (!newLabel.trim()) {
+      alert('Column name cannot be empty');
+      setEditingHeaderId(null);
+      return;
+    }
+
+    try {
+      await updateCustomColumn(columnId, newLabel);
+      // Reload custom columns to reflect the change
+      await loadCustomColumns();
+      setEditingHeaderId(null);
+    } catch (error) {
+      console.error('Failed to update column header:', error);
+      alert('Failed to rename column');
+    }
+  }, [loadCustomColumns]);
 
   // Extract unique values for filterable columns
   const getFilterOptions = useCallback((columnKey: string): string[] => {
@@ -489,6 +510,43 @@ export default function CandidatesDataGrid() {
         editable: true,
         cellClass: 'custom-column-cell',
         headerCellClass: 'custom-column-header',
+        headerRenderer: () => {
+          const isEditing = editingHeaderId === col.id;
+
+          if (isEditing) {
+            return (
+              <input
+                autoFocus
+                type="text"
+                className="rdg-text-editor"
+                style={{ width: '100%', padding: '4px', fontSize: '13px' }}
+                value={headerEditValue}
+                onChange={(e) => setHeaderEditValue(e.target.value)}
+                onBlur={() => handleSaveHeaderEdit(col.id, headerEditValue)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSaveHeaderEdit(col.id, headerEditValue);
+                  } else if (e.key === 'Escape') {
+                    setEditingHeaderId(null);
+                  }
+                }}
+              />
+            );
+          }
+
+          return (
+            <div
+              style={{ cursor: 'pointer', userSelect: 'none', padding: '4px' }}
+              onClick={() => {
+                setEditingHeaderId(col.id);
+                setHeaderEditValue(col.column_label);
+              }}
+              title="Click to rename this column"
+            >
+              {col.column_label}
+            </div>
+          );
+        },
         renderCell: ({ row }) => customData[row.id]?.[col.column_name] || '',
         renderEditCell: (props) => {
           const value = customData[props.row.id]?.[col.column_name] || '';
@@ -505,7 +563,7 @@ export default function CandidatesDataGrid() {
           );
         },
       })),
-    [customColumns, customData, debouncedCustomUpdate]
+    [customColumns, customData, debouncedCustomUpdate, editingHeaderId, headerEditValue, handleSaveHeaderEdit]
   );
 
   // Actions column
