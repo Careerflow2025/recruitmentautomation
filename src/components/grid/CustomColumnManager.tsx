@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createCustomColumn, CustomColumn } from '@/lib/custom-columns';
+import { addCustomColumn } from '@/lib/custom-columns';
 
 interface CustomColumnManagerProps {
   tableName: 'candidates' | 'clients';
@@ -10,7 +10,6 @@ interface CustomColumnManagerProps {
 
 export default function CustomColumnManager({ tableName, onColumnAdded }: CustomColumnManagerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [columnName, setColumnName] = useState('');
   const [columnLabel, setColumnLabel] = useState('');
   const [columnType, setColumnType] = useState<'text' | 'number' | 'date'>('text');
   const [loading, setLoading] = useState(false);
@@ -30,13 +29,10 @@ export default function CustomColumnManager({ tableName, onColumnAdded }: Custom
         throw new Error('Column label is required');
       }
 
-      // Create column name from label (lowercase, replace spaces with underscores)
-      const safeName = columnLabel.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-
-      await createCustomColumn(tableName, safeName, columnLabel, columnType);
+      // addCustomColumn generates the column name automatically from the label
+      await addCustomColumn(tableName, columnLabel, columnType);
 
       // Reset form
-      setColumnName('');
       setColumnLabel('');
       setColumnType('text');
       setIsOpen(false);
@@ -113,7 +109,6 @@ export default function CustomColumnManager({ tableName, onColumnAdded }: Custom
               onClick={() => {
                 setIsOpen(false);
                 setError(null);
-                setColumnName('');
                 setColumnLabel('');
                 setColumnType('text');
               }}
