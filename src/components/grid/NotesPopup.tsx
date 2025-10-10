@@ -121,7 +121,7 @@ export default function NotesPopup({
 
   if (!mounted) return null;
 
-  const content = (
+  const popupElement = (
     <>
       {/* Overlay */}
       <div
@@ -295,5 +295,5 @@ export default function NotesPopup({
     </>
   );
 
-  return createPortal(content, document.body);
+  return createPortal(popupElement, document.body);
 }
