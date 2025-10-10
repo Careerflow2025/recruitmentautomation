@@ -699,16 +699,25 @@ export default function CandidatesDataGrid() {
         ),
         renderCell: ({ row }) => (
           <div
-            title={row.notes || ''}
-            onClick={() => setNotesPopup({ candidateId: row.id, content: row.notes || '' })}
+            title="Click to view/edit notes"
+            onClick={(e) => {
+              e.stopPropagation();
+              setNotesPopup({ candidateId: row.id, content: row.notes || '' });
+            }}
             style={{
               cursor: 'pointer',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
             }}
           >
-            {row.notes || ''}
+            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {row.notes || '(Click to add notes)'}
+            </span>
+            <span style={{ fontSize: '12px', opacity: 0.6, flexShrink: 0 }}>📝</span>
           </div>
         ),
         renderEditCell: (props) => (

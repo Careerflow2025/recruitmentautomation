@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface NotesPopupProps {
   content: string;
@@ -26,6 +27,11 @@ export default function NotesPopup({
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
 
   const popupRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Handle dragging
   useEffect(() => {
@@ -113,7 +119,9 @@ export default function NotesPopup({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose]);
 
-  return (
+  if (!mounted) return null;
+
+  const content = (
     <>
       {/* Overlay */}
       <div
@@ -124,7 +132,7 @@ export default function NotesPopup({
           right: 0,
           bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          zIndex: 9998,
+          zIndex: 99998,
         }}
         onClick={onClose}
       />
@@ -141,7 +149,7 @@ export default function NotesPopup({
           backgroundColor: 'white',
           borderRadius: '8px',
           boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
-          zIndex: 9999,
+          zIndex: 99999,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -286,4 +294,6 @@ export default function NotesPopup({
       </div>
     </>
   );
+
+  return createPortal(content, document.body);
 }

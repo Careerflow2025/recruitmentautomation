@@ -306,7 +306,13 @@ export default function ClientsDataGrid() {
             onDelete={() => handleHideColumn('surgery')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['surgery'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('surgery', value)}
           />
+        ),
+        renderCell: ({ row }) => (
+          <div title={row.surgery || ''}>{row.surgery || ''}</div>
         ),
         renderEditCell: (props) => (
           <input
@@ -333,7 +339,13 @@ export default function ClientsDataGrid() {
             onDelete={() => handleHideColumn('client_name')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['client_name'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('client_name', value)}
           />
+        ),
+        renderCell: ({ row }) => (
+          <div title={row.client_name || ''}>{row.client_name || ''}</div>
         ),
         renderEditCell: (props) => (
           <input
@@ -360,7 +372,13 @@ export default function ClientsDataGrid() {
             onDelete={() => handleHideColumn('client_phone')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['client_phone'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('client_phone', value)}
           />
+        ),
+        renderCell: ({ row }) => (
+          <div title={row.client_phone || ''}>{row.client_phone || ''}</div>
         ),
         renderEditCell: (props) => (
           <input
@@ -388,7 +406,13 @@ export default function ClientsDataGrid() {
             onDelete={() => handleHideColumn('client_email')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['client_email'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('client_email', value)}
           />
+        ),
+        renderCell: ({ row }) => (
+          <div title={row.client_email || ''}>{row.client_email || ''}</div>
         ),
         renderEditCell: (props) => (
           <input
@@ -408,7 +432,9 @@ export default function ClientsDataGrid() {
         name: columnRenames['role'] || 'Role',
         width: savedWidths['role'] || 150,
         editable: true,
-        renderCell: ({ row }) => normalizeRole(row.role),
+        renderCell: ({ row }) => (
+          <div title={normalizeRole(row.role)}>{normalizeRole(row.role)}</div>
+        ),
         renderEditCell: (props) => (
           <input
             autoFocus
@@ -428,6 +454,9 @@ export default function ClientsDataGrid() {
             onDelete={() => handleHideColumn('role')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['role'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('role', value)}
           >
             <ColumnFilter
               columnKey="role"
@@ -450,6 +479,9 @@ export default function ClientsDataGrid() {
         width: savedWidths['postcode'] || 120,
         editable: true,
         cellClass: 'font-mono font-bold',
+        renderCell: ({ row }) => (
+          <div title={row.postcode}>{row.postcode}</div>
+        ),
         renderEditCell: (props) => (
           <input
             autoFocus
@@ -470,6 +502,9 @@ export default function ClientsDataGrid() {
             onDelete={() => handleHideColumn('postcode')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['postcode'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('postcode', value)}
           >
             <ColumnFilter
               columnKey="postcode"
@@ -491,6 +526,9 @@ export default function ClientsDataGrid() {
         name: columnRenames['budget'] || 'Budget',
         width: savedWidths['budget'] || 120,
         editable: true,
+        renderCell: ({ row }) => (
+          <div title={row.budget || ''}>{row.budget || ''}</div>
+        ),
         renderEditCell: (props) => (
           <input
             autoFocus
@@ -510,6 +548,9 @@ export default function ClientsDataGrid() {
             onDelete={() => handleHideColumn('budget')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['budget'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('budget', value)}
           >
             <ColumnFilter
               columnKey="budget"
@@ -531,6 +572,9 @@ export default function ClientsDataGrid() {
         name: columnRenames['requirement'] || 'Requirement',
         width: savedWidths['requirement'] || 150,
         editable: true,
+        renderCell: ({ row }) => (
+          <div title={row.requirement || ''}>{row.requirement || ''}</div>
+        ),
         renderEditCell: (props) => (
           <input
             autoFocus
@@ -550,6 +594,9 @@ export default function ClientsDataGrid() {
             onDelete={() => handleHideColumn('requirement')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['requirement'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('requirement', value)}
           >
             <ColumnFilter
               columnKey="requirement"
@@ -571,6 +618,9 @@ export default function ClientsDataGrid() {
         name: columnRenames['system'] || 'System',
         width: savedWidths['system'] || 120,
         editable: true,
+        renderCell: ({ row }) => (
+          <div title={row.system || ''}>{row.system || ''}</div>
+        ),
         renderEditCell: (props) => (
           <input
             autoFocus
@@ -590,6 +640,9 @@ export default function ClientsDataGrid() {
             onDelete={() => handleHideColumn('system')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['system'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('system', value)}
           >
             <ColumnFilter
               columnKey="system"
@@ -610,7 +663,7 @@ export default function ClientsDataGrid() {
         key: 'notes',
         name: columnRenames['notes'] || 'Notes',
         width: savedWidths['notes'] || 200,
-        editable: true,
+        editable: false,
         renderHeaderCell: () => (
           <EditableColumnHeader
             columnKey="notes"
@@ -619,23 +672,37 @@ export default function ClientsDataGrid() {
             onDelete={() => handleHideColumn('notes')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['notes'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('notes', value)}
           />
         ),
-        renderEditCell: (props) => (
-          <textarea
-            autoFocus
-            className="rdg-text-editor"
-            value={props.row.notes || ''}
-            onChange={(e) => {
-              props.onRowChange({ ...props.row, notes: e.target.value });
-              debouncedUpdate(props.row.id, 'notes', e.target.value);
+        renderCell: ({ row }) => (
+          <div
+            title="Click to view/edit notes"
+            onClick={(e) => {
+              e.stopPropagation();
+              setNotesPopup({ clientId: row.id, content: row.notes || '' });
             }}
-            rows={3}
-          />
+            style={{
+              cursor: 'pointer',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {row.notes || '(Click to add notes)'}
+            </span>
+            <span style={{ fontSize: '12px', opacity: 0.6, flexShrink: 0 }}>📝</span>
+          </div>
         ),
       },
     ],
-    [clients, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths]
+    [clients, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths, textFilters, handleTextFilterChange]
   );
 
   // Dynamic custom columns
@@ -947,6 +1014,19 @@ export default function ClientsDataGrid() {
           style={{ height: '100%' }}
         />
       </div>
+
+      {/* Notes Popup */}
+      {notesPopup && (
+        <NotesPopup
+          content={notesPopup.content}
+          title="Client Notes"
+          onClose={() => setNotesPopup(null)}
+          onSave={async (newContent) => {
+            await updateRow(notesPopup.clientId, { notes: newContent } as Partial<ClientWithUser>);
+            setNotesPopup(null);
+          }}
+        />
+      )}
     </div>
   );
 }
