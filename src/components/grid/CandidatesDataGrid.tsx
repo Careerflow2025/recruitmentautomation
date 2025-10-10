@@ -32,6 +32,11 @@ export default function CandidatesDataGrid() {
     });
   }, []);
 
+  // Memoize filters to prevent infinite loop
+  const supabaseFilters = useMemo(() => {
+    return userId ? { user_id: userId } : {};
+  }, [userId]);
+
   // Column preferences (order, widths, filters)
   const {
     columnOrder: savedOrder,
@@ -70,7 +75,7 @@ export default function CandidatesDataGrid() {
     deleteRow,
   } = useSupabaseGridSync<Candidate>({
     tableName: 'candidates',
-    filters: userId ? { user_id: userId } : {},
+    filters: supabaseFilters,
     orderBy: { column: 'created_at', ascending: false },
     onError: (error) => {
       console.error('[CandidatesGrid] Supabase error:', error);

@@ -52,6 +52,11 @@ export default function ClientsDataGrid() {
     loadCustomColumns();
   }, [userId]);
 
+  // Memoize filters to prevent infinite loop
+  const supabaseFilters = useMemo(() => {
+    return userId ? { user_id: userId } : {};
+  }, [userId]);
+
   // Sync with Supabase
   const {
     data: clients,
@@ -61,7 +66,7 @@ export default function ClientsDataGrid() {
     deleteRow,
   } = useSupabaseGridSync<ClientWithUser>({
     tableName: 'clients',
-    filters: userId ? { user_id: userId } : {},
+    filters: supabaseFilters,
     orderBy: { column: 'created_at', ascending: false },
     onError: (error) => alert(`Error: ${error.message}`),
   });
