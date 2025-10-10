@@ -13,6 +13,7 @@ import { getCustomColumns, CustomColumn, getCustomColumnData, setCustomColumnVal
 import { normalizeRole } from '@/lib/utils/roleNormalizer';
 import { debounce } from 'lodash';
 import CustomColumnManager from './CustomColumnManager';
+import EditableColumnHeader from './EditableColumnHeader';
 
 // Extended Client type with user_id (exists in DB but not in type definition)
 type ClientWithUser = Client & { user_id?: string };
@@ -25,6 +26,8 @@ export default function ClientsDataGrid() {
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [editingHeaderId, setEditingHeaderId] = useState<string | null>(null);
   const [headerEditValue, setHeaderEditValue] = useState('');
+  const [columnRenames, setColumnRenames] = useState<Record<string, string>>({});
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
 
   // Column preferences
   const {
@@ -56,6 +59,29 @@ export default function ClientsDataGrid() {
   useEffect(() => {
     loadCustomColumns();
   }, [loadCustomColumns]);
+
+  // Load column renames and hidden columns from localStorage
+  useEffect(() => {
+    if (!userId) return;
+
+    try {
+      const renamesKey = `column-renames-clients-${userId}`;
+      const hiddenKey = `column-hidden-clients-${userId}`;
+
+      const storedRenames = localStorage.getItem(renamesKey);
+      const storedHidden = localStorage.getItem(hiddenKey);
+
+      if (storedRenames) {
+        setColumnRenames(JSON.parse(storedRenames));
+      }
+
+      if (storedHidden) {
+        setHiddenColumns(new Set(JSON.parse(storedHidden)));
+      }
+    } catch (error) {
+      console.error('Failed to load column preferences:', error);
+    }
+  }, [userId]);
 
   // Memoize filters to prevent infinite loop
   const supabaseFilters = useMemo(() => {
@@ -176,6 +202,29 @@ export default function ClientsDataGrid() {
     }
   }, [loadCustomColumns]);
 
+  // Handle renaming standard column
+  const handleRenameColumn = useCallback(async (columnKey: string, newName: string) => {
+    const newRenames = { ...columnRenames, [columnKey]: newName };
+    setColumnRenames(newRenames);
+
+    if (userId) {
+      const renamesKey = `column-renames-clients-${userId}`;
+      localStorage.setItem(renamesKey, JSON.stringify(newRenames));
+    }
+  }, [columnRenames, userId]);
+
+  // Handle hiding/deleting standard column
+  const handleHideColumn = useCallback(async (columnKey: string) => {
+    const newHidden = new Set(hiddenColumns);
+    newHidden.add(columnKey);
+    setHiddenColumns(newHidden);
+
+    if (userId) {
+      const hiddenKey = `column-hidden-clients-${userId}`;
+      localStorage.setItem(hiddenKey, JSON.stringify(Array.from(newHidden)));
+    }
+  }, [hiddenColumns, userId]);
+
   // Get unique values for filterable columns
   const getFilterOptions = useCallback((columnKey: string): string[] => {
     const values = clients.map(client => {
@@ -235,9 +284,19 @@ export default function ClientsDataGrid() {
       },
       {
         key: 'surgery',
-        name: 'Surgery',
-        width: 200,
+        name: columnRenames['surgery'] || 'Surgery',
+        width: savedWidths['surgery'] || 200,
         editable: true,
+        renderHeaderCell: () => (
+          <EditableColumnHeader
+            columnKey="surgery"
+            columnName={columnRenames['surgery'] || 'Surgery'}
+            onRename={(newName) => handleRenameColumn('surgery', newName)}
+            onDelete={() => handleHideColumn('surgery')}
+            canEdit={true}
+            canDelete={true}
+          />
+        ),
         renderEditCell: (props) => (
           <input
             autoFocus
@@ -252,9 +311,19 @@ export default function ClientsDataGrid() {
       },
       {
         key: 'client_name',
-        name: 'Contact Name',
-        width: 150,
+        name: columnRenames['client_name'] || 'Contact Name',
+        width: savedWidths['client_name'] || 150,
         editable: true,
+        renderHeaderCell: () => (
+          <EditableColumnHeader
+            columnKey="client_name"
+            columnName={columnRenames['client_name'] || 'Contact Name'}
+            onRename={(newName) => handleRenameColumn('client_name', newName)}
+            onDelete={() => handleHideColumn('client_name')}
+            canEdit={true}
+            canDelete={true}
+          />
+        ),
         renderEditCell: (props) => (
           <input
             autoFocus
@@ -269,9 +338,19 @@ export default function ClientsDataGrid() {
       },
       {
         key: 'client_phone',
-        name: 'Contact Phone',
-        width: 140,
+        name: columnRenames['client_phone'] || 'Contact Phone',
+        width: savedWidths['client_phone'] || 140,
         editable: true,
+        renderHeaderCell: () => (
+          <EditableColumnHeader
+            columnKey="client_phone"
+            columnName={columnRenames['client_phone'] || 'Contact Phone'}
+            onRename={(newName) => handleRenameColumn('client_phone', newName)}
+            onDelete={() => handleHideColumn('client_phone')}
+            canEdit={true}
+            canDelete={true}
+          />
+        ),
         renderEditCell: (props) => (
           <input
             autoFocus
@@ -287,9 +366,19 @@ export default function ClientsDataGrid() {
       },
       {
         key: 'client_email',
-        name: 'Contact Email',
-        width: 200,
+        name: columnRenames['client_email'] || 'Contact Email',
+        width: savedWidths['client_email'] || 200,
         editable: true,
+        renderHeaderCell: () => (
+          <EditableColumnHeader
+            columnKey="client_email"
+            columnName={columnRenames['client_email'] || 'Contact Email'}
+            onRename={(newName) => handleRenameColumn('client_email', newName)}
+            onDelete={() => handleHideColumn('client_email')}
+            canEdit={true}
+            canDelete={true}
+          />
+        ),
         renderEditCell: (props) => (
           <input
             autoFocus
@@ -305,8 +394,8 @@ export default function ClientsDataGrid() {
       },
       {
         key: 'role',
-        name: 'Role',
-        width: 150,
+        name: columnRenames['role'] || 'Role',
+        width: savedWidths['role'] || 150,
         editable: true,
         renderCell: ({ row }) => normalizeRole(row.role),
         renderEditCell: (props) => (
@@ -320,9 +409,15 @@ export default function ClientsDataGrid() {
             }}
           />
         ),
-        headerRenderer: (props) => (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <span>Role</span>
+        renderHeaderCell: () => (
+          <EditableColumnHeader
+            columnKey="role"
+            columnName={columnRenames['role'] || 'Role'}
+            onRename={(newName) => handleRenameColumn('role', newName)}
+            onDelete={() => handleHideColumn('role')}
+            canEdit={true}
+            canDelete={true}
+          >
             <ColumnFilter
               columnKey="role"
               columnName="Role"
@@ -335,13 +430,13 @@ export default function ClientsDataGrid() {
                 });
               }}
             />
-          </div>
+          </EditableColumnHeader>
         ),
       },
       {
         key: 'postcode',
-        name: 'Postcode',
-        width: 120,
+        name: columnRenames['postcode'] || 'Postcode',
+        width: savedWidths['postcode'] || 120,
         editable: true,
         cellClass: 'font-mono font-bold',
         renderEditCell: (props) => (
@@ -356,9 +451,15 @@ export default function ClientsDataGrid() {
             }}
           />
         ),
-        headerRenderer: (props) => (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <span>Postcode</span>
+        renderHeaderCell: () => (
+          <EditableColumnHeader
+            columnKey="postcode"
+            columnName={columnRenames['postcode'] || 'Postcode'}
+            onRename={(newName) => handleRenameColumn('postcode', newName)}
+            onDelete={() => handleHideColumn('postcode')}
+            canEdit={true}
+            canDelete={true}
+          >
             <ColumnFilter
               columnKey="postcode"
               columnName="Postcode"
@@ -371,13 +472,13 @@ export default function ClientsDataGrid() {
                 });
               }}
             />
-          </div>
+          </EditableColumnHeader>
         ),
       },
       {
         key: 'budget',
-        name: 'Budget',
-        width: 120,
+        name: columnRenames['budget'] || 'Budget',
+        width: savedWidths['budget'] || 120,
         editable: true,
         renderEditCell: (props) => (
           <input
@@ -390,9 +491,15 @@ export default function ClientsDataGrid() {
             }}
           />
         ),
-        headerRenderer: (props) => (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <span>Budget</span>
+        renderHeaderCell: () => (
+          <EditableColumnHeader
+            columnKey="budget"
+            columnName={columnRenames['budget'] || 'Budget'}
+            onRename={(newName) => handleRenameColumn('budget', newName)}
+            onDelete={() => handleHideColumn('budget')}
+            canEdit={true}
+            canDelete={true}
+          >
             <ColumnFilter
               columnKey="budget"
               columnName="Budget"
@@ -405,13 +512,13 @@ export default function ClientsDataGrid() {
                 });
               }}
             />
-          </div>
+          </EditableColumnHeader>
         ),
       },
       {
         key: 'requirement',
-        name: 'Requirement',
-        width: 150,
+        name: columnRenames['requirement'] || 'Requirement',
+        width: savedWidths['requirement'] || 150,
         editable: true,
         renderEditCell: (props) => (
           <input
@@ -424,9 +531,15 @@ export default function ClientsDataGrid() {
             }}
           />
         ),
-        headerRenderer: (props) => (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <span>Requirement</span>
+        renderHeaderCell: () => (
+          <EditableColumnHeader
+            columnKey="requirement"
+            columnName={columnRenames['requirement'] || 'Requirement'}
+            onRename={(newName) => handleRenameColumn('requirement', newName)}
+            onDelete={() => handleHideColumn('requirement')}
+            canEdit={true}
+            canDelete={true}
+          >
             <ColumnFilter
               columnKey="requirement"
               columnName="Requirement"
@@ -439,13 +552,13 @@ export default function ClientsDataGrid() {
                 });
               }}
             />
-          </div>
+          </EditableColumnHeader>
         ),
       },
       {
         key: 'system',
-        name: 'System',
-        width: 120,
+        name: columnRenames['system'] || 'System',
+        width: savedWidths['system'] || 120,
         editable: true,
         renderEditCell: (props) => (
           <input
@@ -458,9 +571,15 @@ export default function ClientsDataGrid() {
             }}
           />
         ),
-        headerRenderer: (props) => (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <span>System</span>
+        renderHeaderCell: () => (
+          <EditableColumnHeader
+            columnKey="system"
+            columnName={columnRenames['system'] || 'System'}
+            onRename={(newName) => handleRenameColumn('system', newName)}
+            onDelete={() => handleHideColumn('system')}
+            canEdit={true}
+            canDelete={true}
+          >
             <ColumnFilter
               columnKey="system"
               columnName="System"
@@ -473,14 +592,24 @@ export default function ClientsDataGrid() {
                 });
               }}
             />
-          </div>
+          </EditableColumnHeader>
         ),
       },
       {
         key: 'notes',
-        name: 'Notes',
-        width: 200,
+        name: columnRenames['notes'] || 'Notes',
+        width: savedWidths['notes'] || 200,
         editable: true,
+        renderHeaderCell: () => (
+          <EditableColumnHeader
+            columnKey="notes"
+            columnName={columnRenames['notes'] || 'Notes'}
+            onRename={(newName) => handleRenameColumn('notes', newName)}
+            onDelete={() => handleHideColumn('notes')}
+            canEdit={true}
+            canDelete={true}
+          />
+        ),
         renderEditCell: (props) => (
           <textarea
             autoFocus
@@ -495,7 +624,7 @@ export default function ClientsDataGrid() {
         ),
       },
     ],
-    [clients, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters]
+    [clients, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths]
   );
 
   // Dynamic custom columns
@@ -591,8 +720,8 @@ export default function ClientsDataGrid() {
 
   // Combine all columns (no Actions column - use checkbox + bulk delete instead)
   const allColumns = useMemo(
-    () => [...standardColumns, ...dynamicColumns],
-    [standardColumns, dynamicColumns]
+    () => [...standardColumns, ...dynamicColumns].filter(col => !hiddenColumns.has(col.key as string)),
+    [standardColumns, dynamicColumns, hiddenColumns]
   );
 
   // Reorder columns based on saved preferences
