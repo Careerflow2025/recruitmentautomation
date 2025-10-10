@@ -12,6 +12,7 @@ import { getCurrentUserId } from '@/lib/auth-helpers';
 import { getCustomColumns, CustomColumn, getCustomColumnData, setCustomColumnValue } from '@/lib/custom-columns';
 import { normalizeRole } from '@/lib/utils/roleNormalizer';
 import { debounce } from 'lodash';
+import CustomColumnManager from './CustomColumnManager';
 
 export default function CandidatesDataGrid() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -57,25 +58,25 @@ export default function CandidatesDataGrid() {
   } = useColumnPreferences(userId, 'candidates');
 
   // Load custom columns
-  useEffect(() => {
+  const loadCustomColumns = useCallback(async () => {
     if (!userId) {
       console.log('[CandidatesGrid] No userId yet, skipping custom columns');
       return;
     }
 
-    async function loadCustomColumns() {
-      try {
-        console.log('[CandidatesGrid] Loading custom columns...');
-        const cols = await getCustomColumns('candidates');
-        console.log('[CandidatesGrid] ✅ Loaded custom columns:', cols.length);
-        setCustomColumns(cols);
-      } catch (error) {
-        console.error('[CandidatesGrid] ❌ Error loading custom columns:', error);
-      }
+    try {
+      console.log('[CandidatesGrid] Loading custom columns...');
+      const cols = await getCustomColumns('candidates');
+      console.log('[CandidatesGrid] ✅ Loaded custom columns:', cols.length);
+      setCustomColumns(cols);
+    } catch (error) {
+      console.error('[CandidatesGrid] ❌ Error loading custom columns:', error);
     }
-
-    loadCustomColumns();
   }, [userId]);
+
+  useEffect(() => {
+    loadCustomColumns();
+  }, [loadCustomColumns]);
 
   // Sync with Supabase
   const {
@@ -737,6 +738,10 @@ export default function CandidatesDataGrid() {
               🗑️ Delete ({selectedRows.size})
             </button>
           )}
+          <CustomColumnManager
+            tableName="candidates"
+            onColumnAdded={loadCustomColumns}
+          />
           <button onClick={handleAddRow} className="grid-toolbar-button grid-toolbar-button-primary">
             ➕ Add Candidate
           </button>

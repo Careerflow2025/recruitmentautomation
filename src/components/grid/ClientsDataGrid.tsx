@@ -12,6 +12,7 @@ import { getCurrentUserId } from '@/lib/auth-helpers';
 import { getCustomColumns, CustomColumn, getCustomColumnData, setCustomColumnValue } from '@/lib/custom-columns';
 import { normalizeRole } from '@/lib/utils/roleNormalizer';
 import { debounce } from 'lodash';
+import CustomColumnManager from './CustomColumnManager';
 
 // Extended Client type with user_id (exists in DB but not in type definition)
 type ClientWithUser = Client & { user_id?: string };
@@ -37,20 +38,20 @@ export default function ClientsDataGrid() {
   }, []);
 
   // Load custom columns
-  useEffect(() => {
+  const loadCustomColumns = useCallback(async () => {
     if (!userId) return;
 
-    async function loadCustomColumns() {
-      try {
-        const cols = await getCustomColumns('clients');
-        setCustomColumns(cols);
-      } catch (error) {
-        console.error('Error loading custom columns:', error);
-      }
+    try {
+      const cols = await getCustomColumns('clients');
+      setCustomColumns(cols);
+    } catch (error) {
+      console.error('Error loading custom columns:', error);
     }
-
-    loadCustomColumns();
   }, [userId]);
+
+  useEffect(() => {
+    loadCustomColumns();
+  }, [loadCustomColumns]);
 
   // Memoize filters to prevent infinite loop
   const supabaseFilters = useMemo(() => {
@@ -672,6 +673,10 @@ export default function ClientsDataGrid() {
               🗑️ Delete ({selectedRows.size})
             </button>
           )}
+          <CustomColumnManager
+            tableName="clients"
+            onColumnAdded={loadCustomColumns}
+          />
           <button onClick={handleAddRow} className="grid-toolbar-button grid-toolbar-button-primary">
             ➕ Add Client
           </button>
