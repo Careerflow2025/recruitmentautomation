@@ -48,20 +48,29 @@ export async function addCustomColumn(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  // Generate column name from label (lowercase, replace spaces with underscores)
-  const columnName = `custom_${columnLabel.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+  // Get ALL existing columns to find unique column_name
+  const { data: allColumns } = await supabase
+    .from('custom_columns')
+    .select('column_name, column_order')
+    .eq('user_id', user.id)
+    .eq('table_name', tableName);
+
+  // Generate base column name from label
+  const baseColumnName = `custom_${columnLabel.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+
+  // Find a unique column name by appending a number if needed
+  let columnName = baseColumnName;
+  let counter = 1;
+  const existingNames = new Set((allColumns || []).map(col => col.column_name));
+
+  while (existingNames.has(columnName)) {
+    columnName = `${baseColumnName}_${counter}`;
+    counter++;
+  }
 
   // Get current max order
-  const { data: existingColumns } = await supabase
-    .from('custom_columns')
-    .select('column_order')
-    .eq('user_id', user.id)
-    .eq('table_name', tableName)
-    .order('column_order', { ascending: false })
-    .limit(1);
-
-  const nextOrder = existingColumns && existingColumns.length > 0
-    ? existingColumns[0].column_order + 1
+  const nextOrder = allColumns && allColumns.length > 0
+    ? Math.max(...allColumns.map(col => col.column_order)) + 1
     : 0;
 
   const { data, error } = await supabase

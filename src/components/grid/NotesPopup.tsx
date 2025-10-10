@@ -205,7 +205,8 @@ export default function NotesPopup({
             <div
               style={{
                 whiteSpace: 'pre-wrap',
-                fontSize: '14px',
+                fontSize: '16px',
+                fontWeight: '500',
                 lineHeight: '1.6',
                 color: '#000000',
               }}
@@ -216,17 +217,19 @@ export default function NotesPopup({
             <textarea
               value={editedContent}
               onChange={(e) => setEditedContent(e.target.value)}
+              className="notes-textarea"
               style={{
                 width: '100%',
                 height: '100%',
-                border: '1px solid #e2e8f0',
+                border: '1px solid #cbd5e1',
                 borderRadius: '6px',
                 padding: '12px',
-                fontSize: '14px',
+                fontSize: '16px',
+                fontWeight: '500',
                 lineHeight: '1.6',
                 resize: 'none',
                 outline: 'none',
-                fontFamily: 'inherit',
+                fontFamily: 'system-ui, -apple-system, sans-serif',
                 color: '#000000',
                 backgroundColor: '#ffffff',
               }}

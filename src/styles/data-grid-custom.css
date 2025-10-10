@@ -457,6 +457,17 @@
   background-color: #334155;
 }
 
+/* Notes Popup Text - Make sure it's visible */
+.notes-textarea,
+.notes-textarea:focus,
+.notes-textarea:active {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  background-color: #ffffff !important;
+  font-weight: 500 !important;
+  opacity: 1 !important;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .rdg {
