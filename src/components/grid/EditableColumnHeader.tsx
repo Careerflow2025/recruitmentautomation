@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import ColumnTextFilter from './ColumnTextFilter';
+import { useState, useRef } from 'react';
+import ColumnTextFilterPopup from './ColumnTextFilterPopup';
 
 interface EditableColumnHeaderProps {
   columnKey: string;
@@ -31,6 +31,8 @@ export default function EditableColumnHeader({
 }: EditableColumnHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(columnName);
+  const [showFilterPopup, setShowFilterPopup] = useState(false);
+  const filterButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleSave = async () => {
     if (!editValue.trim()) {
@@ -91,8 +93,7 @@ export default function EditableColumnHeader({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '4px' }}>
-      {/* Header row with name and buttons */}
+    <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '4px' }}>
         <span
           style={{
@@ -108,7 +109,37 @@ export default function EditableColumnHeader({
         >
           {columnName}
         </span>
+
+        {/* Text filter icon */}
+        {showTextFilter && onTextFilterChange && (
+          <button
+            ref={filterButtonRef}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowFilterPopup(!showFilterPopup);
+            }}
+            style={{
+              background: textFilterValue ? '#3b82f6' : 'rgba(255, 255, 255, 0.2)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '3px',
+              padding: '2px 6px',
+              cursor: 'pointer',
+              fontSize: '11px',
+              lineHeight: '1',
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title={textFilterValue ? `Filtering: ${textFilterValue}` : `Filter ${columnName}`}
+          >
+            🔍
+          </button>
+        )}
+
         {children}
+
         {canDelete && (
           <button
             onClick={(e) => {
@@ -134,14 +165,16 @@ export default function EditableColumnHeader({
         )}
       </div>
 
-      {/* Text filter input */}
-      {showTextFilter && onTextFilterChange && (
-        <ColumnTextFilter
+      {/* Text filter popup */}
+      {showFilterPopup && showTextFilter && onTextFilterChange && (
+        <ColumnTextFilterPopup
           value={textFilterValue}
           onChange={onTextFilterChange}
           placeholder={`Filter ${columnName}...`}
+          triggerRef={filterButtonRef}
+          onClose={() => setShowFilterPopup(false)}
         />
       )}
-    </div>
+    </>
   );
 }
