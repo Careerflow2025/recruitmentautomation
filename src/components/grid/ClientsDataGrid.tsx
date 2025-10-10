@@ -57,6 +57,11 @@ export default function ClientsDataGrid() {
     return userId ? { user_id: userId } : {};
   }, [userId]);
 
+  // Memoize orderBy to prevent infinite loop
+  const supabaseOrderBy = useMemo(() => {
+    return { column: 'created_at', ascending: false };
+  }, []);
+
   // Memoize error handler to prevent infinite loop
   const handleSupabaseError = useCallback((error: Error) => {
     alert(`Error: ${error.message}`);
@@ -72,7 +77,7 @@ export default function ClientsDataGrid() {
   } = useSupabaseGridSync<ClientWithUser>({
     tableName: 'clients',
     filters: supabaseFilters,
-    orderBy: { column: 'created_at', ascending: false },
+    orderBy: supabaseOrderBy,
     onError: handleSupabaseError,
   });
 

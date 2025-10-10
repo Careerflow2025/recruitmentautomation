@@ -37,6 +37,11 @@ export default function CandidatesDataGrid() {
     return userId ? { user_id: userId } : {};
   }, [userId]);
 
+  // Memoize orderBy to prevent infinite loop
+  const supabaseOrderBy = useMemo(() => {
+    return { column: 'created_at', ascending: false };
+  }, []);
+
   // Memoize error handler to prevent infinite loop
   const handleSupabaseError = useCallback((error: Error) => {
     console.error('[CandidatesGrid] Supabase error:', error);
@@ -82,7 +87,7 @@ export default function CandidatesDataGrid() {
   } = useSupabaseGridSync<Candidate>({
     tableName: 'candidates',
     filters: supabaseFilters,
-    orderBy: { column: 'created_at', ascending: false },
+    orderBy: supabaseOrderBy,
     onError: handleSupabaseError,
   });
 
