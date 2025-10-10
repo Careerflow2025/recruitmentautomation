@@ -753,6 +753,15 @@ export default function ClientsDataGrid() {
               className="rdg-text-editor"
               value={value}
               onChange={(e) => {
+                // Update local state immediately for responsive typing
+                setCustomData((prev) => ({
+                  ...prev,
+                  [props.row.id]: {
+                    ...prev[props.row.id],
+                    [col.column_name]: e.target.value,
+                  },
+                }));
+                // Save to database with debounce
                 debouncedCustomUpdate(props.row.id, col.column_name, e.target.value);
               }}
             />
