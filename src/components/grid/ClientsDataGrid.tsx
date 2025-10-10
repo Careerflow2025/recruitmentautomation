@@ -9,7 +9,7 @@ import { useColumnPreferences } from '@/hooks/useColumnPreferences';
 import ColumnFilter from './ColumnFilter';
 import { Client } from '@/types';
 import { getCurrentUserId } from '@/lib/auth-helpers';
-import { getCustomColumns, CustomColumn, getCustomColumnData, setCustomColumnValue, updateCustomColumn } from '@/lib/custom-columns';
+import { getCustomColumns, CustomColumn, getCustomColumnData, setCustomColumnValue, updateCustomColumn, deleteCustomColumn } from '@/lib/custom-columns';
 import { normalizeRole } from '@/lib/utils/roleNormalizer';
 import { debounce } from 'lodash';
 import CustomColumnManager from './CustomColumnManager';
@@ -155,6 +155,22 @@ export default function ClientsDataGrid() {
     } catch (error) {
       console.error('Failed to update column header:', error);
       alert('Failed to rename column');
+    }
+  }, [loadCustomColumns]);
+
+  // Handle deleting custom column
+  const handleDeleteColumn = useCallback(async (columnId: string, columnName: string) => {
+    if (!confirm(`Delete column "${columnName}"? This will remove all data in this column.`)) {
+      return;
+    }
+
+    try {
+      await deleteCustomColumn(columnId);
+      // Reload custom columns to reflect the change
+      await loadCustomColumns();
+    } catch (error) {
+      console.error('Failed to delete column:', error);
+      alert('Failed to delete column');
     }
   }, [loadCustomColumns]);
 
@@ -515,15 +531,36 @@ export default function ClientsDataGrid() {
           }
 
           return (
-            <div
-              style={{ cursor: 'pointer', userSelect: 'none', padding: '4px' }}
-              onClick={() => {
-                setEditingHeaderId(col.id);
-                setHeaderEditValue(col.column_label);
-              }}
-              title="Click to rename this column"
-            >
-              {col.column_label}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}>
+              <span
+                style={{ flex: 1, cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => {
+                  setEditingHeaderId(col.id);
+                  setHeaderEditValue(col.column_label);
+                }}
+                title="Click to rename this column"
+              >
+                {col.column_label}
+              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteColumn(col.id, col.column_label);
+                }}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.9)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '2px 6px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                }}
+                title="Delete this column"
+              >
+                ✕
+              </button>
             </div>
           );
         },
@@ -543,32 +580,13 @@ export default function ClientsDataGrid() {
           );
         },
       })),
-    [customColumns, customData, debouncedCustomUpdate, editingHeaderId, headerEditValue, handleSaveHeaderEdit]
+    [customColumns, customData, debouncedCustomUpdate, editingHeaderId, headerEditValue, handleSaveHeaderEdit, handleDeleteColumn]
   );
 
-  // Actions column
-  const actionsColumn: Column<ClientWithUser> = useMemo(
-    () => ({
-      key: 'actions',
-      name: 'Actions',
-      width: 100,
-      frozen: true,
-      renderCell: ({ row }) => (
-        <button
-          onClick={() => handleDelete(row.id)}
-          className="cell-action-button cell-action-button-delete"
-        >
-          Delete
-        </button>
-      ),
-    }),
-    []
-  );
-
-  // Combine all columns
+  // Combine all columns (no Actions column - use checkbox + bulk delete instead)
   const allColumns = useMemo(
-    () => [...standardColumns, ...dynamicColumns, actionsColumn],
-    [standardColumns, dynamicColumns, actionsColumn]
+    () => [...standardColumns, ...dynamicColumns],
+    [standardColumns, dynamicColumns]
   );
 
   // Reorder columns based on saved preferences

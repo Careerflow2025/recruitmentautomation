@@ -83,37 +83,10 @@
 }
 
 /* ====================================
-   COLUMN RESIZE - Professional & Easy to Use
+   COLUMN RESIZE - Let react-data-grid handle it
    ==================================== */
 
-/* Make header cells show resize cursor near right edge */
-.rdg-header-row .rdg-cell {
-  cursor: default;
-  position: relative;
-}
-
-/* Larger hit area for resize at column edges - 12px wide invisible zone */
-.rdg-header-row .rdg-cell::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: -6px;
-  bottom: 0;
-  width: 12px;
-  cursor: col-resize;
-  z-index: 10;
-}
-
-/* Highlight column edge on hover to show it's resizable */
-.rdg-header-row .rdg-cell:hover {
-  border-right: 2px solid rgba(59, 130, 246, 0.4);
-}
-
-/* Strong visual feedback when actively resizing */
-.rdg-header-row .rdg-cell:active {
-  border-right: 2px solid #3b82f6;
-  user-select: none;
-}
+/* Remove all custom resize styling - let the grid handle it naturally */
 
 /* Fill handle (drag to copy) - Excel-like */
 .rdg-cell-drag-handle {
