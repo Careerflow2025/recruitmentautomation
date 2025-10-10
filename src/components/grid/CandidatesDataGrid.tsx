@@ -122,7 +122,7 @@ export default function CandidatesDataGrid() {
     loadCustomData();
   }, [candidates, customColumns]);
 
-  // Debounced update for cell changes
+  // Debounced update for cell changes - increased to 1500ms for better typing experience
   const debouncedUpdate = useMemo(
     () =>
       debounce(async (id: string, field: string, value: any) => {
@@ -131,11 +131,11 @@ export default function CandidatesDataGrid() {
         } catch (error) {
           console.error('Update failed:', error);
         }
-      }, 300),
+      }, 1500),
     [updateRow]
   );
 
-  // Debounced update for custom columns
+  // Debounced update for custom columns - increased to 1500ms
   const debouncedCustomUpdate = useMemo(
     () =>
       debounce(async (candidateId: string, columnName: string, value: string) => {
@@ -152,7 +152,7 @@ export default function CandidatesDataGrid() {
         } catch (error) {
           console.error('Custom column update failed:', error);
         }
-      }, 300),
+      }, 1500),
     []
   );
 

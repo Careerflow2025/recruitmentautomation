@@ -103,7 +103,7 @@ export default function ClientsDataGrid() {
     loadCustomData();
   }, [clients, customColumns]);
 
-  // Debounced update for cell changes
+  // Debounced update for cell changes - increased to 1500ms for better typing experience
   const debouncedUpdate = useMemo(
     () =>
       debounce(async (id: string, field: string, value: any) => {
@@ -112,11 +112,11 @@ export default function ClientsDataGrid() {
         } catch (error) {
           console.error('Update failed:', error);
         }
-      }, 300),
+      }, 1500),
     [updateRow]
   );
 
-  // Debounced update for custom columns
+  // Debounced update for custom columns - increased to 1500ms
   const debouncedCustomUpdate = useMemo(
     () =>
       debounce(async (clientId: string, columnName: string, value: string) => {
@@ -132,7 +132,7 @@ export default function ClientsDataGrid() {
         } catch (error) {
           console.error('Custom column update failed:', error);
         }
-      }, 300),
+      }, 1500),
     []
   );
 
