@@ -57,6 +57,11 @@ export default function ClientsDataGrid() {
     return userId ? { user_id: userId } : {};
   }, [userId]);
 
+  // Memoize error handler to prevent infinite loop
+  const handleSupabaseError = useCallback((error: Error) => {
+    alert(`Error: ${error.message}`);
+  }, []);
+
   // Sync with Supabase
   const {
     data: clients,
@@ -68,7 +73,7 @@ export default function ClientsDataGrid() {
     tableName: 'clients',
     filters: supabaseFilters,
     orderBy: { column: 'created_at', ascending: false },
-    onError: (error) => alert(`Error: ${error.message}`),
+    onError: handleSupabaseError,
   });
 
   // Load custom column data for all clients

@@ -37,6 +37,12 @@ export default function CandidatesDataGrid() {
     return userId ? { user_id: userId } : {};
   }, [userId]);
 
+  // Memoize error handler to prevent infinite loop
+  const handleSupabaseError = useCallback((error: Error) => {
+    console.error('[CandidatesGrid] Supabase error:', error);
+    setError(`Database error: ${error.message}. Check console for details.`);
+  }, []);
+
   // Column preferences (order, widths, filters)
   const {
     columnOrder: savedOrder,
@@ -77,10 +83,7 @@ export default function CandidatesDataGrid() {
     tableName: 'candidates',
     filters: supabaseFilters,
     orderBy: { column: 'created_at', ascending: false },
-    onError: (error) => {
-      console.error('[CandidatesGrid] Supabase error:', error);
-      setError(`Database error: ${error.message}. Check console for details.`);
-    },
+    onError: handleSupabaseError,
   });
 
   // Load custom column data for all candidates
