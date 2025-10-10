@@ -22,6 +22,9 @@ export function useSupabaseGridSync<T extends { id: string }>(
 
   // Initial data load
   const loadData = useCallback(async () => {
+    console.log(`[useSupabaseGridSync] Loading ${tableName}...`);
+    console.log(`[useSupabaseGridSync] Filters:`, filters);
+
     try {
       setLoading(true);
 
@@ -29,22 +32,30 @@ export function useSupabaseGridSync<T extends { id: string }>(
 
       // Apply filters (multi-tenancy)
       Object.entries(filters).forEach(([key, value]) => {
+        console.log(`[useSupabaseGridSync] Applying filter: ${key} = ${value}`);
         query = query.eq(key, value);
       });
 
       if (orderBy) {
+        console.log(`[useSupabaseGridSync] Ordering by: ${orderBy.column} (${orderBy.ascending ? 'ASC' : 'DESC'})`);
         query = query.order(orderBy.column, { ascending: orderBy.ascending });
       }
 
+      console.log(`[useSupabaseGridSync] Executing query...`);
       const { data: fetchedData, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error(`[useSupabaseGridSync] Query error:`, error);
+        throw error;
+      }
 
+      console.log(`[useSupabaseGridSync] ✅ Loaded ${fetchedData?.length || 0} rows`);
       setData(fetchedData as T[]);
     } catch (err) {
-      console.error('Error loading data:', err);
+      console.error(`[useSupabaseGridSync] ❌ Error loading ${tableName}:`, err);
       onError?.(err as Error);
     } finally {
+      console.log(`[useSupabaseGridSync] Loading complete. Setting loading=false`);
       setLoading(false);
     }
   }, [tableName, orderBy, filters, onError]);

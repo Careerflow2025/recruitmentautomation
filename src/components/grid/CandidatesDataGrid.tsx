@@ -42,14 +42,19 @@ export default function CandidatesDataGrid() {
 
   // Load custom columns
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      console.log('[CandidatesGrid] No userId yet, skipping custom columns');
+      return;
+    }
 
     async function loadCustomColumns() {
       try {
+        console.log('[CandidatesGrid] Loading custom columns...');
         const cols = await getCustomColumns('candidates');
+        console.log('[CandidatesGrid] ✅ Loaded custom columns:', cols.length);
         setCustomColumns(cols);
       } catch (error) {
-        console.error('Error loading custom columns:', error);
+        console.error('[CandidatesGrid] ❌ Error loading custom columns:', error);
       }
     }
 
@@ -75,9 +80,17 @@ export default function CandidatesDataGrid() {
 
   // Load custom column data for all candidates
   useEffect(() => {
-    if (candidates.length === 0 || customColumns.length === 0) return;
+    if (candidates.length === 0) {
+      console.log('[CandidatesGrid] No candidates yet, skipping custom data');
+      return;
+    }
+    if (customColumns.length === 0) {
+      console.log('[CandidatesGrid] No custom columns, skipping custom data');
+      return;
+    }
 
     async function loadCustomData() {
+      console.log(`[CandidatesGrid] Loading custom data for ${candidates.length} candidates...`);
       const dataMap: Record<string, Record<string, string | null>> = {};
 
       for (const candidate of candidates) {
@@ -85,10 +98,11 @@ export default function CandidatesDataGrid() {
           const data = await getCustomColumnData('candidates', candidate.id);
           dataMap[candidate.id] = data;
         } catch (error) {
-          console.error(`Error loading custom data for ${candidate.id}:`, error);
+          console.error(`[CandidatesGrid] ❌ Error loading custom data for ${candidate.id}:`, error);
         }
       }
 
+      console.log('[CandidatesGrid] ✅ Custom data loaded');
       setCustomData(dataMap);
     }
 
