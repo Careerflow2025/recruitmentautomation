@@ -705,6 +705,17 @@ export default function ClientsDataGrid() {
     [clients, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths, textFilters, handleTextFilterChange]
   );
 
+  // Handle renaming custom column
+  const handleRenameCustomColumn = useCallback(async (columnId: string, newName: string) => {
+    try {
+      await updateCustomColumn(columnId, newName);
+      await loadCustomColumns();
+    } catch (error) {
+      console.error('Failed to update column header:', error);
+      alert('Failed to rename column');
+    }
+  }, [loadCustomColumns]);
+
   // Dynamic custom columns
   const dynamicColumns: Column<ClientWithUser>[] = useMemo(
     () =>
@@ -715,69 +726,24 @@ export default function ClientsDataGrid() {
         editable: true,
         cellClass: 'custom-column-cell',
         headerCellClass: 'custom-column-header',
-        renderHeaderCell: ({ column }) => {
-          const isEditing = editingHeaderId === col.id;
-
-          if (isEditing) {
-            return (
-              <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                <input
-                  autoFocus
-                  type="text"
-                  className="rdg-text-editor"
-                  style={{ flex: 1, padding: '4px', fontSize: '13px', border: '1px solid #3b82f6' }}
-                  value={headerEditValue}
-                  onChange={(e) => setHeaderEditValue(e.target.value)}
-                  onBlur={() => handleSaveHeaderEdit(col.id, headerEditValue)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSaveHeaderEdit(col.id, headerEditValue);
-                    } else if (e.key === 'Escape') {
-                      setEditingHeaderId(null);
-                    }
-                  }}
-                />
-              </div>
-            );
-          }
-
-          return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '4px' }}>
-              <span
-                style={{ flex: 1, cursor: 'pointer', userSelect: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}
-                onClick={() => {
-                  setEditingHeaderId(col.id);
-                  setHeaderEditValue(col.column_label);
-                }}
-                title={`Click to rename "${col.column_label}"`}
-              >
-                {column.name}
-              </span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteColumn(col.id, col.column_label);
-                }}
-                style={{
-                  background: '#ef4444',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '3px',
-                  padding: '1px 5px',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  fontWeight: 'bold',
-                  lineHeight: '1',
-                  flexShrink: 0,
-                }}
-                title={`Delete "${col.column_label}" column`}
-              >
-                ✕
-              </button>
-            </div>
-          );
-        },
-        renderCell: ({ row }) => customData[row.id]?.[col.column_name] || '',
+        renderHeaderCell: () => (
+          <EditableColumnHeader
+            columnKey={col.column_name}
+            columnName={col.column_label}
+            onRename={(newName) => handleRenameCustomColumn(col.id, newName)}
+            onDelete={() => handleDeleteColumn(col.id, col.column_label)}
+            canEdit={true}
+            canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters[col.column_name] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange(col.column_name, value)}
+          />
+        ),
+        renderCell: ({ row }) => (
+          <div title={customData[row.id]?.[col.column_name] || ''}>
+            {customData[row.id]?.[col.column_name] || ''}
+          </div>
+        ),
         renderEditCell: (props) => {
           const value = customData[props.row.id]?.[col.column_name] || '';
           return (
@@ -793,7 +759,7 @@ export default function ClientsDataGrid() {
           );
         },
       })),
-    [customColumns, customData, debouncedCustomUpdate, editingHeaderId, headerEditValue, handleSaveHeaderEdit, handleDeleteColumn, savedWidths]
+    [customColumns, customData, debouncedCustomUpdate, handleRenameCustomColumn, handleDeleteColumn, savedWidths, textFilters, handleTextFilterChange]
   );
 
   // Combine all columns (no Actions column - use checkbox + bulk delete instead)
@@ -836,18 +802,31 @@ export default function ClientsDataGrid() {
       }
     });
 
-    // Apply text filters
+    // Apply text filters (standard + custom columns)
     Object.entries(textFilters).forEach(([columnKey, filterText]) => {
       if (filterText.trim()) {
         filtered = filtered.filter(client => {
-          const value = String(client[columnKey as keyof ClientWithUser] || '').toLowerCase();
-          return value.includes(filterText.toLowerCase());
+          // Check if it's a standard column
+          const standardValue = client[columnKey as keyof ClientWithUser];
+          if (standardValue !== undefined) {
+            const value = String(standardValue || '').toLowerCase();
+            return value.includes(filterText.toLowerCase());
+          }
+
+          // Check if it's a custom column
+          const customValue = customData[client.id]?.[columnKey];
+          if (customValue !== undefined) {
+            const value = String(customValue || '').toLowerCase();
+            return value.includes(filterText.toLowerCase());
+          }
+
+          return false;
         });
       }
     });
 
     return filtered;
-  }, [clients, columnFilters, textFilters]);
+  }, [clients, columnFilters, textFilters, customData]);
 
   // Apply sorting
   const sortedClients = useMemo(() => {
