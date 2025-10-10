@@ -706,9 +706,9 @@ export default function ClientsDataGrid() {
   );
 
   // Handle renaming custom column
-  const handleRenameCustomColumn = useCallback(async (columnId: string, newName: string) => {
+  const handleRenameCustomColumn = useCallback(async (columnId: string, newName: string, columnType: 'text' | 'number' | 'date' | 'email' | 'phone' | 'url') => {
     try {
-      await updateCustomColumn(columnId, newName);
+      await updateCustomColumn(columnId, newName, columnType);
       await loadCustomColumns();
     } catch (error) {
       console.error('Failed to update column header:', error);
@@ -730,7 +730,7 @@ export default function ClientsDataGrid() {
           <EditableColumnHeader
             columnKey={col.column_name}
             columnName={col.column_label}
-            onRename={(newName) => handleRenameCustomColumn(col.id, newName)}
+            onRename={(newName) => handleRenameCustomColumn(col.id, newName, col.column_type)}
             onDelete={() => handleDeleteColumn(col.id, col.column_label)}
             canEdit={true}
             canDelete={true}
