@@ -54,8 +54,10 @@ export default function CandidatesDataGrid() {
   // Column preferences (order, widths, filters)
   const {
     columnOrder: savedOrder,
+    columnWidths: savedWidths,
     columnFilters,
     updateColumnOrder,
+    updateColumnWidths,
     updateColumnFilters,
   } = useColumnPreferences(userId, 'candidates');
 
@@ -254,7 +256,7 @@ export default function CandidatesDataGrid() {
       {
         key: 'first_name',
         name: 'First Name',
-        width: 150,
+        width: savedWidths['first_name'] || 150,
         editable: true,
         renderEditCell: (props) => (
           <input
@@ -522,45 +524,47 @@ export default function CandidatesDataGrid() {
       customColumns.map((col) => ({
         key: col.column_name,
         name: col.column_label,
-        width: 150,
+        width: savedWidths[col.column_name] || 150,
         editable: true,
         cellClass: 'custom-column-cell',
         headerCellClass: 'custom-column-header',
-        headerRenderer: () => {
+        renderHeaderCell: ({ column }) => {
           const isEditing = editingHeaderId === col.id;
 
           if (isEditing) {
             return (
-              <input
-                autoFocus
-                type="text"
-                className="rdg-text-editor"
-                style={{ width: '100%', padding: '4px', fontSize: '13px' }}
-                value={headerEditValue}
-                onChange={(e) => setHeaderEditValue(e.target.value)}
-                onBlur={() => handleSaveHeaderEdit(col.id, headerEditValue)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSaveHeaderEdit(col.id, headerEditValue);
-                  } else if (e.key === 'Escape') {
-                    setEditingHeaderId(null);
-                  }
-                }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                <input
+                  autoFocus
+                  type="text"
+                  className="rdg-text-editor"
+                  style={{ flex: 1, padding: '4px', fontSize: '13px', border: '1px solid #3b82f6' }}
+                  value={headerEditValue}
+                  onChange={(e) => setHeaderEditValue(e.target.value)}
+                  onBlur={() => handleSaveHeaderEdit(col.id, headerEditValue)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSaveHeaderEdit(col.id, headerEditValue);
+                    } else if (e.key === 'Escape') {
+                      setEditingHeaderId(null);
+                    }
+                  }}
+                />
+              </div>
             );
           }
 
           return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '4px' }}>
               <span
-                style={{ flex: 1, cursor: 'pointer', userSelect: 'none' }}
+                style={{ flex: 1, cursor: 'pointer', userSelect: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}
                 onClick={() => {
                   setEditingHeaderId(col.id);
                   setHeaderEditValue(col.column_label);
                 }}
-                title="Click to rename this column"
+                title={`Click to rename "${col.column_label}"`}
               >
-                {col.column_label}
+                {column.name}
               </span>
               <button
                 onClick={(e) => {
@@ -568,16 +572,18 @@ export default function CandidatesDataGrid() {
                   handleDeleteColumn(col.id, col.column_label);
                 }}
                 style={{
-                  background: 'rgba(239, 68, 68, 0.9)',
+                  background: '#ef4444',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '4px',
-                  padding: '2px 6px',
+                  borderRadius: '3px',
+                  padding: '1px 5px',
                   cursor: 'pointer',
-                  fontSize: '12px',
+                  fontSize: '11px',
                   fontWeight: 'bold',
+                  lineHeight: '1',
+                  flexShrink: 0,
                 }}
-                title="Delete this column"
+                title={`Delete "${col.column_label}" column`}
               >
                 ✕
               </button>
@@ -600,7 +606,7 @@ export default function CandidatesDataGrid() {
           );
         },
       })),
-    [customColumns, customData, debouncedCustomUpdate, editingHeaderId, headerEditValue, handleSaveHeaderEdit, handleDeleteColumn]
+    [customColumns, customData, debouncedCustomUpdate, editingHeaderId, headerEditValue, handleSaveHeaderEdit, handleDeleteColumn, savedWidths]
   );
 
   // Combine all columns (no Actions column - use checkbox + bulk delete instead)
@@ -654,6 +660,19 @@ export default function CandidatesDataGrid() {
     // Save new order
     updateColumnOrder(newOrder.map(col => col.key as string));
   }, [orderedColumns, updateColumnOrder]);
+
+  // Handle column resize - SAVE WIDTHS
+  const handleColumnResize = useCallback((idx: number, width: number) => {
+    const column = orderedColumns[idx];
+    if (!column) return;
+
+    const newWidths = {
+      ...savedWidths,
+      [column.key]: width,
+    };
+
+    updateColumnWidths(newWidths);
+  }, [orderedColumns, savedWidths, updateColumnWidths]);
 
   // Apply filters to data
   const filteredCandidates = useMemo(() => {
@@ -833,6 +852,7 @@ export default function CandidatesDataGrid() {
           sortColumns={sortColumns}
           onSortColumnsChange={setSortColumns}
           onColumnsReorder={handleColumnsReorder}
+          onColumnResize={handleColumnResize}
           defaultColumnOptions={{
             resizable: true,
             sortable: true,
