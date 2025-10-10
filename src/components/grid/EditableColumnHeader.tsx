@@ -138,8 +138,6 @@ export default function EditableColumnHeader({
           </button>
         )}
 
-        {children}
-
         {canDelete && (
           <button
             onClick={(e) => {

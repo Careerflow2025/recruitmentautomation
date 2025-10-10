@@ -111,6 +111,8 @@ export default function ColumnTextFilterPopup({
           borderRadius: '4px',
           outline: 'none',
           fontFamily: 'inherit',
+          color: '#000000',
+          backgroundColor: '#ffffff',
         }}
         onFocus={(e) => {
           e.target.style.borderColor = '#3b82f6';
