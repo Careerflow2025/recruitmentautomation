@@ -20,6 +20,17 @@ export default function MatchesPage() {
   const [generating, setGenerating] = useState(false);
   const [generateResult, setGenerateResult] = useState<{success: boolean; message: string; stats?: any} | null>(null);
   const [showStats, setShowStats] = useState(true);
+  const [visibleColumns, setVisibleColumns] = useState({
+    salary_budget: true,
+    availability_requirement: true,
+  });
+
+  const handleColumnVisibilityChange = (column: string, visible: boolean) => {
+    setVisibleColumns(prev => ({
+      ...prev,
+      [column]: visible
+    }));
+  };
 
   const fetchMatches = async (showLoading = false) => {
       try {
@@ -469,10 +480,12 @@ export default function MatchesPage() {
           onRoleMatchFilterChange={setRoleMatchFilter}
           onTimeFilterChange={setTimeFilter}
           onRoleFilterChange={setRoleFilter}
+          visibleColumns={visibleColumns}
+          onColumnVisibilityChange={handleColumnVisibilityChange}
         />
 
         {/* Table */}
-        <MatchesTable matches={filteredMatches} />
+        <MatchesTable matches={filteredMatches} visibleColumns={visibleColumns} />
 
         {/* Footer */}
         <div className="mt-2 text-sm text-gray-600">

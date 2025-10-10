@@ -12,6 +12,10 @@ import { getCurrentUserId } from '@/lib/auth-helpers';
 
 interface MatchesTableProps {
   matches: Match[];
+  visibleColumns: {
+    salary_budget: boolean;
+    availability_requirement: boolean;
+  };
 }
 
 interface ModalInstance {
@@ -35,7 +39,7 @@ interface MatchStatusData {
   notes: MatchNote[];
 }
 
-export function MatchesTable({ matches }: MatchesTableProps) {
+export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [openModals, setOpenModals] = useState<ModalInstance[]>([]);
@@ -634,12 +638,16 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                 CL Postcode
               </th>
 
-              <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-700 border-r border-blue-600">
-                CAN Salary
-              </th>
-              <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-800 border-r border-blue-700">
-                CL Budget
-              </th>
+              {visibleColumns.salary_budget && (
+                <>
+                  <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-700 border-r border-blue-600">
+                    CAN Salary
+                  </th>
+                  <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-800 border-r border-blue-700">
+                    CL Budget
+                  </th>
+                </>
+              )}
 
               <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-700 border-r border-blue-600">
                 CAN Role
@@ -648,12 +656,16 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                 CL Role
               </th>
 
-              <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-700 border-r border-blue-600">
-                CAN Availability
-              </th>
-              <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-800 border-r border-blue-700">
-                CL Requirement
-              </th>
+              {visibleColumns.availability_requirement && (
+                <>
+                  <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-700 border-r border-blue-600">
+                    CAN Availability
+                  </th>
+                  <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-800 border-r border-blue-700">
+                    CL Requirement
+                  </th>
+                </>
+              )}
 
               <th className="px-4 py-2 text-center text-xs font-bold text-white uppercase tracking-wide bg-blue-800 sticky right-0 z-10 min-w-[140px]">
                 Status
@@ -736,14 +748,18 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                   {match.client.postcode}
                 </td>
 
-                {/* CAN Salary */}
-                <td className="px-2 py-2 whitespace-nowrap text-xs font-semibold text-green-700 border-r border-gray-200">
-                  {match.candidate.salary}
-                </td>
-                {/* CL Budget */}
-                <td className="px-2 py-2 whitespace-nowrap text-xs font-semibold text-green-700 border-r border-gray-200">
-                  {match.client.budget}
-                </td>
+                {visibleColumns.salary_budget && (
+                  <>
+                    {/* CAN Salary */}
+                    <td className="px-2 py-2 whitespace-nowrap text-xs font-semibold text-green-700 border-r border-gray-200">
+                      {match.candidate.salary}
+                    </td>
+                    {/* CL Budget */}
+                    <td className="px-2 py-2 whitespace-nowrap text-xs font-semibold text-green-700 border-r border-gray-200">
+                      {match.client.budget}
+                    </td>
+                  </>
+                )}
 
                 {/* CAN Role */}
                 <td className={`px-2 py-2 whitespace-nowrap text-xs font-medium text-gray-800 border-r border-gray-200 ${match.role_match ? 'border-2 border-green-500' : ''}`}>
@@ -754,14 +770,18 @@ export function MatchesTable({ matches }: MatchesTableProps) {
                   {match.client.role}
                 </td>
 
-                {/* CAN Availability */}
-                <td className={`px-2 py-2 whitespace-nowrap text-xs text-gray-700 border-r border-gray-200 ${match.candidate.days === match.client.requirement ? 'border-2 border-green-500' : ''}`}>
-                  {match.candidate.days}
-                </td>
-                {/* CL Requirement */}
-                <td className={`px-2 py-2 whitespace-nowrap text-xs text-gray-700 border-r border-gray-200 ${match.candidate.days === match.client.requirement ? 'border-2 border-green-500' : ''}`}>
-                  {match.client.requirement}
-                </td>
+                {visibleColumns.availability_requirement && (
+                  <>
+                    {/* CAN Availability */}
+                    <td className={`px-2 py-2 whitespace-nowrap text-xs text-gray-700 border-r border-gray-200 ${match.candidate.days === match.client.requirement ? 'border-2 border-green-500' : ''}`}>
+                      {match.candidate.days}
+                    </td>
+                    {/* CL Requirement */}
+                    <td className={`px-2 py-2 whitespace-nowrap text-xs text-gray-700 border-r border-gray-200 ${match.candidate.days === match.client.requirement ? 'border-2 border-green-500' : ''}`}>
+                      {match.client.requirement}
+                    </td>
+                  </>
+                )}
 
                 {/* Status */}
                 <td className="px-4 py-2 whitespace-nowrap text-center sticky right-0 z-10 bg-inherit min-w-[140px]">

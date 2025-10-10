@@ -8,6 +8,11 @@ interface MatchFiltersProps {
   onRoleMatchFilterChange: (value: 'all' | 'match' | 'location') => void;
   onTimeFilterChange: (minutes: number) => void;
   onRoleFilterChange: (role: string) => void;
+  visibleColumns: {
+    salary_budget: boolean;
+    availability_requirement: boolean;
+  };
+  onColumnVisibilityChange: (column: string, visible: boolean) => void;
 }
 
 export function MatchFilters({
@@ -18,10 +23,12 @@ export function MatchFilters({
   onRoleMatchFilterChange,
   onTimeFilterChange,
   onRoleFilterChange,
+  visibleColumns,
+  onColumnVisibilityChange,
 }: MatchFiltersProps) {
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-      <h3 className="text-sm font-bold text-gray-900 mb-3">Filters</h3>
+      <h3 className="text-sm font-bold text-gray-900 mb-3">Filters & Column Visibility</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Role Match Filter */}
@@ -107,6 +114,36 @@ export function MatchFilters({
         >
           Clear Filters
         </button>
+      </div>
+
+      {/* Column Visibility Toggles */}
+      <div className="mt-4 pt-4 border-t border-gray-200">
+        <h4 className="text-xs font-bold text-gray-700 mb-2 uppercase">Show Optional Column Pairs:</h4>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => onColumnVisibilityChange('salary_budget', !visibleColumns.salary_budget)}
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+              visibleColumns.salary_budget
+                ? 'bg-purple-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
+            }`}
+          >
+            {visibleColumns.salary_budget ? '✓' : '○'} Salary / Budget
+          </button>
+          <button
+            onClick={() => onColumnVisibilityChange('availability_requirement', !visibleColumns.availability_requirement)}
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+              visibleColumns.availability_requirement
+                ? 'bg-purple-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
+            }`}
+          >
+            {visibleColumns.availability_requirement ? '✓' : '○'} Availability / Requirement
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          💡 Required columns (ID, Postcode, Role, Commute, Status) are always visible
+        </p>
       </div>
     </div>
   );
