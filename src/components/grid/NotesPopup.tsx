@@ -207,7 +207,7 @@ export default function NotesPopup({
                 whiteSpace: 'pre-wrap',
                 fontSize: '14px',
                 lineHeight: '1.6',
-                color: '#1e293b',
+                color: '#000000',
               }}
             >
               {content || '(No notes)'}
@@ -227,6 +227,8 @@ export default function NotesPopup({
                 resize: 'none',
                 outline: 'none',
                 fontFamily: 'inherit',
+                color: '#000000',
+                backgroundColor: '#ffffff',
               }}
               placeholder="Enter notes here..."
             />

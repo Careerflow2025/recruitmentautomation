@@ -16,8 +16,17 @@ export default function CustomColumnManager({ tableName, onColumnAdded }: Custom
     try {
       // Get existing columns to determine next number
       const existingColumns = await getCustomColumns(tableName);
-      const customCount = existingColumns.filter(col => col.column_label.startsWith('Custom ')).length;
-      const nextNum = customCount + 1;
+
+      // Find the highest number used in "Custom X" column labels
+      const customNumbers = existingColumns
+        .filter(col => col.column_label.match(/^Custom \d+$/))
+        .map(col => {
+          const match = col.column_label.match(/^Custom (\d+)$/);
+          return match ? parseInt(match[1], 10) : 0;
+        });
+
+      const maxNum = customNumbers.length > 0 ? Math.max(...customNumbers) : 0;
+      const nextNum = maxNum + 1;
 
       // Add column with default name "Custom 1", "Custom 2", etc.
       const defaultName = `Custom ${nextNum}`;
