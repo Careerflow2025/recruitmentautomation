@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import ColumnTextFilter from './ColumnTextFilter';
 
 interface EditableColumnHeaderProps {
   columnKey: string;
@@ -10,6 +11,10 @@ interface EditableColumnHeaderProps {
   canEdit?: boolean;
   canDelete?: boolean;
   children?: React.ReactNode; // For filters, etc.
+  // Text filter props
+  showTextFilter?: boolean;
+  textFilterValue?: string;
+  onTextFilterChange?: (value: string) => void;
 }
 
 export default function EditableColumnHeader({
@@ -20,6 +25,9 @@ export default function EditableColumnHeader({
   canEdit = true,
   canDelete = false,
   children,
+  showTextFilter = true,
+  textFilterValue = '',
+  onTextFilterChange,
 }: EditableColumnHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(columnName);
@@ -83,44 +91,56 @@ export default function EditableColumnHeader({
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '4px' }}>
-      <span
-        style={{
-          flex: 1,
-          cursor: canEdit ? 'pointer' : 'default',
-          userSelect: 'none',
-          minWidth: 0,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis'
-        }}
-        onClick={() => canEdit && setIsEditing(true)}
-        title={canEdit ? `Click to rename "${columnName}"` : columnName}
-      >
-        {columnName}
-      </span>
-      {children}
-      {canDelete && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDelete();
-          }}
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '4px' }}>
+      {/* Header row with name and buttons */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '4px' }}>
+        <span
           style={{
-            background: '#ef4444',
-            color: 'white',
-            border: 'none',
-            borderRadius: '3px',
-            padding: '1px 5px',
-            cursor: 'pointer',
-            fontSize: '11px',
-            fontWeight: 'bold',
-            lineHeight: '1',
-            flexShrink: 0,
+            flex: 1,
+            cursor: canEdit ? 'pointer' : 'default',
+            userSelect: 'none',
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
           }}
-          title={`Delete "${columnName}" column`}
+          onClick={() => canEdit && setIsEditing(true)}
+          title={canEdit ? `Click to rename "${columnName}"` : columnName}
         >
-          ✕
-        </button>
+          {columnName}
+        </span>
+        {children}
+        {canDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete();
+            }}
+            style={{
+              background: '#ef4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: '3px',
+              padding: '1px 5px',
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontWeight: 'bold',
+              lineHeight: '1',
+              flexShrink: 0,
+            }}
+            title={`Delete "${columnName}" column`}
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {/* Text filter input */}
+      {showTextFilter && onTextFilterChange && (
+        <ColumnTextFilter
+          value={textFilterValue}
+          onChange={onTextFilterChange}
+          placeholder={`Filter ${columnName}...`}
+        />
       )}
     </div>
   );

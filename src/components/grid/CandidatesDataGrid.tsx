@@ -14,6 +14,7 @@ import { normalizeRole } from '@/lib/utils/roleNormalizer';
 import { debounce } from 'lodash';
 import CustomColumnManager from './CustomColumnManager';
 import EditableColumnHeader from './EditableColumnHeader';
+import NotesPopup from './NotesPopup';
 
 export default function CandidatesDataGrid() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -26,6 +27,8 @@ export default function CandidatesDataGrid() {
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
   const [editingHeaderId, setEditingHeaderId] = useState<string | null>(null);
   const [headerEditValue, setHeaderEditValue] = useState<string>('');
+  const [textFilters, setTextFilters] = useState<Record<string, string>>({});
+  const [notesPopup, setNotesPopup] = useState<{ candidateId: string; content: string } | null>(null);
 
   // Get current user
   useEffect(() => {
@@ -245,6 +248,14 @@ export default function CandidatesDataGrid() {
     }
   }, [hiddenColumns, userId]);
 
+  // Handle text filter change
+  const handleTextFilterChange = useCallback((columnKey: string, value: string) => {
+    setTextFilters(prev => ({
+      ...prev,
+      [columnKey]: value,
+    }));
+  }, []);
+
   // Extract unique values for filterable columns
   const getFilterOptions = useCallback((columnKey: string): string[] => {
     const values = candidates.map(row => {
@@ -315,7 +326,13 @@ export default function CandidatesDataGrid() {
             onDelete={() => handleHideColumn('first_name')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['first_name'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('first_name', value)}
           />
+        ),
+        renderCell: ({ row }) => (
+          <div title={row.first_name || ''}>{row.first_name || ''}</div>
         ),
         renderEditCell: (props) => (
           <input
@@ -342,7 +359,13 @@ export default function CandidatesDataGrid() {
             onDelete={() => handleHideColumn('last_name')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['last_name'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('last_name', value)}
           />
+        ),
+        renderCell: ({ row }) => (
+          <div title={row.last_name || ''}>{row.last_name || ''}</div>
         ),
         renderEditCell: (props) => (
           <input
@@ -369,7 +392,13 @@ export default function CandidatesDataGrid() {
             onDelete={() => handleHideColumn('email')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['email'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('email', value)}
           />
+        ),
+        renderCell: ({ row }) => (
+          <div title={row.email || ''}>{row.email || ''}</div>
         ),
         renderEditCell: (props) => (
           <input
@@ -397,7 +426,13 @@ export default function CandidatesDataGrid() {
             onDelete={() => handleHideColumn('phone')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['phone'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('phone', value)}
           />
+        ),
+        renderCell: ({ row }) => (
+          <div title={row.phone || ''}>{row.phone || ''}</div>
         ),
         renderEditCell: (props) => (
           <input
@@ -417,7 +452,9 @@ export default function CandidatesDataGrid() {
         name: columnRenames['role'] || 'Role',
         width: savedWidths['role'] || 150,
         editable: true,
-        renderCell: ({ row }) => normalizeRole(row.role),
+        renderCell: ({ row }) => (
+          <div title={normalizeRole(row.role)}>{normalizeRole(row.role)}</div>
+        ),
         renderEditCell: (props) => (
           <input
             autoFocus
@@ -437,6 +474,9 @@ export default function CandidatesDataGrid() {
             onDelete={() => handleHideColumn('role')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['role'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('role', value)}
           >
             <ColumnFilter
               columnKey="role"
@@ -459,6 +499,9 @@ export default function CandidatesDataGrid() {
         width: savedWidths['postcode'] || 120,
         editable: true,
         cellClass: 'font-mono font-bold',
+        renderCell: ({ row }) => (
+          <div title={row.postcode}>{row.postcode}</div>
+        ),
         renderEditCell: (props) => (
           <input
             autoFocus
@@ -479,6 +522,9 @@ export default function CandidatesDataGrid() {
             onDelete={() => handleHideColumn('postcode')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['postcode'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('postcode', value)}
           >
             <ColumnFilter
               columnKey="postcode"
@@ -500,6 +546,9 @@ export default function CandidatesDataGrid() {
         name: columnRenames['salary'] || 'Salary',
         width: savedWidths['salary'] || 120,
         editable: true,
+        renderCell: ({ row }) => (
+          <div title={row.salary}>{row.salary}</div>
+        ),
         renderEditCell: (props) => (
           <input
             autoFocus
@@ -519,6 +568,9 @@ export default function CandidatesDataGrid() {
             onDelete={() => handleHideColumn('salary')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['salary'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('salary', value)}
           >
             <ColumnFilter
               columnKey="salary"
@@ -540,6 +592,9 @@ export default function CandidatesDataGrid() {
         name: columnRenames['days'] || 'Availability',
         width: savedWidths['days'] || 150,
         editable: true,
+        renderCell: ({ row }) => (
+          <div title={row.days}>{row.days}</div>
+        ),
         renderEditCell: (props) => (
           <input
             autoFocus
@@ -559,6 +614,9 @@ export default function CandidatesDataGrid() {
             onDelete={() => handleHideColumn('days')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['days'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('days', value)}
           >
             <ColumnFilter
               columnKey="days"
@@ -580,6 +638,9 @@ export default function CandidatesDataGrid() {
         name: columnRenames['experience'] || 'Experience',
         width: savedWidths['experience'] || 150,
         editable: true,
+        renderCell: ({ row }) => (
+          <div title={row.experience || ''}>{row.experience || ''}</div>
+        ),
         renderEditCell: (props) => (
           <input
             autoFocus
@@ -599,6 +660,9 @@ export default function CandidatesDataGrid() {
             onDelete={() => handleHideColumn('experience')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['experience'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('experience', value)}
           >
             <ColumnFilter
               columnKey="experience"
@@ -628,7 +692,24 @@ export default function CandidatesDataGrid() {
             onDelete={() => handleHideColumn('notes')}
             canEdit={true}
             canDelete={true}
+            showTextFilter={true}
+            textFilterValue={textFilters['notes'] || ''}
+            onTextFilterChange={(value) => handleTextFilterChange('notes', value)}
           />
+        ),
+        renderCell: ({ row }) => (
+          <div
+            title={row.notes || ''}
+            onClick={() => setNotesPopup({ candidateId: row.id, content: row.notes || '' })}
+            style={{
+              cursor: 'pointer',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {row.notes || ''}
+          </div>
         ),
         renderEditCell: (props) => (
           <textarea
@@ -644,7 +725,7 @@ export default function CandidatesDataGrid() {
         ),
       },
     ],
-    [candidates, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths]
+    [candidates, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths, textFilters, handleTextFilterChange]
   );
 
   // Dynamic custom columns
@@ -807,6 +888,7 @@ export default function CandidatesDataGrid() {
   const filteredCandidates = useMemo(() => {
     let filtered = [...candidates];
 
+    // Apply dropdown filters
     Object.entries(columnFilters).forEach(([columnKey, selectedValues]) => {
       if (selectedValues.length > 0) {
         filtered = filtered.filter(row => {
@@ -816,8 +898,18 @@ export default function CandidatesDataGrid() {
       }
     });
 
+    // Apply text filters
+    Object.entries(textFilters).forEach(([columnKey, filterText]) => {
+      if (filterText.trim()) {
+        filtered = filtered.filter(row => {
+          const value = String(row[columnKey as keyof Candidate] || '').toLowerCase();
+          return value.includes(filterText.toLowerCase());
+        });
+      }
+    });
+
     return filtered;
-  }, [candidates, columnFilters]);
+  }, [candidates, columnFilters, textFilters]);
 
   // Apply sorting
   const sortedCandidates = useMemo(() => {
@@ -990,6 +1082,19 @@ export default function CandidatesDataGrid() {
           style={{ height: '100%' }}
         />
       </div>
+
+      {/* Notes Popup */}
+      {notesPopup && (
+        <NotesPopup
+          content={notesPopup.content}
+          title="Candidate Notes"
+          onClose={() => setNotesPopup(null)}
+          onSave={async (newContent) => {
+            await updateRow(notesPopup.candidateId, { notes: newContent } as Partial<Candidate>);
+            setNotesPopup(null);
+          }}
+        />
+      )}
     </div>
   );
 }

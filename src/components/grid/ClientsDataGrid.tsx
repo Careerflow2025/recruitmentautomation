@@ -14,6 +14,7 @@ import { normalizeRole } from '@/lib/utils/roleNormalizer';
 import { debounce } from 'lodash';
 import CustomColumnManager from './CustomColumnManager';
 import EditableColumnHeader from './EditableColumnHeader';
+import NotesPopup from './NotesPopup';
 
 // Extended Client type with user_id (exists in DB but not in type definition)
 type ClientWithUser = Client & { user_id?: string };
@@ -28,6 +29,8 @@ export default function ClientsDataGrid() {
   const [headerEditValue, setHeaderEditValue] = useState('');
   const [columnRenames, setColumnRenames] = useState<Record<string, string>>({});
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
+  const [textFilters, setTextFilters] = useState<Record<string, string>>({});
+  const [notesPopup, setNotesPopup] = useState<{ clientId: string; content: string } | null>(null);
 
   // Column preferences
   const {
@@ -224,6 +227,14 @@ export default function ClientsDataGrid() {
       localStorage.setItem(hiddenKey, JSON.stringify(Array.from(newHidden)));
     }
   }, [hiddenColumns, userId]);
+
+  // Handle text filter change
+  const handleTextFilterChange = useCallback((columnKey: string, value: string) => {
+    setTextFilters(prev => ({
+      ...prev,
+      [columnKey]: value,
+    }));
+  }, []);
 
   // Get unique values for filterable columns
   const getFilterOptions = useCallback((columnKey: string): string[] => {
@@ -748,6 +759,7 @@ export default function ClientsDataGrid() {
   const filteredClients = useMemo(() => {
     let filtered = [...clients];
 
+    // Apply dropdown filters
     Object.entries(columnFilters).forEach(([columnKey, selectedValues]) => {
       if (selectedValues.length > 0) {
         filtered = filtered.filter(client => {
@@ -757,8 +769,18 @@ export default function ClientsDataGrid() {
       }
     });
 
+    // Apply text filters
+    Object.entries(textFilters).forEach(([columnKey, filterText]) => {
+      if (filterText.trim()) {
+        filtered = filtered.filter(client => {
+          const value = String(client[columnKey as keyof ClientWithUser] || '').toLowerCase();
+          return value.includes(filterText.toLowerCase());
+        });
+      }
+    });
+
     return filtered;
-  }, [clients, columnFilters]);
+  }, [clients, columnFilters, textFilters]);
 
   // Apply sorting
   const sortedClients = useMemo(() => {
