@@ -271,8 +271,7 @@ export default function CandidatesDataGrid() {
       {
         key: 'select',
         name: '',
-        minWidth: 50,
-        maxWidth: 50,
+        width: 50,
         frozen: true,
         headerCellClass: 'rdg-checkbox-label',
         renderHeaderCell: () => (
@@ -309,8 +308,7 @@ export default function CandidatesDataGrid() {
       {
         key: 'id',
         name: 'ID',
-        minWidth: 100,
-        maxWidth: 120,
+        width: 100,
         frozen: true,
         editable: false,
         cellClass: 'font-semibold text-gray-700',
@@ -318,8 +316,7 @@ export default function CandidatesDataGrid() {
       {
         key: 'first_name',
         name: columnRenames['first_name'] || 'First Name',
-        minWidth: 100,
-        width: savedWidths['first_name'],
+        width: savedWidths['first_name'] || 150,
         editable: true,
         renderHeaderCell: () => (
           <EditableColumnHeader
@@ -352,8 +349,7 @@ export default function CandidatesDataGrid() {
       {
         key: 'last_name',
         name: columnRenames['last_name'] || 'Last Name',
-        minWidth: 100,
-        width: savedWidths['last_name'],
+        width: savedWidths['last_name'] || 150,
         editable: true,
         renderHeaderCell: () => (
           <EditableColumnHeader
@@ -386,8 +382,7 @@ export default function CandidatesDataGrid() {
       {
         key: 'email',
         name: columnRenames['email'] || 'Email',
-        minWidth: 120,
-        width: savedWidths['email'],
+        width: savedWidths['email'] || 200,
         editable: true,
         renderHeaderCell: () => (
           <EditableColumnHeader
@@ -421,8 +416,7 @@ export default function CandidatesDataGrid() {
       {
         key: 'phone',
         name: columnRenames['phone'] || 'Phone',
-        minWidth: 100,
-        width: savedWidths['phone'],
+        width: savedWidths['phone'] || 140,
         editable: true,
         renderHeaderCell: () => (
           <EditableColumnHeader
@@ -456,8 +450,7 @@ export default function CandidatesDataGrid() {
       {
         key: 'role',
         name: columnRenames['role'] || 'Role',
-        minWidth: 100,
-        width: savedWidths['role'],
+        width: savedWidths['role'] || 150,
         editable: true,
         renderCell: ({ row }) => (
           <div title={normalizeRole(row.role)}>{normalizeRole(row.role)}</div>
@@ -503,8 +496,7 @@ export default function CandidatesDataGrid() {
       {
         key: 'postcode',
         name: columnRenames['postcode'] || 'Postcode',
-        minWidth: 90,
-        width: savedWidths['postcode'],
+        width: savedWidths['postcode'] || 120,
         editable: true,
         cellClass: 'font-mono font-bold',
         renderCell: ({ row }) => (
@@ -552,8 +544,7 @@ export default function CandidatesDataGrid() {
       {
         key: 'salary',
         name: columnRenames['salary'] || 'Salary',
-        minWidth: 90,
-        width: savedWidths['salary'],
+        width: savedWidths['salary'] || 120,
         editable: true,
         renderCell: ({ row }) => (
           <div title={row.salary}>{row.salary}</div>
@@ -599,8 +590,7 @@ export default function CandidatesDataGrid() {
       {
         key: 'days',
         name: columnRenames['days'] || 'Availability',
-        minWidth: 100,
-        width: savedWidths['days'],
+        width: savedWidths['days'] || 150,
         editable: true,
         renderCell: ({ row }) => (
           <div title={row.days}>{row.days}</div>
@@ -646,8 +636,7 @@ export default function CandidatesDataGrid() {
       {
         key: 'experience',
         name: columnRenames['experience'] || 'Experience',
-        minWidth: 100,
-        width: savedWidths['experience'],
+        width: savedWidths['experience'] || 150,
         editable: true,
         renderCell: ({ row }) => (
           <div title={row.experience || ''}>{row.experience || ''}</div>
@@ -693,8 +682,7 @@ export default function CandidatesDataGrid() {
       {
         key: 'notes',
         name: columnRenames['notes'] || 'Notes',
-        minWidth: 120,
-        width: savedWidths['notes'],
+        width: savedWidths['notes'] || 200,
         editable: true,
         renderHeaderCell: () => (
           <EditableColumnHeader
@@ -766,8 +754,7 @@ export default function CandidatesDataGrid() {
       customColumns.map((col) => ({
         key: col.column_name,
         name: col.column_label,
-        minWidth: 100,
-        width: savedWidths[col.column_name],
+        width: savedWidths[col.column_name] || 150,
         editable: true,
         cellClass: 'custom-column-cell',
         headerCellClass: 'custom-column-header',

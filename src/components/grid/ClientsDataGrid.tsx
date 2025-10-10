@@ -251,8 +251,7 @@ export default function ClientsDataGrid() {
       {
         key: 'select',
         name: '',
-        minWidth: 50,
-        maxWidth: 50,
+        width: 50,
         frozen: true,
         headerCellClass: 'rdg-checkbox-label',
         renderHeaderCell: () => (
@@ -289,8 +288,7 @@ export default function ClientsDataGrid() {
       {
         key: 'id',
         name: 'ID',
-        minWidth: 100,
-        maxWidth: 120,
+        width: 100,
         frozen: true,
         editable: false,
         cellClass: 'font-semibold text-gray-700',
@@ -298,8 +296,7 @@ export default function ClientsDataGrid() {
       {
         key: 'surgery',
         name: columnRenames['surgery'] || 'Surgery',
-        minWidth: 120,
-        width: savedWidths['surgery'],
+        width: savedWidths['surgery'] || 200,
         editable: true,
         renderHeaderCell: () => (
           <EditableColumnHeader
@@ -332,8 +329,7 @@ export default function ClientsDataGrid() {
       {
         key: 'client_name',
         name: columnRenames['client_name'] || 'Contact Name',
-        minWidth: 100,
-        width: savedWidths['client_name'],
+        width: savedWidths['client_name'] || 150,
         editable: true,
         renderHeaderCell: () => (
           <EditableColumnHeader
@@ -366,8 +362,7 @@ export default function ClientsDataGrid() {
       {
         key: 'client_phone',
         name: columnRenames['client_phone'] || 'Contact Phone',
-        minWidth: 100,
-        width: savedWidths['client_phone'],
+        width: savedWidths['client_phone'] || 140,
         editable: true,
         renderHeaderCell: () => (
           <EditableColumnHeader
@@ -401,8 +396,7 @@ export default function ClientsDataGrid() {
       {
         key: 'client_email',
         name: columnRenames['client_email'] || 'Contact Email',
-        minWidth: 120,
-        width: savedWidths['client_email'],
+        width: savedWidths['client_email'] || 200,
         editable: true,
         renderHeaderCell: () => (
           <EditableColumnHeader
@@ -436,8 +430,7 @@ export default function ClientsDataGrid() {
       {
         key: 'role',
         name: columnRenames['role'] || 'Role',
-        minWidth: 100,
-        width: savedWidths['role'],
+        width: savedWidths['role'] || 150,
         editable: true,
         renderCell: ({ row }) => (
           <div title={normalizeRole(row.role)}>{normalizeRole(row.role)}</div>
@@ -483,8 +476,7 @@ export default function ClientsDataGrid() {
       {
         key: 'postcode',
         name: columnRenames['postcode'] || 'Postcode',
-        minWidth: 90,
-        width: savedWidths['postcode'],
+        width: savedWidths['postcode'] || 120,
         editable: true,
         cellClass: 'font-mono font-bold',
         renderCell: ({ row }) => (
@@ -532,8 +524,7 @@ export default function ClientsDataGrid() {
       {
         key: 'budget',
         name: columnRenames['budget'] || 'Budget',
-        minWidth: 90,
-        width: savedWidths['budget'],
+        width: savedWidths['budget'] || 120,
         editable: true,
         renderCell: ({ row }) => (
           <div title={row.budget || ''}>{row.budget || ''}</div>
@@ -579,8 +570,7 @@ export default function ClientsDataGrid() {
       {
         key: 'requirement',
         name: columnRenames['requirement'] || 'Requirement',
-        minWidth: 100,
-        width: savedWidths['requirement'],
+        width: savedWidths['requirement'] || 150,
         editable: true,
         renderCell: ({ row }) => (
           <div title={row.requirement || ''}>{row.requirement || ''}</div>
@@ -626,8 +616,7 @@ export default function ClientsDataGrid() {
       {
         key: 'system',
         name: columnRenames['system'] || 'System',
-        minWidth: 90,
-        width: savedWidths['system'],
+        width: savedWidths['system'] || 120,
         editable: true,
         renderCell: ({ row }) => (
           <div title={row.system || ''}>{row.system || ''}</div>
@@ -673,8 +662,7 @@ export default function ClientsDataGrid() {
       {
         key: 'notes',
         name: columnRenames['notes'] || 'Notes',
-        minWidth: 120,
-        width: savedWidths['notes'],
+        width: savedWidths['notes'] || 200,
         editable: false,
         renderHeaderCell: () => (
           <EditableColumnHeader
@@ -734,8 +722,7 @@ export default function ClientsDataGrid() {
       customColumns.map((col) => ({
         key: col.column_name,
         name: col.column_label,
-        minWidth: 100,
-        width: savedWidths[col.column_name],
+        width: savedWidths[col.column_name] || 150,
         editable: true,
         cellClass: 'custom-column-cell',
         headerCellClass: 'custom-column-header',
