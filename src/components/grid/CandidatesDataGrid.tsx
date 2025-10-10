@@ -13,6 +13,7 @@ import { getCustomColumns, CustomColumn, getCustomColumnData, setCustomColumnVal
 import { normalizeRole } from '@/lib/utils/roleNormalizer';
 import { debounce } from 'lodash';
 import CustomColumnManager from './CustomColumnManager';
+import EditableColumnHeader from './EditableColumnHeader';
 
 export default function CandidatesDataGrid() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -21,8 +22,8 @@ export default function CandidatesDataGrid() {
   const [sortColumns, setSortColumns] = useState<readonly SortColumn[]>([]);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
-  const [editingHeaderId, setEditingHeaderId] = useState<string | null>(null);
-  const [headerEditValue, setHeaderEditValue] = useState('');
+  const [columnRenames, setColumnRenames] = useState<Record<string, string>>({});
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
 
   // Get current user
   useEffect(() => {
@@ -60,6 +61,29 @@ export default function CandidatesDataGrid() {
     updateColumnWidths,
     updateColumnFilters,
   } = useColumnPreferences(userId, 'candidates');
+
+  // Load column renames and hidden columns from localStorage
+  useEffect(() => {
+    if (!userId) return;
+
+    try {
+      const renamesKey = `column-renames-candidates-${userId}`;
+      const hiddenKey = `column-hidden-candidates-${userId}`;
+
+      const storedRenames = localStorage.getItem(renamesKey);
+      const storedHidden = localStorage.getItem(hiddenKey);
+
+      if (storedRenames) {
+        setColumnRenames(JSON.parse(storedRenames));
+      }
+
+      if (storedHidden) {
+        setHiddenColumns(new Set(JSON.parse(storedHidden)));
+      }
+    } catch (error) {
+      console.error('Failed to load column preferences:', error);
+    }
+  }, [userId]);
 
   // Load custom columns
   const loadCustomColumns = useCallback(async () => {
@@ -181,7 +205,7 @@ export default function CandidatesDataGrid() {
   }, [loadCustomColumns]);
 
   // Handle deleting custom column
-  const handleDeleteColumn = useCallback(async (columnId: string, columnName: string) => {
+  const handleDeleteCustomColumn = useCallback(async (columnId: string, columnName: string) => {
     if (!confirm(`Delete column "${columnName}"? This will remove all data in this column.`)) {
       return;
     }
@@ -195,6 +219,29 @@ export default function CandidatesDataGrid() {
       alert('Failed to delete column');
     }
   }, [loadCustomColumns]);
+
+  // Handle renaming standard column
+  const handleRenameColumn = useCallback(async (columnKey: string, newName: string) => {
+    const newRenames = { ...columnRenames, [columnKey]: newName };
+    setColumnRenames(newRenames);
+
+    if (userId) {
+      const renamesKey = `column-renames-candidates-${userId}`;
+      localStorage.setItem(renamesKey, JSON.stringify(newRenames));
+    }
+  }, [columnRenames, userId]);
+
+  // Handle hiding/deleting standard column
+  const handleHideColumn = useCallback(async (columnKey: string) => {
+    const newHidden = new Set(hiddenColumns);
+    newHidden.add(columnKey);
+    setHiddenColumns(newHidden);
+
+    if (userId) {
+      const hiddenKey = `column-hidden-candidates-${userId}`;
+      localStorage.setItem(hiddenKey, JSON.stringify(Array.from(newHidden)));
+    }
+  }, [hiddenColumns, userId]);
 
   // Extract unique values for filterable columns
   const getFilterOptions = useCallback((columnKey: string): string[] => {
@@ -255,9 +302,19 @@ export default function CandidatesDataGrid() {
       },
       {
         key: 'first_name',
-        name: 'First Name',
+        name: columnRenames['first_name'] || 'First Name',
         width: savedWidths['first_name'] || 150,
         editable: true,
+        renderHeaderCell: () => (
+          <EditableColumnHeader
+            columnKey="first_name"
+            columnName={columnRenames['first_name'] || 'First Name'}
+            onRename={(newName) => handleRenameColumn('first_name', newName)}
+            onDelete={() => handleHideColumn('first_name')}
+            canEdit={true}
+            canDelete={true}
+          />
+        ),
         renderEditCell: (props) => (
           <input
             autoFocus
@@ -515,7 +572,7 @@ export default function CandidatesDataGrid() {
         ),
       },
     ],
-    [candidates, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters]
+    [candidates, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn]
   );
 
   // Dynamic custom columns
@@ -569,7 +626,7 @@ export default function CandidatesDataGrid() {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDeleteColumn(col.id, col.column_label);
+                  handleDeleteCustomColumn(col.id, col.column_label);
                 }}
                 style={{
                   background: '#ef4444',
@@ -606,13 +663,13 @@ export default function CandidatesDataGrid() {
           );
         },
       })),
-    [customColumns, customData, debouncedCustomUpdate, editingHeaderId, headerEditValue, handleSaveHeaderEdit, handleDeleteColumn, savedWidths]
+    [customColumns, customData, debouncedCustomUpdate, handleSaveHeaderEdit, handleDeleteCustomColumn, savedWidths]
   );
 
   // Combine all columns (no Actions column - use checkbox + bulk delete instead)
   const allColumns = useMemo(
-    () => [...standardColumns, ...dynamicColumns],
-    [standardColumns, dynamicColumns]
+    () => [...standardColumns, ...dynamicColumns].filter(col => !hiddenColumns.has(col.key as string)),
+    [standardColumns, dynamicColumns, hiddenColumns]
   );
 
   // Reorder columns based on saved preferences

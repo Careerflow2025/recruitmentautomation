@@ -83,10 +83,10 @@
 }
 
 /* ====================================
-   COLUMN RESIZE - Let react-data-grid handle it
+   COLUMN RESIZE - Let react-data-grid handle it natively
    ==================================== */
 
-/* Remove all custom resize styling - let the grid handle it naturally */
+/* NO custom CSS - react-data-grid handles resize perfectly on its own */
 
 /* Fill handle (drag to copy) - Excel-like */
 .rdg-cell-drag-handle {
