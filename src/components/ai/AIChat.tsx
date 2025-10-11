@@ -425,15 +425,15 @@ export function AIChat() {
           }`}>
             {/* CHAT SECTION (LEFT) */}
             <div className="flex-1 flex flex-col min-w-0">
-            {/* Header - Polished ChatGPT Style */}
-            <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200 shadow-sm rounded-t-lg">
-              <div className="text-lg font-semibold text-gray-800">
+            {/* Header - Premium ChatGPT Dark Style */}
+            <div className="flex items-center justify-between px-4 py-3 bg-gray-800 border-b border-gray-700 shadow-sm rounded-t-lg">
+              <div className="text-lg font-semibold text-white">
                 AI Assistant
-                <p className="text-sm text-gray-500 font-normal">Intelligent recruitment matching</p>
+                <p className="text-sm text-gray-300 font-normal">Intelligent recruitment matching</p>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg p-2 transition-colors"
+                className="text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg p-2 transition-colors"
                 title="Close"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -474,34 +474,32 @@ export function AIChat() {
                   </div>
                 )}
 
-                {/* Chat History - Clean ChatGPT Style */}
+                {/* Chat History - Premium ChatGPT Style */}
                 {chatHistory.map((item, i) => (
                   <div key={i} className="space-y-4">
-                    {/* User Question - Clean */}
+                    {/* User Question - Blue Bubble */}
                     <div className="flex justify-end">
-                      <div className="max-w-2xl bg-gray-100 rounded-2xl px-5 py-3">
-                        <p className="text-gray-800 text-sm leading-relaxed">{item.q}</p>
+                      <div className="max-w-[90%] lg:max-w-lg bg-blue-100 text-blue-900 rounded-md px-4 py-3 shadow-sm">
+                        <p className="text-sm leading-relaxed">{item.q}</p>
                       </div>
                     </div>
 
-                    {/* AI Answer - Clean */}
+                    {/* AI Answer - Grey Bubble */}
                     {item.a && (
                       <div className="flex justify-start">
-                        <div className="max-w-2xl">
-                          <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4">
-                            <FormattedResponse text={item.a} />
-                          </div>
+                        <div className="max-w-[90%] lg:max-w-lg bg-gray-50 text-gray-800 rounded-md px-4 py-3 shadow">
+                          <FormattedResponse text={item.a} />
                         </div>
                       </div>
                     )}
                   </div>
                 ))}
 
-                {/* Loading Indicator - Clean */}
+                {/* Loading Indicator - Premium */}
                 {loading && (
                   <div className="flex justify-start">
-                    <div className="max-w-2xl bg-white border border-gray-200 rounded-2xl px-5 py-4">
-                      <div className="flex items-center gap-3">
+                    <div className="max-w-[90%] lg:max-w-lg bg-gray-50 text-gray-800 rounded-md px-4 py-3 shadow">
+                      <div className="flex items-center gap-2">
                         <div className="flex gap-1">
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
@@ -516,11 +514,28 @@ export function AIChat() {
               </div>
             </div>
 
-            {/* Input Area - Clean ChatGPT Style */}
-            <div className="border-t border-gray-200 bg-white p-4">
+            {/* Input Area - Premium ChatGPT Style with Perfect Alignment */}
+            <div className="border-t border-gray-300 bg-white p-4 shadow-sm">
               <div className="max-w-3xl mx-auto">
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1 relative">
+                <div className="flex gap-3 items-center">
+                  {/* Mic Button - Left Side */}
+                  <button
+                    onClick={toggleRecording}
+                    disabled={loading}
+                    className={`flex-shrink-0 w-10 h-10 rounded-md flex items-center justify-center transition-colors ${
+                      isRecording
+                        ? 'bg-red-500 text-white'
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    }`}
+                    title={isRecording ? 'Recording... Click to stop' : 'Click to speak'}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                  </button>
+
+                  {/* Input Box - Center, Flexible */}
+                  <div className="flex-1">
                     <textarea
                       value={question}
                       onChange={(e) => setQuestion(e.target.value)}
@@ -531,33 +546,20 @@ export function AIChat() {
                         }
                       }}
                       placeholder="Message AI Assistant..."
-                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl text-sm resize-none focus:outline-none focus:border-gray-400 text-gray-900 placeholder:text-gray-400 bg-white transition-colors"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400 bg-white transition-all"
                       rows={1}
                       disabled={loading || isRecording}
                     />
-                    {/* Microphone Button */}
-                    <button
-                      onClick={toggleRecording}
-                      disabled={loading}
-                      className={`absolute bottom-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                        isRecording
-                          ? 'bg-red-500 text-white'
-                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                      }`}
-                      title={isRecording ? 'Recording... Click to stop' : 'Click to speak'}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                      </svg>
-                    </button>
                   </div>
+
+                  {/* Send Button - Right Side */}
                   <button
                     onClick={ask}
                     disabled={loading || !question.trim()}
-                    className={`px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                    className={`flex-shrink-0 px-4 py-3 rounded-md text-sm font-medium transition-colors shadow-sm ${
                       loading || !question.trim()
                         ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                        : 'bg-gray-800 text-white hover:bg-gray-700'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
                     }`}
                   >
                     {loading ? (
@@ -571,11 +573,11 @@ export function AIChat() {
                   </button>
                 </div>
 
-                <div className="flex justify-between items-center mt-2 text-xs text-gray-400">
+                <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
                   {chatHistory.length > 0 && (
                     <button
                       onClick={clearHistory}
-                      className="hover:text-gray-600 transition-colors"
+                      className="hover:text-gray-700 transition-colors"
                     >
                       Clear history
                     </button>
@@ -588,15 +590,15 @@ export function AIChat() {
             {/* MAP PANEL (RIGHT) - Clean Minimal */}
             {mapPanelMaps.length > 0 && (
               <div className="w-[600px] border-l border-gray-200 bg-white flex flex-col overflow-hidden">
-                {/* Map Panel Header - Polished to Match AI Assistant */}
-                <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200 shadow-sm">
-                  <div className="text-lg font-semibold text-gray-800">
+                {/* Map Panel Header - Premium Dark to Match AI Assistant */}
+                <div className="flex items-center justify-between px-4 py-3 bg-gray-800 border-b border-gray-700 shadow-sm">
+                  <div className="text-lg font-semibold text-white">
                     {mapPanelMaps.length} Route{mapPanelMaps.length > 1 ? 's' : ''}
-                    <p className="text-sm text-gray-500 font-normal">Commute visualization</p>
+                    <p className="text-sm text-gray-300 font-normal">Commute visualization</p>
                   </div>
                   <button
                     onClick={() => setMapPanelMaps([])}
-                    className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg px-3 py-2 text-sm transition-colors"
+                    className="text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg px-3 py-2 text-sm transition-colors"
                   >
                     Close All
                   </button>
