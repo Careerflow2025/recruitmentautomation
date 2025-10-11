@@ -178,159 +178,79 @@ async function processMatchesInBackground(
 
     console.log(`✅ Cleared existing matches for user ${userId}`);
 
-    // First, test Google Maps API with one pair to check configuration
-    console.log('🧪 Testing Google Maps API configuration...');
-    let useGoogleMaps = true;
-    
-    if (candidates.length > 0 && clients.length > 0) {
-      try {
-        const testCandidate = candidates[0];
-        const testClient = clients[0];
-        
-        console.log(`🧪 Testing with: ${testCandidate.postcode} -> ${testClient.postcode}`);
-        
-        const { calculateCommute } = await import('@/lib/google-maps');
-        await calculateCommute(testCandidate.postcode, testClient.postcode, userId);
-        
-        console.log('✅ Google Maps API test successful - using Google Maps for all calculations');
-        
-      } catch (testError) {
-        console.warn('⚠️ Google Maps API test failed - switching to fallback estimation:', testError);
-        useGoogleMaps = false;
-      }
-    }
+    // RULE 3: ALWAYS use Google Maps API - no fallback allowed
+    console.log('🌐 Using Google Maps API for ALL match calculations (RULE 3)...');
 
-    // Process matches in batches based on API availability
     let successCount = 0;
     let excludedCount = 0;
     let errorCount = 0;
-    let estimatedCount = 0;
 
-    if (useGoogleMaps) {
-      console.log('🌐 Using Google Maps API for match processing...');
-      
-      try {
-        // Use the existing smart batch processing
-        const batchResults = await calculateAllCommutesSmartBatch(
-          candidates.map(c => ({ id: c.id, postcode: c.postcode })),
-          clients.map(c => ({ id: c.id, postcode: c.postcode })),
-          apiKey,
-          userId,
-          (current, total, message) => {
-            console.log(`📊 Background progress for user ${userId}: ${message}`);
-          }
-        );
-
-        console.log(`💾 Inserting ${batchResults.length} Google Maps results for user ${userId}...`);
-        
-        for (const result of batchResults) {
-          if (result.result === null) {
-            if (result.error?.includes('Over 80 minutes')) {
-              excludedCount++;
-            } else {
-              errorCount++;
-            }
-            continue;
-          }
-
-          // Get candidate and client data for role matching
-          const candidate = candidates.find(c => c.id === result.candidateId);
-          const client = clients.find(c => c.id === result.clientId);
-
-          if (!candidate || !client) continue;
-
-          // Normalize roles for matching
-          const candidateRole = normalizeRole(candidate.role);
-          const clientRole = normalizeRole(client.role);
-          const roleMatch = candidateRole === clientRole;
-
-          // Insert match with current user's ID
-          const { error: insertError } = await supabase.from('matches').insert({
-            candidate_id: result.candidateId,
-            client_id: result.clientId,
-            commute_minutes: result.result.minutes,
-            commute_display: result.result.display,
-            commute_band: result.result.band,
-            role_match: roleMatch,
-            role_match_display: roleMatch ? '✅ Match' : '❌ No Match',
-            user_id: userId,
-          });
-
-          if (insertError) {
-            console.error(`❌ Failed to insert match for user ${userId}: ${result.candidateId} -> ${result.clientId}`, insertError);
-            errorCount++;
-            continue;
-          }
-
-          successCount++;
+    try {
+      // Use smart batch processing with Google Maps Distance Matrix API
+      const batchResults = await calculateAllCommutesSmartBatch(
+        candidates.map(c => ({ id: c.id, postcode: c.postcode })),
+        clients.map(c => ({ id: c.id, postcode: c.postcode })),
+        apiKey,
+        userId,
+        (current, total, message) => {
+          console.log(`📊 Background progress for user ${userId}: ${message}`);
         }
-        
-      } catch (batchError) {
-        console.error('❌ Google Maps batch processing failed, falling back to estimation:', batchError);
-        useGoogleMaps = false;
-      }
-    }
-    
-    // If Google Maps failed or wasn't available, use fallback estimation
-    if (!useGoogleMaps) {
-      console.log('🔄 Using fallback commute estimation...');
-      
-      const { calculateFallbackCommute } = await import('@/lib/fallback-commute');
-      
-      for (const candidate of candidates) {
-        for (const client of clients) {
-          try {
-            // Calculate estimated commute
-            const commuteResult = calculateFallbackCommute(candidate.postcode, client.postcode);
-            
-            // RULE 2: Exclude matches over 80 minutes
-            if (commuteResult.minutes > 80) {
-              excludedCount++;
-              continue;
-            }
-            
-            // Normalize roles for matching
-            const candidateRole = normalizeRole(candidate.role);
-            const clientRole = normalizeRole(client.role);
-            const roleMatch = candidateRole === clientRole;
+      );
 
-            // Insert match with current user's ID
-            const { error: insertError } = await supabase.from('matches').insert({
-              candidate_id: candidate.id,
-              client_id: client.id,
-              commute_minutes: commuteResult.minutes,
-              commute_display: commuteResult.display,
-              commute_band: commuteResult.band,
-              role_match: roleMatch,
-              role_match_display: roleMatch ? '✅ Match' : '❌ No Match',
-              user_id: userId,
-            });
+      console.log(`💾 Inserting ${batchResults.length} Google Maps results for user ${userId}...`);
 
-            if (insertError) {
-              console.error(`❌ Failed to insert estimated match for user ${userId}: ${candidate.id} -> ${client.id}`, insertError);
-              errorCount++;
-              continue;
-            }
-
-            estimatedCount++;
-            
-          } catch (estimateError) {
-            console.error(`❌ Failed to estimate commute for user ${userId}: ${candidate.postcode} -> ${client.postcode}`, estimateError);
+      for (const result of batchResults) {
+        if (result.result === null) {
+          if (result.error?.includes('Over 80 minutes')) {
+            excludedCount++;
+          } else {
             errorCount++;
           }
+          continue;
         }
+
+        // Get candidate and client data for role matching
+        const candidate = candidates.find(c => c.id === result.candidateId);
+        const client = clients.find(c => c.id === result.clientId);
+
+        if (!candidate || !client) continue;
+
+        // Normalize roles for matching
+        const candidateRole = normalizeRole(candidate.role);
+        const clientRole = normalizeRole(client.role);
+        const roleMatch = candidateRole === clientRole;
+
+        // Insert match with current user's ID
+        const { error: insertError } = await supabase.from('matches').insert({
+          candidate_id: result.candidateId,
+          client_id: result.clientId,
+          commute_minutes: result.result.minutes,
+          commute_display: result.result.display,
+          commute_band: result.result.band,
+          role_match: roleMatch,
+          role_match_display: roleMatch ? '✅ Match' : '❌ No Match',
+          user_id: userId,
+        });
+
+        if (insertError) {
+          console.error(`❌ Failed to insert match for user ${userId}: ${result.candidateId} -> ${result.clientId}`, insertError);
+          errorCount++;
+          continue;
+        }
+
+        successCount++;
       }
-      
-      successCount = estimatedCount;
+
+    } catch (batchError) {
+      console.error('❌ Google Maps batch processing FAILED:', batchError);
+      throw new Error(`Google Maps API processing failed: ${batchError instanceof Error ? batchError.message : String(batchError)}. Please check your API key configuration and try again.`);
     }
 
     console.log(`✅ Background match regeneration complete for user ${userId}!`);
     console.log(`   ✅ Successful matches: ${successCount}`);
-    if (estimatedCount > 0) {
-      console.log(`   📊 Estimated matches: ${estimatedCount} (Google Maps API unavailable)`);
-    }
     console.log(`   ⊗ Excluded (>80min): ${excludedCount}`);
     console.log(`   ❌ Errors: ${errorCount}`);
+    console.log(`   🌐 Method: Google Maps Distance Matrix API (RULE 3)`);
 
     // Store completion status
     try {
@@ -342,10 +262,10 @@ async function processMatchesInBackground(
           matches_found: successCount,
           excluded_over_80min: excludedCount,
           errors: errorCount,
-          method_used: useGoogleMaps ? 'google_maps' : 'fallback_estimation',
+          method_used: 'google_maps',
           completed_at: new Date().toISOString(),
         });
-        
+
       if (statusError) {
         console.error('❌ Failed to update match status:', statusError);
       }
