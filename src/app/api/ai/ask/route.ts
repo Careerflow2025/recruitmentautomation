@@ -577,7 +577,7 @@ Q: ${question}`;
           .select('turn')
           .eq('user_id', user.id)
           .order('turn', { ascending: true })
-          .limit(Math.ceil(recentContext.length * CLEANUP_PERCENT));
+          .limit(Math.ceil(fullConversationHistory.length * CLEANUP_PERCENT));
 
         if (oldestTurns && oldestTurns.length > 0) {
           const turnsToDelete = oldestTurns.map(t => t.turn);
@@ -1177,7 +1177,7 @@ Q: ${question}`;
       return {
         answer: aiAnswer,
         currentSessionId,
-        conversationHistory: recentContext, // Only recent turns
+        conversationHistory: [], // RAG handles context now - no need for recent turns
         turnCount, // For fact extraction
         totalMatches,
         totalCandidates: candidates.length, // For stats
@@ -1196,7 +1196,7 @@ Q: ${question}`;
           memorySystem: true,
           summaryActive: !!existingSummary,
           factsStored: Object.keys(userFacts).length,
-          recentTurns: recentContext.length,
+          recentTurns: fullConversationHistory.length,
           model: 'mistral-7b-instruct-vllm',
           infrastructure: 'RunPod RTX 4090'
         }
