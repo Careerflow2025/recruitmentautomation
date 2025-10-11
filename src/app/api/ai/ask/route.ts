@@ -556,9 +556,16 @@ Cli: ${JSON.stringify(compactClients)}
 Match: ${JSON.stringify(compactMatches)}
 
 ${isAboutMap ? `
-🗺️ MAP QUESTION: Just provide a brief text description of the best commute.
-The system will automatically show maps - you don't need to generate MAP_ACTION markers.
-Keep your answer short (1-2 sentences).
+🗺️ MAP QUESTION DETECTED 🗺️
+
+CRITICAL: DO NOT generate MAP_ACTION markers or any JSON!
+The system will handle maps automatically.
+
+Your task: Provide ONLY a simple text description (1-2 sentences).
+Example: "Your best commute is CAN24 to CL001 (22 minutes)."
+
+DO NOT output JSON, MAP_ACTION, or code blocks.
+ONLY plain text description.
 ` : ''}
 ${ragConversations ? `RAG MEMORY (relevant past conversations):\n${ragConversations}\n` : ''}
 ${ragKnowledge ? `RAG KNOWLEDGE (relevant system info):\n${ragKnowledge}\n` : ''}
@@ -644,28 +651,48 @@ Q: ${question}`;
       console.log(`✅ Received response from RunPod vLLM (${aiAnswer.length} chars)`);
       console.log('📝 AI Response:', aiAnswer.substring(0, 500));
 
+      // Clean up any malformed JSON artifacts (AI sometimes generates broken JSON)
+      if (isAboutMap) {
+        // Remove any standalone curly braces or MAP_ACTION attempts
+        aiAnswer = aiAnswer.replace(/^\s*\}\s*$/gm, ''); // Remove lines with just }
+        aiAnswer = aiAnswer.replace(/^\s*\{\s*$/gm, ''); // Remove lines with just {
+        aiAnswer = aiAnswer.replace(/MAP_ACTION:\s*\{[^}]*$/gm, ''); // Remove incomplete MAP_ACTION
+        aiAnswer = aiAnswer.trim();
+        console.log('🧹 Cleaned AI response of malformed JSON');
+      }
+
       // ==========================================
       // AUTO-INJECT MAP_ACTION for map questions
       // ==========================================
       // Mistral 7B is too small to reliably generate complex JSON
       // So we detect map questions and inject MAP_ACTION automatically
-      if (isAboutMap && enrichedMatches.length > 0) {
+      if (isAboutMap && relevantMatches.length > 0) {
         console.log('🗺️ Map question detected - auto-injecting MAP_ACTION markers');
+        console.log(`📊 Available matches: ${relevantMatches.length}`);
 
-        // Get top 3 best matches (sorted by commute time)
-        const topMatches = enrichedMatches
-          .filter(m => m.candidate && m.client && m.candidate.postcode && m.client.postcode)
-          .slice(0, 3);
+        // Get the BEST match only (user asked for "my best commute" singular)
+        const bestMatch = relevantMatches[0]; // Already sorted by commute_minutes ascending
 
-        // Generate MAP_ACTION markers
-        const mapActions = topMatches.map(match => {
-          const display = match.commute_display || `${match.commute_minutes}m`;
-          return `MAP_ACTION:{"action":"openMap","data":{"originPostcode":"${match.candidate.postcode}","destinationPostcode":"${match.client.postcode}","candidateName":"${match.candidate_id}","clientName":"${match.client_id}","commuteMinutes":${match.commute_minutes},"commuteDisplay":"${display}"}}`;
-        }).join('\n');
+        if (bestMatch && bestMatch.candidate && bestMatch.client) {
+          const canPostcode = bestMatch.candidate.postcode;
+          const clPostcode = bestMatch.client.postcode;
 
-        // Inject MAP_ACTION at the START of the response
-        aiAnswer = mapActions + '\n\n' + aiAnswer;
-        console.log('✅ Injected MAP_ACTION markers:', topMatches.length);
+          console.log(`🗺️ Best match: ${bestMatch.candidate_id} (${canPostcode}) → ${bestMatch.client_id} (${clPostcode}) = ${bestMatch.commute_minutes}m`);
+
+          if (canPostcode && clPostcode) {
+            const display = bestMatch.commute_display || `${bestMatch.commute_minutes}m`;
+            const mapAction = `MAP_ACTION:{"action":"openMap","data":{"originPostcode":"${canPostcode}","destinationPostcode":"${clPostcode}","candidateName":"${bestMatch.candidate_id}","clientName":"${bestMatch.client_id}","commuteMinutes":${bestMatch.commute_minutes},"commuteDisplay":"${display}"}}`;
+
+            // Inject MAP_ACTION at the START of the response
+            aiAnswer = mapAction + '\n\n' + aiAnswer;
+            console.log('✅ Injected MAP_ACTION marker successfully');
+            console.log('MAP_ACTION:', mapAction);
+          } else {
+            console.warn('⚠️ Missing postcodes - cannot inject MAP_ACTION');
+          }
+        } else {
+          console.warn('⚠️ No valid best match found');
+        }
       }
 
       // Parse and execute any JSON actions in the AI response
