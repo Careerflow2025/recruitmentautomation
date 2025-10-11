@@ -3,13 +3,15 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import * as XLSX from 'xlsx';
 import { intelligentlyMapRow } from '@/lib/utils/intelligentColumnMapper';
+import { aiParseCandidate } from '@/lib/utils/aiExcelParser';
 
 /**
- * API Route: Upload Candidates from Excel (AI-Powered)
+ * API Route: Upload Candidates from Excel (Mistral AI-Powered)
  * POST /api/upload/candidates
  *
  * Accepts an Excel file and imports candidates into the database
- * Uses AI-powered column detection to automatically map data to correct fields
+ * Uses Mistral 7B AI model to intelligently parse and map data to correct fields
+ * Falls back to regex-based parsing if AI is unavailable
  */
 export async function POST(request: NextRequest) {
   try {
@@ -88,11 +90,14 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Authenticated user: ${user.email}`);
 
-    // Validate and transform data using AI-powered mapping
+    // Validate and transform data using Mistral AI (with fallback)
     const candidates = [];
     const errors = [];
 
-    console.log('🤖 Using AI-powered intelligent column detection...');
+    // Check if AI is available
+    const useAI = process.env.VPS_AI_URL && process.env.VPS_AI_SECRET;
+
+    console.log(`🤖 Using ${useAI ? 'Mistral 7B AI' : 'Regex-based'} intelligent parsing...`);
 
     for (let i = 0; i < jsonData.length; i++) {
       const row: any = jsonData[i];
@@ -107,10 +112,24 @@ export async function POST(request: NextRequest) {
 
         console.log(`\n📋 Processing row ${rowNum}:`, row);
 
-        // Use AI-powered intelligent mapping
-        const mapped = intelligentlyMapRow(row);
+        let mapped;
 
-        console.log(`✨ AI-mapped result:`, mapped);
+        // Try AI parsing first if available
+        if (useAI) {
+          try {
+            console.log('🤖 Using Mistral AI for parsing...');
+            mapped = await aiParseCandidate(row);
+          } catch (aiError) {
+            console.warn('⚠️ AI parsing failed, falling back to regex:', aiError);
+            mapped = intelligentlyMapRow(row);
+          }
+        } else {
+          // Fallback to regex-based parsing
+          console.log('🔧 Using regex-based parsing...');
+          mapped = intelligentlyMapRow(row);
+        }
+
+        console.log(`✨ Parsed result:`, mapped);
 
         // Validate that we at least have a postcode (required for matching)
         if (!mapped.postcode || mapped.postcode.trim() === '') {

@@ -3,13 +3,15 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import * as XLSX from 'xlsx';
 import { intelligentlyMapRow } from '@/lib/utils/intelligentColumnMapper';
+import { aiParseClient } from '@/lib/utils/aiExcelParser';
 
 /**
- * API Route: Upload Clients from Excel (AI-Powered)
+ * API Route: Upload Clients from Excel (Mistral AI-Powered)
  * POST /api/upload/clients
  *
  * Accepts an Excel file and imports clients into the database
- * Uses AI-powered column detection to automatically map data to correct fields
+ * Uses Mistral 7B AI model to intelligently parse and map data to correct fields
+ * Falls back to regex-based parsing if AI is unavailable
  */
 export async function POST(request: NextRequest) {
   try {
@@ -82,11 +84,14 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Authenticated user: ${user.email}`);
 
-    // Validate and transform data using AI-powered mapping
+    // Validate and transform data using Mistral AI (with fallback)
     const clients = [];
     const errors = [];
 
-    console.log('🤖 Using AI-powered intelligent column detection...');
+    // Check if AI is available
+    const useAI = process.env.VPS_AI_URL && process.env.VPS_AI_SECRET;
+
+    console.log(`🤖 Using ${useAI ? 'Mistral 7B AI' : 'Regex-based'} intelligent parsing...`);
 
     for (let i = 0; i < jsonData.length; i++) {
       const row: any = jsonData[i];
@@ -101,10 +106,24 @@ export async function POST(request: NextRequest) {
 
         console.log(`\n📋 Processing row ${rowNum}:`, row);
 
-        // Use AI-powered intelligent mapping
-        const mapped = intelligentlyMapRow(row);
+        let mapped;
 
-        console.log(`✨ AI-mapped result:`, mapped);
+        // Try AI parsing first if available
+        if (useAI) {
+          try {
+            console.log('🤖 Using Mistral AI for parsing...');
+            mapped = await aiParseClient(row);
+          } catch (aiError) {
+            console.warn('⚠️ AI parsing failed, falling back to regex:', aiError);
+            mapped = intelligentlyMapRow(row);
+          }
+        } else {
+          // Fallback to regex-based parsing
+          console.log('🔧 Using regex-based parsing...');
+          mapped = intelligentlyMapRow(row);
+        }
+
+        console.log(`✨ Parsed result:`, mapped);
 
         // Validate that we at least have a postcode (required for matching)
         if (!mapped.postcode || mapped.postcode.trim() === '') {
@@ -122,12 +141,12 @@ export async function POST(request: NextRequest) {
           ? mapped.role.trim()
           : 'General';
 
-        // Create client object from AI-mapped data
-        // The intelligent mapper now properly handles client-specific fields
+        // Create client object from AI/regex-mapped data
+        // AI parser returns client-specific fields, regex parser uses generic fields
         const client = {
           id: id,
           surgery: (mapped as any).surgery || mapped.first_name || 'Unnamed Practice',
-          client_name: (mapped as any).client_name || null,
+          client_name: (mapped as any).client_name || mapped.last_name || null,
           client_phone: (mapped as any).client_phone || mapped.phone || null,
           client_email: (mapped as any).client_email || mapped.email || null,
           role: role,
