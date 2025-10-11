@@ -119,7 +119,6 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
             position: { x: newX, y: newY }
           };
         }));
-      }
     };
 
     const handleGlobalMouseUp = () => {
