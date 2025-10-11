@@ -29,6 +29,9 @@ export default function CandidatesDataGrid() {
   const [headerEditValue, setHeaderEditValue] = useState<string>('');
   const [textFilters, setTextFilters] = useState<Record<string, string>>({});
   const [notesPopup, setNotesPopup] = useState<{ candidateId: string; content: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get current user
   useEffect(() => {
@@ -1010,6 +1013,63 @@ export default function CandidatesDataGrid() {
     }
   }, [userId, insertRow]);
 
+  // Handle download template
+  const handleDownloadTemplate = useCallback(() => {
+    window.open('/api/templates/candidates', '_blank');
+  }, []);
+
+  // Handle bulk upload
+  const handleBulkUpload = useCallback(async (file: File) => {
+    setUploading(true);
+    setUploadMessage(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload/candidates', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setUploadMessage({
+          type: 'success',
+          text: `✅ ${result.message}${result.validationErrors && result.validationErrors.length > 0 ? ` (${result.validationErrors.length} errors)` : ''}`
+        });
+        // Automatically clear message after 5 seconds
+        setTimeout(() => setUploadMessage(null), 5000);
+      } else {
+        setUploadMessage({
+          type: 'error',
+          text: `❌ ${result.error || 'Upload failed'}`
+        });
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      setUploadMessage({
+        type: 'error',
+        text: `❌ Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+    } finally {
+      setUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }, []);
+
+  // Handle file input change
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleBulkUpload(file);
+    }
+  }, [handleBulkUpload]);
+
   // Show error if any
   if (error) {
     return (
@@ -1080,6 +1140,24 @@ export default function CandidatesDataGrid() {
               🗑️ Delete ({selectedRows.size})
             </button>
           )}
+          <button onClick={handleDownloadTemplate} className="grid-toolbar-button" title="Download Excel template">
+            📥 Download Template
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="grid-toolbar-button"
+            disabled={uploading}
+            title="Upload filled template (Excel or CSV)"
+          >
+            {uploading ? '⏳ Uploading...' : '📤 Upload Bulk'}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+          />
           <CustomColumnManager
             tableName="candidates"
             onColumnAdded={loadCustomColumns}
@@ -1089,6 +1167,22 @@ export default function CandidatesDataGrid() {
           </button>
         </div>
       </div>
+
+      {/* Upload Message */}
+      {uploadMessage && (
+        <div
+          style={{
+            padding: '12px 20px',
+            backgroundColor: uploadMessage.type === 'success' ? '#d1fae5' : '#fee2e2',
+            borderLeft: `4px solid ${uploadMessage.type === 'success' ? '#10b981' : '#ef4444'}`,
+            color: uploadMessage.type === 'success' ? '#065f46' : '#991b1b',
+            fontWeight: '600',
+            fontSize: '14px'
+          }}
+        >
+          {uploadMessage.text}
+        </div>
+      )}
 
       {/* Grid */}
       <div className="flex-1">
