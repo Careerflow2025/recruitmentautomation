@@ -336,14 +336,14 @@ export async function POST(request: Request) {
       const existingSummary = await getSummary(user.id, currentSessionId);
       const userFacts = await getFacts(user.id, currentSessionId);
 
-      // Only send LAST 6 TURNS to AI (not all 100!)
+      // Only send LAST 4 TURNS to AI (reduced from 6 for token efficiency)
       const recentContext = getRecentContext(
         fullConversationHistory.map((msg, i) => ({
           question: msg.question,
           answer: msg.answer,
           turn: i + 1
         })),
-        6
+        4
       );
 
       const turnCount = fullConversationHistory.length;
@@ -465,169 +465,69 @@ export async function POST(request: Request) {
         const candidateIds = new Set(relevantMatches.map(m => m.candidate_id));
         relevantCandidates = candidates.filter(c => candidateIds.has(c.id));
       } else {
-        // General question - show recent data only (MUCH SMALLER)
-        // If user has massive dataset (300+), show even less
-        const maxItems = candidates.length > 200 ? 5 : 10;
+        // General question - show minimal sample data
+        // Aggressive filtering to stay under 2000 tokens
+        const maxItems = candidates.length > 100 ? 3 : (candidates.length > 50 ? 5 : 8);
         relevantCandidates = candidates.slice(0, maxItems);
         relevantClients = clients.slice(0, maxItems);
         relevantMatches = enrichedMatches.slice(0, maxItems);
       }
 
-      // Build compact data representation (reduce JSON verbosity)
+      // Ultra-compact data representation (minimal tokens)
       const compactCandidates = relevantCandidates.map(c => ({
         id: c.id,
         role: c.role,
-        pc: c.postcode,
-        phone: c.phone,
-        sal: c.salary,
-        days: c.days
+        pc: c.postcode?.substring(0, 4) || '', // Only first part of postcode
+        ph: c.phone ? c.phone.slice(-4) : '' // Only last 4 digits
       }));
 
       const compactClients = relevantClients.map(c => ({
         id: c.id,
-        surgery: c.surgery,
+        surg: c.surgery?.substring(0, 20) || '', // Truncate long names
         role: c.role,
-        pc: c.postcode,
-        pay: c.budget,
-        days: c.days
+        pc: c.postcode?.substring(0, 4) || ''
       }));
 
       const compactMatches = relevantMatches.map(m => ({
         can: m.candidate_id,
         cl: m.client_id,
-        time: m.commute_display,
-        mins: m.commute_minutes,
-        roleMatch: m.role_match,
-        status: m.status
+        min: m.commute_minutes,
+        rm: m.role_match ? 1 : 0, // 1=match, 0=no match (saves tokens)
+        st: m.status ? m.status.substring(0, 3) : '' // pla/in-/rej
       }));
 
-      // Build comprehensive system prompt with full feature documentation
-      const systemPrompt = `🤖 You are an ADVANCED AI assistant for dental recruitment with FULL SYSTEM ACCESS. You help match dental candidates with client surgeries.
+      // Minimal professional system prompt - keeps context under 2000 tokens
+      const systemPrompt = `AI Assistant for dental recruitment matching. You have full database access via actions.
 
-═══════════════════════════════════════════════════════════════
-🎯 YOUR PERMISSIONS & CAPABILITIES
-═══════════════════════════════════════════════════════════════
-✅ FULL ACCESS to everything the user can do:
-   • Add, edit, delete candidates (single or bulk)
-   • Add, edit, delete clients (single or bulk)
-   • Update match statuses (placed/in-progress/rejected)
-   • Add notes to matches
-   • Parse unorganized mixed data automatically
-   • Organize and sort messy text into correct columns
-   • Generate new IDs for candidates (CAN###) and clients (CL###)
-   • Access map, commute system, matching system
-   • Access all user data (isolated by user_id - RLS enabled)
+USER: ${user.id.substring(0, 8)} | Candidates: ${candidates.length} | Clients: ${clients.length} | Matches: ${totalMatches} (Placed: ${placedMatches}, In-Progress: ${inProgressMatches}, Rejected: ${rejectedMatches})
 
-═══════════════════════════════════════════════════════════════
-📊 USER CONTEXT
-═══════════════════════════════════════════════════════════════
-• User ID: ${user.id.substring(0, 8)}... (🔒 Isolated session - all data is ONLY for this user)
-• Total Candidates: ${candidates.length} | Total Clients: ${clients.length} | Total Matches: ${totalMatches}
-• Match Status: ✅ Placed: ${placedMatches} | 🔄 In-Progress: ${inProgressMatches} | ❌ Rejected: ${rejectedMatches}
-
-═══════════════════════════════════════════════════════════════
-🏗️ SYSTEM FEATURES (Smallest to Biggest)
-═══════════════════════════════════════════════════════════════
-
-1️⃣ DATA MANAGEMENT
-   • Candidates Table: Store dental job seekers (id, first_name, last_name, email, phone, role, postcode, salary, days, experience)
-   • Clients Table: Store dental surgeries (id, surgery, client_name, client_phone, client_email, role, postcode, budget, requirement, system)
-   • ID Generation: System auto-generates IDs (CAN001, CAN002... for candidates | CL001, CL002... for clients)
-   • Custom Columns: Users can add custom columns to both tables
-   • Data Isolation: Each user sees ONLY their data (RLS via user_id)
-
-2️⃣ MATCHING SYSTEM
-   • Automatic Matching: System generates candidate-client pairs based on:
-     - ✅ Role Match: Exact role match (e.g., "Dental Nurse" = "Dental Nurse")
-     - 📍 Location Match: Commute time ≤ 80 minutes (1h 20m max)
-   • Commute Calculation: Uses Google Maps Distance Matrix API (driving mode, real traffic)
-   • Commute Display: Shows time with icons (🟢🟢🟢 0-20m | 🟢🟢 21-40m | 🟢 41-55m | 🟡 56-80m)
-   • Sorting: Always sorted by commute time (shortest first) ⚡ HIGHEST PRIORITY
-   • Time Limit: Excludes matches >80 minutes ⚡ NEVER SHOW THESE
-
-3️⃣ MATCH STATUS SYSTEM
-   • Three statuses: 'placed' (hired), 'in-progress' (interview), 'rejected' (declined)
-   • Users can mark matches with these statuses
-   • Filter matches by status
-
-4️⃣ NOTES SYSTEM
-   • Add text notes to any match (candidate-client pair)
-   • Track interview notes, feedback, follow-ups
-
-5️⃣ MAP VISUALIZATION
-   • Shows Google Maps route from candidate postcode to client postcode
-   • Displays turn-by-turn directions
-   • Interactive map modal
-
-6️⃣ FILTERS & SEARCH
-   • Filter by role match (✅/❌/All)
-   • Filter by role type (Dentist, Dental Nurse, etc.)
-   • Filter by commute time range
-   • Text search in all columns
-
-7️⃣ DATA GRIDS
-   • Editable tables for candidates and clients
-   • Excel-like editing experience
-   • Export to Excel/CSV
-
-═══════════════════════════════════════════════════════════════
-📂 RELEVANT DATA (filtered based on question)
-═══════════════════════════════════════════════════════════════
+DATA (filtered by question type):
 Candidates: ${JSON.stringify(compactCandidates)}
 Clients: ${JSON.stringify(compactClients)}
 Matches: ${JSON.stringify(compactMatches)}
 
-═══════════════════════════════════════════════════════════════
-🧠 MEMORY & CONVERSATION
-═══════════════════════════════════════════════════════════════
-SUMMARY: ${existingSummary?.summary || 'No previous conversation.'}
+MEMORY:
+Summary: ${existingSummary?.summary || 'None'}
+Facts: ${Object.keys(userFacts).length > 0 ? Object.entries(userFacts).map(([k, v]) => `${k}:${v}`).join('; ') : 'None'}
+Recent: ${recentContext.map(m => `[${m.turn}] Q:${m.question.substring(0, 50)} A:${m.answer.substring(0, 50)}`).join(' | ')}
 
-FACTS: ${Object.keys(userFacts).length > 0 ? Object.entries(userFacts).map(([k, v]) => `- ${k}: ${v}`).join('\n') : 'None yet.'}
+ACTIONS (use JSON code blocks):
+Single: add_candidate, update_candidate, delete_candidate, add_client, update_client, delete_client, update_match_status, add_match_note
+Bulk: bulk_add_candidates, bulk_add_clients, bulk_delete_candidates, bulk_delete_clients
+Parse: parse_and_organize (extracts structured data from messy text)
 
-RECENT: ${recentContext.map((msg, i) => `[Turn ${msg.turn}] Q: ${msg.question}\nA: ${msg.answer}`).join('\n\n')}
+Example: {"action":"add_candidate","data":{"first_name":"John","role":"Dental Nurse","postcode":"SW1A","phone":"07123456789"}}
 
-═══════════════════════════════════════════════════════════════
-🔧 ACTIONS (respond with JSON code blocks)
-═══════════════════════════════════════════════════════════════
+SYSTEM RULES:
+- Commute matches: ≤80min only, sorted by time ascending
+- IDs: Auto-generate CAN### or CL### if missing
+- Matching: Role match + location (Google Maps driving time)
+- Statuses: placed/in-progress/rejected
+- Fields: Use client_phone (not phone), budget (not pay) for clients
 
-SINGLE OPERATIONS:
-• Add Candidate: {"action":"add_candidate","data":{"id":"CAN###","first_name":"X","role":"Dental Nurse","postcode":"SW1A 1AA","phone":"07123456789"}}
-• Update Candidate: {"action":"update_candidate","data":{"id":"CAN001","phone":"07999888777"}}
-• Delete Candidate: {"action":"delete_candidate","data":{"id":"CAN001"}}
-• Add Client: {"action":"add_client","data":{"id":"CL###","surgery":"Smile Dental","role":"Dental Nurse","postcode":"EC1A 1BB","budget":"£16"}}
-• Update Client: {"action":"update_client","data":{"id":"CL001","budget":"£18"}}
-• Delete Client: {"action":"delete_client","data":{"id":"CL001"}}
-• Update Match Status: {"action":"update_match_status","data":{"candidate_id":"CAN001","client_id":"CL001","status":"placed"}}
-• Add Match Note: {"action":"add_match_note","data":{"candidate_id":"CAN001","client_id":"CL001","note":"Interview scheduled for Monday"}}
+RESPONSE STYLE: Short (2-3 sentences), visual (use ✅❌🔄📊💼📞), structured (bullets), direct
 
-BULK OPERATIONS:
-• Bulk Add Candidates: {"action":"bulk_add_candidates","data":{"candidates":[{candidate1},{candidate2}]}}
-• Bulk Add Clients: {"action":"bulk_add_clients","data":{"clients":[{client1},{client2}]}}
-• Bulk Delete: {"action":"bulk_delete_candidates","data":{"ids":["CAN001","CAN002"]}}
-
-SMART PARSING:
-• Parse Mixed Data: {"action":"parse_and_organize","data":{"type":"candidates","text":"unorganized text with mixed candidate info"}}
-  - AI will automatically extract fields, organize, and add to correct table
-  - Works with messy text, incomplete data, mixed formats
-  - Auto-generates IDs if not provided
-  - Validates and cleans data before insertion
-
-RULES:
-• Only include fields user mentioned (NO nulls)
-• Use correct field names: client_phone (not phone for clients), budget (not pay)
-• Auto-generate IDs using pattern CAN### or CL### (increment from highest existing)
-• When parsing unorganized data, extract all possible fields intelligently
-
-═══════════════════════════════════════════════════════════════
-💬 RESPONSE STYLE
-═══════════════════════════════════════════════════════════════
-✨ SHORT & CLEAN: Keep answers concise (2-3 sentences max unless details requested)
-📊 STRUCTURED: Use bullet points, sections, clear formatting
-🎨 VISUAL: Include emojis/icons (✅❌🔄📊💼📞) for visual appeal
-🎯 DIRECT: Answer exactly what was asked, no fluff
-🧠 SMART: Show intelligence in reasoning and context understanding
-
-CURRENT QUESTION: ${question}`;
+Q: ${question}`;
 
       console.log(`📤 Calling RunPod vLLM at ${process.env.VPS_AI_URL}`);
 
@@ -668,6 +568,13 @@ CURRENT QUESTION: ${question}`;
 
       // Log prompt size for debugging
       console.log(`📊 Prompt size: ${combinedPrompt.length} chars, ~${estimatedTokens} tokens (${Math.round((estimatedTokens / (MAX_TOKENS - INPUT_RESERVED)) * 100)}% of limit)`);
+      console.log(`📊 System prompt: ${systemPrompt.length} chars`);
+      console.log(`📊 Data sizes - Candidates: ${compactCandidates.length}, Clients: ${compactClients.length}, Matches: ${compactMatches.length}`);
+
+      // Token limit safety check
+      if (estimatedTokens > 3500) {
+        console.warn(`⚠️ WARNING: Prompt is large (${estimatedTokens} tokens). Consider reducing data further.`);
+      }
 
       const vllmResponse = await fetch(`${process.env.VPS_AI_URL}/v1/chat/completions`, {
         method: 'POST',
