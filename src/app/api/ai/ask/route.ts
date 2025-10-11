@@ -411,6 +411,7 @@ export async function POST(request: Request) {
       const isAboutSpecificClient = questionLower.match(/cl\d+/i);
       const isAboutStats = questionLower.includes('how many') || questionLower.includes('total') || questionLower.includes('count');
       const isAboutPhones = questionLower.includes('phone') || questionLower.includes('contact') || questionLower.includes('call');
+      const isAboutMap = questionLower.includes('map') || questionLower.includes('commute') || questionLower.includes('drive') || questionLower.includes('best match') || questionLower.includes('shortest');
 
       // Filter data based on question - DRASTICALLY REDUCE CONTEXT
       let relevantCandidates: any[] = [];
@@ -478,10 +479,11 @@ export async function POST(request: Request) {
       }
 
       // Ultra-compact data representation (minimal tokens)
+      // BUT: If map question, include FULL postcodes so AI can create MAP_ACTION markers
       const compactCandidates = relevantCandidates.map(c => ({
         id: c.id,
         role: c.role,
-        pc: c.postcode?.substring(0, 4) || '', // Only first part of postcode
+        pc: isAboutMap ? (c.postcode || '') : (c.postcode?.substring(0, 4) || ''), // Full postcode for maps
         ph: c.phone ? c.phone.slice(-4) : '' // Only last 4 digits
       }));
 
@@ -489,7 +491,7 @@ export async function POST(request: Request) {
         id: c.id,
         surg: c.surgery?.substring(0, 20) || '', // Truncate long names
         role: c.role,
-        pc: c.postcode?.substring(0, 4) || ''
+        pc: isAboutMap ? (c.postcode || '') : (c.postcode?.substring(0, 4) || '') // Full postcode for maps
       }));
 
       const compactMatches = relevantMatches.map(m => ({
@@ -497,7 +499,13 @@ export async function POST(request: Request) {
         cl: m.client_id,
         min: m.commute_minutes,
         rm: m.role_match ? 1 : 0, // 1=match, 0=no match (saves tokens)
-        st: m.status ? m.status.substring(0, 3) : '' // pla/in-/rej
+        st: m.status ? m.status.substring(0, 3) : '', // pla/in-/rej
+        // For map questions, include full postcodes and display string
+        ...(isAboutMap && m.candidate && m.client ? {
+          can_pc: m.candidate.postcode || '',
+          cl_pc: m.client.postcode || '',
+          display: m.commute_display || `${m.commute_minutes}m`
+        } : {})
       }));
 
       // RAG-POWERED SYSTEM PROMPT - Uses semantic retrieval instead of recent history
@@ -547,6 +555,15 @@ Cand: ${JSON.stringify(compactCandidates)}
 Cli: ${JSON.stringify(compactClients)}
 Match: ${JSON.stringify(compactMatches)}
 
+${isAboutMap ? `
+🗺️🗺️🗺️ MAP QUESTION DETECTED! 🗺️🗺️🗺️
+CRITICAL: You MUST include MAP_ACTION markers in your response!
+Use the FULL postcodes provided in the data above (pc fields).
+Example format:
+MAP_ACTION:{"action":"openMap","data":{"originPostcode":"SW1A 1AA","destinationPostcode":"E1 6AN","candidateName":"CAN001","clientName":"CL001","commuteMinutes":22,"commuteDisplay":"🟢🟢 22m"}}
+
+DO NOT just describe the match - SHOW THE MAP!
+` : ''}
 ${ragConversations ? `RAG MEMORY (relevant past conversations):\n${ragConversations}\n` : ''}
 ${ragKnowledge ? `RAG KNOWLEDGE (relevant system info):\n${ragKnowledge}\n` : ''}
 Summary: ${existingSummary?.summary || 'None'}
