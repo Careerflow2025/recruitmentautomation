@@ -302,7 +302,7 @@ export default function CandidatesDataGrid() {
         resizable: false,
         headerCellClass: 'rdg-checkbox-label',
         renderHeaderCell: () => (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', height: '100%', paddingLeft: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
             <input
               type="checkbox"
               className="rdg-checkbox-input"
@@ -318,7 +318,7 @@ export default function CandidatesDataGrid() {
           </div>
         ),
         renderCell: ({ row }) => (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', height: '100%', paddingLeft: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
             <input
               type="checkbox"
               className="rdg-checkbox-input"
