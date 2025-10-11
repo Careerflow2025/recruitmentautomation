@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback, useState, useEffect } from 'react';
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import DataGrid, { Column, SortColumn } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import '@/styles/data-grid-custom.css';
@@ -831,9 +831,38 @@ export default function CandidatesDataGrid() {
     return ordered;
   }, [allColumns, savedOrder]);
 
+  // Auto-resize columns to fit screen width
+  const autoResizedColumns = useMemo(() => {
+    if (orderedColumns.length === 0) return orderedColumns;
+
+    // Calculate total width of all columns
+    const totalWidth = orderedColumns.reduce((sum, col) => sum + (col.width || 150), 0);
+
+    // Get available viewport width (subtract some padding for scrollbars, etc.)
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth - 100 : 1400;
+
+    // If total width exceeds viewport, proportionally resize all columns
+    if (totalWidth > viewportWidth) {
+      const scaleFactor = viewportWidth / totalWidth;
+      const MIN_WIDTH = 80; // Minimum column width for usability
+
+      return orderedColumns.map(col => {
+        const originalWidth = col.width || 150;
+        const scaledWidth = Math.max(MIN_WIDTH, Math.floor(originalWidth * scaleFactor));
+
+        return {
+          ...col,
+          width: scaledWidth
+        };
+      });
+    }
+
+    return orderedColumns;
+  }, [orderedColumns]);
+
   // Handle column reordering via drag-and-drop
   const handleColumnsReorder = useCallback((sourceKey: string, targetKey: string) => {
-    const newOrder = [...orderedColumns];
+    const newOrder = [...autoResizedColumns];
     const sourceIndex = newOrder.findIndex(col => col.key === sourceKey);
     const targetIndex = newOrder.findIndex(col => col.key === targetKey);
 
@@ -853,11 +882,11 @@ export default function CandidatesDataGrid() {
 
     // Save new order
     updateColumnOrder(newOrder.map(col => col.key as string));
-  }, [orderedColumns, updateColumnOrder]);
+  }, [autoResizedColumns, updateColumnOrder]);
 
   // Handle column resize - SAVE WIDTHS
   const handleColumnResize = useCallback((idx: number, width: number) => {
-    const column = orderedColumns[idx];
+    const column = autoResizedColumns[idx];
     if (!column) return;
 
     const newWidths = {
@@ -866,7 +895,7 @@ export default function CandidatesDataGrid() {
     };
 
     updateColumnWidths(newWidths);
-  }, [orderedColumns, savedWidths, updateColumnWidths]);
+  }, [autoResizedColumns, savedWidths, updateColumnWidths]);
 
   // Apply filters to data
   const filteredCandidates = useMemo(() => {
@@ -1064,7 +1093,7 @@ export default function CandidatesDataGrid() {
       {/* Grid */}
       <div className="flex-1">
         <DataGrid
-          columns={orderedColumns}
+          columns={autoResizedColumns}
           rows={sortedCandidates}
           rowKeyGetter={(row) => row.id}
           sortColumns={sortColumns}
