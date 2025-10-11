@@ -404,73 +404,88 @@ export function AIChat() {
 
   return (
     <>
-      {/* Floating Button */}
+      {/* Floating Button - Modern Design */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-full shadow-2xl hover:shadow-purple-500/50 hover:scale-110 transition-all duration-200 flex items-center justify-center text-3xl z-50 border-4 border-white"
+          className="group fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white rounded-2xl shadow-2xl hover:shadow-purple-500/50 hover:scale-110 transition-all duration-300 flex items-center justify-center text-3xl z-50 backdrop-blur-xl border border-white/20"
           title="Open AI Assistant"
         >
-          🤖
+          <span className="group-hover:scale-110 transition-transform duration-300">✨</span>
         </button>
       )}
 
-      {/* Full Screen Chat Modal with Map Panel */}
+      {/* Full Screen Chat Modal with Map Panel - Modern 2025 Design */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className={`w-full h-[90vh] bg-white rounded-2xl shadow-2xl flex overflow-hidden transition-all duration-300 ${
-            mapPanelMaps.length > 0 ? 'max-w-[95vw]' : 'max-w-5xl'
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl p-4 animate-in fade-in duration-300">
+          <div className={`w-full h-[92vh] bg-gradient-to-br from-white via-slate-50 to-purple-50/30 rounded-3xl shadow-2xl flex overflow-hidden transition-all duration-500 border border-white/20 ${
+            mapPanelMaps.length > 0 ? 'max-w-[96vw]' : 'max-w-6xl'
           }`}>
             {/* CHAT SECTION (LEFT) */}
             <div className="flex-1 flex flex-col min-w-0">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-blue-600 text-white p-6 flex justify-between items-center shadow-lg">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-3xl">
-                  🤖
+            {/* Header - Modern Glassmorphism */}
+            <div className="relative bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white px-8 py-5 flex justify-between items-center shadow-lg backdrop-blur-xl border-b border-white/10">
+              {/* Animated gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-600/0 via-pink-500/20 to-purple-600/0 animate-pulse"></div>
+
+              <div className="relative flex items-center gap-4">
+                <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-3xl shadow-lg border border-white/20 group-hover:scale-110 transition-transform">
+                  ✨
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold">AI Matcher Assistant</h2>
-                  <p className="text-sm opacity-90">Complete access to matches, commutes, maps, and recruitment data</p>
+                  <h2 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-purple-100">AI Assistant</h2>
+                  <p className="text-sm text-purple-100/90 font-medium">Intelligent matching & analytics powered by AI</p>
                 </div>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-white hover:bg-white/20 rounded-lg px-4 py-2 text-lg font-bold transition-colors"
+                className="relative text-white hover:bg-white/20 rounded-xl px-4 py-2.5 text-lg font-bold transition-all duration-200 backdrop-blur-sm border border-white/20 hover:scale-105 group"
                 title="Close"
               >
-                ✕
+                <span className="group-hover:rotate-90 transition-transform duration-300 inline-block">✕</span>
               </button>
             </div>
 
             {/* Chat Messages Area */}
             <div className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50 to-white">
               <div className="max-w-4xl mx-auto p-6 space-y-6">
-                {/* Welcome Message */}
+                {/* Welcome Message - Modern Hero Section */}
                 {chatHistory.length === 0 && (
-                  <div className="text-center py-12">
-                    <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center text-5xl mx-auto mb-6">
-                      🤖
+                  <div className="text-center py-16 px-6">
+                    <div className="relative w-24 h-24 mx-auto mb-8 group">
+                      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl blur-xl opacity-60 group-hover:opacity-80 transition-opacity animate-pulse"></div>
+                      <div className="relative w-24 h-24 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-3xl flex items-center justify-center text-5xl shadow-2xl border border-white/20 backdrop-blur-xl group-hover:scale-110 transition-transform duration-300">
+                        ✨
+                      </div>
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                      Hello! I'm your AI assistant
+                    <h3 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+                      Hello! I'm your AI Assistant
                     </h3>
-                    <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-                      I have full access to your recruitment system including candidate details, client information, 
-                      match data with commute calculations, status tracking, notes, and Google Maps integration. 
-                      I can provide phone numbers, map links, placement status, and comprehensive analytics.
+                    <p className="text-gray-600 text-lg mb-4 max-w-2xl mx-auto leading-relaxed">
+                      Powered by advanced AI to help you manage your recruitment pipeline
                     </p>
+                    <div className="flex flex-wrap justify-center gap-3 mb-10 max-w-3xl mx-auto">
+                      <span className="px-4 py-2 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 rounded-full text-sm font-semibold shadow-sm">
+                        💼 Candidate Matching
+                      </span>
+                      <span className="px-4 py-2 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 rounded-full text-sm font-semibold shadow-sm">
+                        🗺️ Smart Commute Analysis
+                      </span>
+                      <span className="px-4 py-2 bg-gradient-to-r from-pink-100 to-indigo-100 text-pink-700 rounded-full text-sm font-semibold shadow-sm">
+                        📊 Real-time Analytics
+                      </span>
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-4xl mx-auto">
                       {exampleQuestions.map((q, i) => (
                         <button
                           key={i}
                           onClick={() => setQuestion(q)}
-                          className="text-left px-4 py-3 bg-white border-2 border-purple-200 rounded-lg hover:bg-purple-50 hover:border-purple-400 transition-all shadow-sm hover:shadow-md"
+                          className="group text-left px-5 py-4 bg-white/80 backdrop-blur-sm border border-purple-200/50 rounded-2xl hover:bg-gradient-to-br hover:from-purple-50 hover:to-pink-50 hover:border-purple-300 transition-all duration-300 shadow-sm hover:shadow-lg hover:scale-[1.02]"
                         >
-                          <div className="flex items-start gap-2">
-                            <span className="text-purple-600 font-bold">🎯</span>
-                            <span className="text-sm text-gray-700">{q}</span>
+                          <div className="flex items-start gap-3">
+                            <span className="text-lg group-hover:scale-110 transition-transform duration-300">💬</span>
+                            <span className="text-sm text-gray-700 group-hover:text-gray-900 font-medium leading-relaxed">{q}</span>
                           </div>
                         </button>
                       ))}
@@ -478,28 +493,35 @@ export function AIChat() {
                   </div>
                 )}
 
-                {/* Chat History */}
+                {/* Chat History - Modern Message Bubbles */}
                 {chatHistory.map((item, i) => (
-                  <div key={i} className="space-y-4">
-                    {/* User Question */}
+                  <div key={i} className="space-y-5 animate-in slide-in-from-bottom-4 duration-500">
+                    {/* User Question - Modern Bubble */}
                     <div className="flex justify-end">
-                      <div className="max-w-3xl">
-                        <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-2xl rounded-tr-sm px-6 py-4 shadow-md">
-                          <p className="text-base leading-relaxed">{item.q}</p>
+                      <div className="max-w-3xl group">
+                        <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white rounded-3xl rounded-tr-lg px-6 py-4 shadow-lg hover:shadow-xl transition-all duration-300 border border-white/10 backdrop-blur-sm">
+                          <p className="text-base leading-relaxed font-medium">{item.q}</p>
                         </div>
+                        <div className="text-xs text-gray-400 mt-1.5 mr-2 text-right">You</div>
                       </div>
                     </div>
 
-                    {/* AI Answer */}
+                    {/* AI Answer - Modern Bubble */}
                     {item.a && (
                       <div className="flex justify-start">
                         <div className="max-w-3xl">
-                          <div className="flex gap-3">
-                            <div className="w-8 h-8 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center text-xl flex-shrink-0">
-                              🤖
+                          <div className="flex gap-4">
+                            <div className="relative w-10 h-10 flex-shrink-0 mt-1">
+                              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl blur-md opacity-50 animate-pulse"></div>
+                              <div className="relative w-10 h-10 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center text-xl shadow-lg border border-white/20">
+                                ✨
+                              </div>
                             </div>
-                            <div className="bg-white border-2 border-gray-200 rounded-2xl rounded-tl-sm px-6 py-4 shadow-sm">
-                              <FormattedResponse text={item.a} />
+                            <div className="flex-1">
+                              <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-3xl rounded-tl-lg px-6 py-4 shadow-lg hover:shadow-xl transition-all duration-300">
+                                <FormattedResponse text={item.a} />
+                              </div>
+                              <div className="text-xs text-gray-400 mt-1.5 ml-2">AI Assistant</div>
                             </div>
                           </div>
                         </div>
@@ -508,22 +530,25 @@ export function AIChat() {
                   </div>
                 ))}
 
-                {/* Loading Indicator */}
+                {/* Loading Indicator - Modern Animation */}
                 {loading && (
-                  <div className="flex justify-start">
+                  <div className="flex justify-start animate-in slide-in-from-bottom-2 duration-300">
                     <div className="max-w-3xl">
-                      <div className="flex gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center text-xl">
-                          🤖
+                      <div className="flex gap-4">
+                        <div className="relative w-10 h-10 flex-shrink-0 mt-1">
+                          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl blur-md opacity-50 animate-pulse"></div>
+                          <div className="relative w-10 h-10 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center text-xl shadow-lg border border-white/20 animate-pulse">
+                            ✨
+                          </div>
                         </div>
-                        <div className="bg-white border-2 border-gray-200 rounded-2xl rounded-tl-sm px-6 py-4 shadow-sm">
-                          <div className="flex items-center gap-3">
-                            <div className="flex gap-1">
-                              <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                              <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                              <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                        <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-3xl rounded-tl-lg px-6 py-4 shadow-lg">
+                          <div className="flex items-center gap-4">
+                            <div className="flex gap-1.5">
+                              <div className="w-2.5 h-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                              <div className="w-2.5 h-2.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                              <div className="w-2.5 h-2.5 bg-gradient-to-r from-pink-600 to-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                             </div>
-                            <span className="text-gray-600 text-sm">Thinking...</span>
+                            <span className="text-gray-600 text-sm font-medium">AI is thinking...</span>
                           </div>
                         </div>
                       </div>
@@ -535,8 +560,8 @@ export function AIChat() {
               </div>
             </div>
 
-            {/* Input Area */}
-            <div className="border-t-2 border-gray-200 bg-white p-6">
+            {/* Input Area - Modern Floating Design */}
+            <div className="border-t border-gray-200/50 bg-gradient-to-b from-white to-gray-50/50 p-6 backdrop-blur-xl">
               <div className="max-w-4xl mx-auto">
                 <div className="flex gap-3 items-end">
                   <div className="flex-1 relative">
@@ -549,8 +574,8 @@ export function AIChat() {
                           ask();
                         }
                       }}
-                      placeholder="Ask me anything... (Press Enter to send, Shift+Enter for new line)"
-                      className="w-full px-4 py-3 pr-14 border-2 border-gray-300 rounded-xl text-base resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 font-medium placeholder:text-gray-400"
+                      placeholder="Ask me anything... (Press Enter to send)"
+                      className="w-full px-5 py-4 pr-16 border border-gray-300/50 rounded-2xl text-base resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 font-medium placeholder:text-gray-400 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300"
                       rows={3}
                       disabled={loading || isRecording}
                     />
@@ -558,10 +583,10 @@ export function AIChat() {
                     <button
                       onClick={toggleRecording}
                       disabled={loading}
-                      className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center text-xl transition-all shadow-md ${
+                      className={`absolute bottom-4 right-4 w-11 h-11 rounded-xl flex items-center justify-center text-xl transition-all shadow-lg ${
                         isRecording
-                          ? 'bg-red-500 text-white animate-pulse'
-                          : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:shadow-lg hover:scale-110'
+                          ? 'bg-red-500 text-white animate-pulse scale-110'
+                          : 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:shadow-xl hover:scale-110 border border-white/20'
                       }`}
                       title={isRecording ? 'Recording... Click to stop' : 'Click to speak'}
                     >
@@ -571,87 +596,115 @@ export function AIChat() {
                   <button
                     onClick={ask}
                     disabled={loading || !question.trim()}
-                    className={`px-8 py-3 rounded-xl text-base font-bold transition-all shadow-md ${
+                    className={`px-8 py-4 rounded-2xl text-base font-bold transition-all shadow-lg min-w-[120px] ${
                       loading || !question.trim()
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:shadow-lg hover:scale-105'
+                        : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white hover:shadow-xl hover:scale-105 border border-white/20'
                     }`}
                   >
                     {loading ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center gap-2">
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                        <span>Sending...</span>
                       </div>
                     ) : (
-                      <span>Send ➤</span>
+                      <span className="flex items-center justify-center gap-2">
+                        <span>Send</span>
+                        <span className="text-lg">✨</span>
+                      </span>
                     )}
                   </button>
                 </div>
 
-                <div className="flex justify-between items-center mt-3 text-sm text-gray-600">
+                <div className="flex justify-between items-center mt-4 text-sm">
                   <div className="flex gap-4">
                     {chatHistory.length > 0 && (
                       <button
                         onClick={clearHistory}
-                        className="hover:text-red-600 underline"
+                        className="text-gray-500 hover:text-red-600 transition-colors flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-red-50"
                       >
-                        🗑️ Clear history
+                        <span>🗑️</span>
+                        <span className="font-medium">Clear</span>
                       </button>
                     )}
-                    <span className="text-gray-400">
+                    <span className="text-gray-400 px-3 py-1.5">
                       {chatHistory.length} message{chatHistory.length !== 1 ? 's' : ''}
                     </span>
+                  </div>
+                  <div className="text-xs text-gray-400 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    <span>AI Online</span>
                   </div>
                 </div>
               </div>
             </div>
             </div>
 
-            {/* MAP PANEL (RIGHT) - Shows up to 3 maps */}
+            {/* MAP PANEL (RIGHT) - Modern Design */}
             {mapPanelMaps.length > 0 && (
-              <div className="w-[600px] border-l-2 border-gray-200 bg-gray-50 flex flex-col overflow-hidden">
-                {/* Map Panel Header */}
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">🗺️</span>
-                    <h3 className="text-lg font-bold">{mapPanelMaps.length} Map{mapPanelMaps.length > 1 ? 's' : ''}</h3>
+              <div className="w-[600px] border-l border-gray-200/50 bg-gradient-to-br from-slate-50 to-purple-50/30 flex flex-col overflow-hidden">
+                {/* Map Panel Header - Modern */}
+                <div className="relative bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white px-6 py-5 flex justify-between items-center shadow-lg border-b border-white/10">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600/0 via-indigo-500/20 to-purple-600/0 animate-pulse"></div>
+                  <div className="relative flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-2xl shadow-lg border border-white/20">
+                      🗺️
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold">{mapPanelMaps.length} Route{mapPanelMaps.length > 1 ? 's' : ''}</h3>
+                      <p className="text-xs text-blue-100">Live commute visualization</p>
+                    </div>
                   </div>
                   <button
                     onClick={() => setMapPanelMaps([])}
-                    className="hover:bg-white/20 rounded-lg px-3 py-1 text-sm font-bold transition-colors"
+                    className="relative hover:bg-white/20 rounded-xl px-4 py-2 text-sm font-bold transition-all backdrop-blur-sm border border-white/20 hover:scale-105 group"
                   >
-                    Close All ✕
+                    <span className="flex items-center gap-2">
+                      <span>Close All</span>
+                      <span className="group-hover:rotate-90 transition-transform duration-300 inline-block">✕</span>
+                    </span>
                   </button>
                 </div>
 
-                {/* Maps Grid */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {/* Maps Grid - Modern Cards */}
+                <div className="flex-1 overflow-y-auto p-5 space-y-4">
                   {mapPanelMaps.map((map, index) => (
                     <div
                       key={map.id}
-                      className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-gray-200 hover:border-purple-400 transition-all cursor-pointer"
+                      className="group bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden border border-gray-200/50 hover:border-purple-400/50 hover:shadow-2xl transition-all duration-300 cursor-pointer hover:scale-[1.02]"
                       onClick={() => setEnlargedMapIndex(index)}
                     >
-                      {/* Map Header */}
-                      <div className="bg-gradient-to-r from-gray-700 to-gray-800 text-white p-3 flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="font-bold text-sm mb-1">{map.candidateName}</div>
-                          <div className="text-xs opacity-90">→ {map.clientName}</div>
-                          <div className="text-xs font-bold mt-1 text-green-300">{map.commuteDisplay}</div>
+                      {/* Map Header - Modern */}
+                      <div className="relative bg-gradient-to-r from-slate-700 via-gray-700 to-slate-800 text-white p-4 flex justify-between items-start">
+                        <div className="absolute inset-0 bg-gradient-to-r from-slate-700/0 via-gray-600/20 to-slate-700/0 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div className="relative flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-lg">👤</span>
+                            <div className="font-bold text-sm">{map.candidateName}</div>
+                          </div>
+                          <div className="flex items-center gap-2 mb-2 text-xs opacity-90">
+                            <span>→</span>
+                            <span className="flex items-center gap-1">
+                              <span>🏢</span>
+                              <span>{map.clientName}</span>
+                            </span>
+                          </div>
+                          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-500/20 backdrop-blur-sm rounded-full border border-green-400/30">
+                            <span className="text-xs font-bold text-green-300">{map.commuteDisplay}</span>
+                          </div>
                         </div>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             removeMap(map.id);
                           }}
-                          className="hover:bg-white/20 rounded-full w-6 h-6 flex items-center justify-center text-sm"
+                          className="relative hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm transition-all hover:scale-110 hover:rotate-90 backdrop-blur-sm border border-white/10"
                         >
                           ✕
                         </button>
                       </div>
 
-                      {/* Map Preview */}
-                      <div className="relative h-48 overflow-hidden">
+                      {/* Map Preview - Modern Overlay */}
+                      <div className="relative h-52 overflow-hidden bg-gradient-to-br from-slate-100 to-blue-50">
                         <CommuteMapModal
                           isOpen={true}
                           onClose={() => {}}
@@ -663,9 +716,10 @@ export function AIChat() {
                           commuteDisplay={map.commuteDisplay}
                           embedded={true}
                         />
-                        <div className="absolute inset-0 bg-black/10 flex items-center justify-center pointer-events-none">
-                          <div className="bg-white/90 px-4 py-2 rounded-full text-sm font-bold text-gray-800">
-                            Click to Enlarge
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <div className="bg-white/95 backdrop-blur-md px-6 py-3 rounded-2xl text-sm font-bold text-gray-800 shadow-xl border border-white/20 flex items-center gap-2">
+                            <span>🔍</span>
+                            <span>Click to Enlarge</span>
                           </div>
                         </div>
                       </div>
