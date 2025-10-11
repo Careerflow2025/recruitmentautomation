@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import * as XLSX from 'xlsx';
+import { intelligentlyMapRow } from '@/lib/utils/intelligentColumnMapper';
 
 /**
- * API Route: Upload Clients from Excel
+ * API Route: Upload Clients from Excel (AI-Powered)
  * POST /api/upload/clients
  *
  * Accepts an Excel file and imports clients into the database
+ * Uses AI-powered column detection to automatically map data to correct fields
  */
 export async function POST(request: NextRequest) {
   try {
@@ -80,9 +82,11 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Authenticated user: ${user.email}`);
 
-    // Validate and transform data
+    // Validate and transform data using AI-powered mapping
     const clients = [];
     const errors = [];
+
+    console.log('🤖 Using AI-powered intelligent column detection...');
 
     for (let i = 0; i < jsonData.length; i++) {
       const row: any = jsonData[i];
@@ -95,43 +99,59 @@ export async function POST(request: NextRequest) {
           continue; // Skip empty rows silently
         }
 
-        // Only validate that Postcode exists (most critical field for matching)
-        if (!row.Postcode || String(row.Postcode).trim() === '') {
-          errors.push(`Row ${rowNum}: Missing Postcode (required for matching)`);
+        console.log(`\n📋 Processing row ${rowNum}:`, row);
+
+        // Use AI-powered intelligent mapping
+        const mapped = intelligentlyMapRow(row);
+
+        console.log(`✨ AI-mapped result:`, mapped);
+
+        // Validate that we at least have a postcode (required for matching)
+        if (!mapped.postcode || mapped.postcode.trim() === '') {
+          errors.push(`Row ${rowNum}: Missing Postcode (required for matching). AI could not detect a valid UK postcode in this row.`);
           continue;
         }
 
         // Generate ID if not provided
-        const id = row.ID && String(row.ID).trim() !== ''
-          ? String(row.ID).trim()
+        const id = mapped.id && mapped.id.trim() !== ''
+          ? mapped.id.trim()
           : `CL${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
-        // Use generic values if not provided
-        const surgery = row.Surgery && String(row.Surgery).trim() !== ''
-          ? String(row.Surgery).trim()
-          : 'Unnamed Practice';
-
-        const role = row.Role && String(row.Role).trim() !== ''
-          ? String(row.Role).trim()
+        // Use generic role if not provided
+        const role = mapped.role && mapped.role.trim() !== ''
+          ? mapped.role.trim()
           : 'General';
 
-        // Transform to database format - accept ANY data in most fields
+        // For clients, we need surgery name - use a reasonable default
+        // Check if first_name or last_name could be surgery name
+        let surgery = 'Unnamed Practice';
+        if (mapped.first_name && !mapped.last_name) {
+          // Single name field might be surgery name
+          surgery = mapped.first_name;
+        } else if (mapped.first_name && mapped.last_name) {
+          // Both names provided - combine as surgery name
+          surgery = `${mapped.first_name} ${mapped.last_name}`;
+        }
+
+        // Create client object from AI-mapped data
         const client = {
           id: id,
           surgery: surgery,
           role: role,
-          postcode: String(row.Postcode).trim().toUpperCase(),
-          pay: row.Pay ? String(row.Pay).trim() : null,
-          days: row.Days ? String(row.Days).trim() : null,
-          requirement: row.Requirement ? String(row.Requirement).trim() : null,
-          notes: row.Notes ? String(row.Notes).trim() : null,
-          system: row.System ? String(row.System).trim() : null,
-          user_id: user.id,  // Add current user's ID
+          postcode: mapped.postcode.toUpperCase(),
+          budget: mapped.salary || null,  // For clients, salary field becomes budget
+          requirement: mapped.days || null,  // Days field becomes requirement
+          notes: mapped.notes || null,
+          system: mapped.experience || null,  // Experience field becomes system info
+          user_id: user.id,
           added_at: new Date().toISOString()
         };
 
+        console.log(`✅ Final client object:`, client);
+
         clients.push(client);
       } catch (error) {
+        console.error(`❌ Error processing row ${rowNum}:`, error);
         errors.push(`Row ${rowNum}: ${error instanceof Error ? error.message : 'Invalid data'}`);
       }
     }

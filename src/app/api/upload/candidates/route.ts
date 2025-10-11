@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import * as XLSX from 'xlsx';
+import { intelligentlyMapRow } from '@/lib/utils/intelligentColumnMapper';
 
 /**
- * API Route: Upload Candidates from Excel
+ * API Route: Upload Candidates from Excel (AI-Powered)
  * POST /api/upload/candidates
  *
  * Accepts an Excel file and imports candidates into the database
+ * Uses AI-powered column detection to automatically map data to correct fields
  */
 export async function POST(request: NextRequest) {
   try {
@@ -86,9 +88,11 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Authenticated user: ${user.email}`);
 
-    // Validate and transform data
+    // Validate and transform data using AI-powered mapping
     const candidates = [];
     const errors = [];
+
+    console.log('🤖 Using AI-powered intelligent column detection...');
 
     for (let i = 0; i < jsonData.length; i++) {
       const row: any = jsonData[i];
@@ -101,41 +105,51 @@ export async function POST(request: NextRequest) {
           continue; // Skip empty rows silently
         }
 
-        // Only validate that Postcode exists (most critical field for matching)
-        if (!row.Postcode || String(row.Postcode).trim() === '') {
-          errors.push(`Row ${rowNum}: Missing Postcode (required for matching)`);
+        console.log(`\n📋 Processing row ${rowNum}:`, row);
+
+        // Use AI-powered intelligent mapping
+        const mapped = intelligentlyMapRow(row);
+
+        console.log(`✨ AI-mapped result:`, mapped);
+
+        // Validate that we at least have a postcode (required for matching)
+        if (!mapped.postcode || mapped.postcode.trim() === '') {
+          errors.push(`Row ${rowNum}: Missing Postcode (required for matching). AI could not detect a valid UK postcode in this row.`);
           continue;
         }
 
         // Generate ID if not provided
-        const id = row.ID && String(row.ID).trim() !== ''
-          ? String(row.ID).trim()
+        const id = mapped.id && mapped.id.trim() !== ''
+          ? mapped.id.trim()
           : `CAN${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
         // Use generic role if not provided
-        const role = row.Role && String(row.Role).trim() !== ''
-          ? String(row.Role).trim()
+        const role = mapped.role && mapped.role.trim() !== ''
+          ? mapped.role.trim()
           : 'General';
 
-        // Transform to database format - accept ANY data in most fields
+        // Create candidate object from AI-mapped data
         const candidate = {
           id: id,
-          first_name: row['First Name'] ? String(row['First Name']).trim() : null,
-          last_name: row['Last Name'] ? String(row['Last Name']).trim() : null,
-          email: row.Email ? String(row.Email).trim() : null,
-          phone: row.Phone ? String(row.Phone).trim() : null,
+          first_name: mapped.first_name || null,
+          last_name: mapped.last_name || null,
+          email: mapped.email || null,
+          phone: mapped.phone || null,
           role: role,
-          postcode: String(row.Postcode).trim().toUpperCase(),
-          salary: row.Salary ? String(row.Salary).trim() : null,
-          days: row.Days ? String(row.Days).trim() : null,
-          experience: row.Experience ? String(row.Experience).trim() : null,
-          notes: row.Notes ? String(row.Notes).trim() : null,
-          user_id: user.id,  // Add current user's ID
+          postcode: mapped.postcode.toUpperCase(),
+          salary: mapped.salary || null,
+          days: mapped.days || null,
+          experience: mapped.experience || null,
+          notes: mapped.notes || null,
+          user_id: user.id,
           added_at: new Date().toISOString()
         };
 
+        console.log(`✅ Final candidate object:`, candidate);
+
         candidates.push(candidate);
       } catch (error) {
+        console.error(`❌ Error processing row ${rowNum}:`, error);
         errors.push(`Row ${rowNum}: ${error instanceof Error ? error.message : 'Invalid data'}`);
       }
     }
