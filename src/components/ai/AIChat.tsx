@@ -404,125 +404,99 @@ export function AIChat() {
 
   return (
     <>
-      {/* Floating Button - Modern Design */}
+      {/* Floating Button - Clean Minimal */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="group fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white rounded-2xl shadow-2xl hover:shadow-purple-500/50 hover:scale-110 transition-all duration-300 flex items-center justify-center text-3xl z-50 backdrop-blur-xl border border-white/20"
+          className="fixed bottom-6 right-6 w-14 h-14 bg-white text-gray-700 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-200 flex items-center justify-center z-50 border border-gray-200"
           title="Open AI Assistant"
         >
-          <span className="group-hover:scale-110 transition-transform duration-300">✨</span>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+          </svg>
         </button>
       )}
 
-      {/* Full Screen Chat Modal with Map Panel - Modern 2025 Design */}
+      {/* Full Screen Chat Modal - Clean ChatGPT Style */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl p-4 animate-in fade-in duration-300">
-          <div className={`w-full h-[92vh] bg-gradient-to-br from-white via-slate-50 to-purple-50/30 rounded-3xl shadow-2xl flex overflow-hidden transition-all duration-500 border border-white/20 ${
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className={`w-full h-[92vh] bg-white rounded-lg shadow-xl flex overflow-hidden transition-all duration-200 ${
             mapPanelMaps.length > 0 ? 'max-w-[96vw]' : 'max-w-6xl'
           }`}>
             {/* CHAT SECTION (LEFT) */}
             <div className="flex-1 flex flex-col min-w-0">
-            {/* Header - Modern Glassmorphism */}
-            <div className="relative bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white px-8 py-5 flex justify-between items-center shadow-lg backdrop-blur-xl border-b border-white/10">
-              {/* Animated gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-600/0 via-pink-500/20 to-purple-600/0 animate-pulse"></div>
-
-              <div className="relative flex items-center gap-4">
-                <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-3xl shadow-lg border border-white/20 group-hover:scale-110 transition-transform">
-                  ✨
+            {/* Header - Clean Minimal */}
+            <div className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-purple-100">AI Assistant</h2>
-                  <p className="text-sm text-purple-100/90 font-medium">Intelligent matching & analytics powered by AI</p>
+                  <h2 className="text-lg font-semibold text-gray-800">AI Assistant</h2>
+                  <p className="text-xs text-gray-500">Intelligent recruitment matching</p>
                 </div>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="relative text-white hover:bg-white/20 rounded-xl px-4 py-2.5 text-lg font-bold transition-all duration-200 backdrop-blur-sm border border-white/20 hover:scale-105 group"
+                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg p-2 transition-colors"
                 title="Close"
               >
-                <span className="group-hover:rotate-90 transition-transform duration-300 inline-block">✕</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
             {/* Chat Messages Area */}
-            <div className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50 to-white">
-              <div className="max-w-4xl mx-auto p-6 space-y-6">
-                {/* Welcome Message - Modern Hero Section */}
+            <div className="flex-1 overflow-y-auto bg-white">
+              <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+                {/* Welcome Message - Clean Minimal */}
                 {chatHistory.length === 0 && (
-                  <div className="text-center py-16 px-6">
-                    <div className="relative w-24 h-24 mx-auto mb-8 group">
-                      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl blur-xl opacity-60 group-hover:opacity-80 transition-opacity animate-pulse"></div>
-                      <div className="relative w-24 h-24 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-3xl flex items-center justify-center text-5xl shadow-2xl border border-white/20 backdrop-blur-xl group-hover:scale-110 transition-transform duration-300">
-                        ✨
-                      </div>
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-6">
+                      <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                      </svg>
                     </div>
-                    <h3 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
-                      Hello! I'm your AI Assistant
+                    <h3 className="text-2xl font-semibold text-gray-800 mb-3">
+                      How can I help you today?
                     </h3>
-                    <p className="text-gray-600 text-lg mb-4 max-w-2xl mx-auto leading-relaxed">
-                      Powered by advanced AI to help you manage your recruitment pipeline
+                    <p className="text-gray-500 text-sm mb-8 max-w-md mx-auto">
+                      Ask me about candidates, clients, matches, or commute analysis
                     </p>
-                    <div className="flex flex-wrap justify-center gap-3 mb-10 max-w-3xl mx-auto">
-                      <span className="px-4 py-2 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 rounded-full text-sm font-semibold shadow-sm">
-                        💼 Candidate Matching
-                      </span>
-                      <span className="px-4 py-2 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 rounded-full text-sm font-semibold shadow-sm">
-                        🗺️ Smart Commute Analysis
-                      </span>
-                      <span className="px-4 py-2 bg-gradient-to-r from-pink-100 to-indigo-100 text-pink-700 rounded-full text-sm font-semibold shadow-sm">
-                        📊 Real-time Analytics
-                      </span>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-4xl mx-auto">
-                      {exampleQuestions.map((q, i) => (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto">
+                      {exampleQuestions.slice(0, 6).map((q, i) => (
                         <button
                           key={i}
                           onClick={() => setQuestion(q)}
-                          className="group text-left px-5 py-4 bg-white/80 backdrop-blur-sm border border-purple-200/50 rounded-2xl hover:bg-gradient-to-br hover:from-purple-50 hover:to-pink-50 hover:border-purple-300 transition-all duration-300 shadow-sm hover:shadow-lg hover:scale-[1.02]"
+                          className="text-left px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-sm text-gray-700"
                         >
-                          <div className="flex items-start gap-3">
-                            <span className="text-lg group-hover:scale-110 transition-transform duration-300">💬</span>
-                            <span className="text-sm text-gray-700 group-hover:text-gray-900 font-medium leading-relaxed">{q}</span>
-                          </div>
+                          {q}
                         </button>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* Chat History - Modern Message Bubbles */}
+                {/* Chat History - Clean ChatGPT Style */}
                 {chatHistory.map((item, i) => (
-                  <div key={i} className="space-y-5 animate-in slide-in-from-bottom-4 duration-500">
-                    {/* User Question - Modern Bubble */}
+                  <div key={i} className="space-y-4">
+                    {/* User Question - Clean */}
                     <div className="flex justify-end">
-                      <div className="max-w-3xl group">
-                        <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white rounded-3xl rounded-tr-lg px-6 py-4 shadow-lg hover:shadow-xl transition-all duration-300 border border-white/10 backdrop-blur-sm">
-                          <p className="text-base leading-relaxed font-medium">{item.q}</p>
-                        </div>
-                        <div className="text-xs text-gray-400 mt-1.5 mr-2 text-right">You</div>
+                      <div className="max-w-2xl bg-gray-100 rounded-2xl px-5 py-3">
+                        <p className="text-gray-800 text-sm leading-relaxed">{item.q}</p>
                       </div>
                     </div>
 
-                    {/* AI Answer - Modern Bubble */}
+                    {/* AI Answer - Clean */}
                     {item.a && (
                       <div className="flex justify-start">
-                        <div className="max-w-3xl">
-                          <div className="flex gap-4">
-                            <div className="relative w-10 h-10 flex-shrink-0 mt-1">
-                              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl blur-md opacity-50 animate-pulse"></div>
-                              <div className="relative w-10 h-10 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center text-xl shadow-lg border border-white/20">
-                                ✨
-                              </div>
-                            </div>
-                            <div className="flex-1">
-                              <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-3xl rounded-tl-lg px-6 py-4 shadow-lg hover:shadow-xl transition-all duration-300">
-                                <FormattedResponse text={item.a} />
-                              </div>
-                              <div className="text-xs text-gray-400 mt-1.5 ml-2">AI Assistant</div>
-                            </div>
+                        <div className="max-w-2xl">
+                          <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4">
+                            <FormattedResponse text={item.a} />
                           </div>
                         </div>
                       </div>
@@ -530,26 +504,15 @@ export function AIChat() {
                   </div>
                 ))}
 
-                {/* Loading Indicator - Modern Animation */}
+                {/* Loading Indicator - Clean */}
                 {loading && (
-                  <div className="flex justify-start animate-in slide-in-from-bottom-2 duration-300">
-                    <div className="max-w-3xl">
-                      <div className="flex gap-4">
-                        <div className="relative w-10 h-10 flex-shrink-0 mt-1">
-                          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl blur-md opacity-50 animate-pulse"></div>
-                          <div className="relative w-10 h-10 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center text-xl shadow-lg border border-white/20 animate-pulse">
-                            ✨
-                          </div>
-                        </div>
-                        <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-3xl rounded-tl-lg px-6 py-4 shadow-lg">
-                          <div className="flex items-center gap-4">
-                            <div className="flex gap-1.5">
-                              <div className="w-2.5 h-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                              <div className="w-2.5 h-2.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                              <div className="w-2.5 h-2.5 bg-gradient-to-r from-pink-600 to-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                            </div>
-                            <span className="text-gray-600 text-sm font-medium">AI is thinking...</span>
-                          </div>
+                  <div className="flex justify-start">
+                    <div className="max-w-2xl bg-white border border-gray-200 rounded-2xl px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex gap-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                         </div>
                       </div>
                     </div>
@@ -560,10 +523,10 @@ export function AIChat() {
               </div>
             </div>
 
-            {/* Input Area - Modern Floating Design */}
-            <div className="border-t border-gray-200/50 bg-gradient-to-b from-white to-gray-50/50 p-6 backdrop-blur-xl">
-              <div className="max-w-4xl mx-auto">
-                <div className="flex gap-3 items-end">
+            {/* Input Area - Clean ChatGPT Style */}
+            <div className="border-t border-gray-200 bg-white p-4">
+              <div className="max-w-3xl mx-auto">
+                <div className="flex gap-2 items-end">
                   <div className="flex-1 relative">
                     <textarea
                       value={question}
@@ -574,122 +537,100 @@ export function AIChat() {
                           ask();
                         }
                       }}
-                      placeholder="Ask me anything... (Press Enter to send)"
-                      className="w-full px-5 py-4 pr-16 border border-gray-300/50 rounded-2xl text-base resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 font-medium placeholder:text-gray-400 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300"
-                      rows={3}
+                      placeholder="Message AI Assistant..."
+                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl text-sm resize-none focus:outline-none focus:border-gray-400 text-gray-900 placeholder:text-gray-400 bg-white transition-colors"
+                      rows={1}
                       disabled={loading || isRecording}
                     />
-                    {/* Microphone Button Inside Textarea */}
+                    {/* Microphone Button */}
                     <button
                       onClick={toggleRecording}
                       disabled={loading}
-                      className={`absolute bottom-4 right-4 w-11 h-11 rounded-xl flex items-center justify-center text-xl transition-all shadow-lg ${
+                      className={`absolute bottom-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
                         isRecording
-                          ? 'bg-red-500 text-white animate-pulse scale-110'
-                          : 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:shadow-xl hover:scale-110 border border-white/20'
+                          ? 'bg-red-500 text-white'
+                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
                       }`}
                       title={isRecording ? 'Recording... Click to stop' : 'Click to speak'}
                     >
-                      {isRecording ? '⏹️' : '🎤'}
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
                     </button>
                   </div>
                   <button
                     onClick={ask}
                     disabled={loading || !question.trim()}
-                    className={`px-8 py-4 rounded-2xl text-base font-bold transition-all shadow-lg min-w-[120px] ${
+                    className={`px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
                       loading || !question.trim()
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white hover:shadow-xl hover:scale-105 border border-white/20'
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-gray-800 text-white hover:bg-gray-700'
                     }`}
                   >
                     {loading ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      </div>
+                      <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
                     ) : (
-                      <span className="flex items-center justify-center gap-2">
-                        <span>Send</span>
-                        <span className="text-lg">✨</span>
-                      </span>
+                      <span>Send</span>
                     )}
                   </button>
                 </div>
 
-                <div className="flex justify-between items-center mt-4 text-sm">
-                  <div className="flex gap-4">
-                    {chatHistory.length > 0 && (
-                      <button
-                        onClick={clearHistory}
-                        className="text-gray-500 hover:text-red-600 transition-colors flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-red-50"
-                      >
-                        <span>🗑️</span>
-                        <span className="font-medium">Clear</span>
-                      </button>
-                    )}
-                    <span className="text-gray-400 px-3 py-1.5">
-                      {chatHistory.length} message{chatHistory.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-400 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                    <span>AI Online</span>
-                  </div>
+                <div className="flex justify-between items-center mt-2 text-xs text-gray-400">
+                  {chatHistory.length > 0 && (
+                    <button
+                      onClick={clearHistory}
+                      className="hover:text-gray-600 transition-colors"
+                    >
+                      Clear history
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
             </div>
 
-            {/* MAP PANEL (RIGHT) - Modern Design */}
+            {/* MAP PANEL (RIGHT) - Clean Minimal */}
             {mapPanelMaps.length > 0 && (
-              <div className="w-[600px] border-l border-gray-200/50 bg-gradient-to-br from-slate-50 to-purple-50/30 flex flex-col overflow-hidden">
-                {/* Map Panel Header - Modern */}
-                <div className="relative bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white px-6 py-5 flex justify-between items-center shadow-lg border-b border-white/10">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600/0 via-indigo-500/20 to-purple-600/0 animate-pulse"></div>
-                  <div className="relative flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-2xl shadow-lg border border-white/20">
-                      🗺️
+              <div className="w-[600px] border-l border-gray-200 bg-white flex flex-col overflow-hidden">
+                {/* Map Panel Header - Clean */}
+                <div className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold">{mapPanelMaps.length} Route{mapPanelMaps.length > 1 ? 's' : ''}</h3>
-                      <p className="text-xs text-blue-100">Live commute visualization</p>
+                      <h3 className="text-lg font-semibold text-gray-800">{mapPanelMaps.length} Route{mapPanelMaps.length > 1 ? 's' : ''}</h3>
+                      <p className="text-xs text-gray-500">Commute visualization</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setMapPanelMaps([])}
-                    className="relative hover:bg-white/20 rounded-xl px-4 py-2 text-sm font-bold transition-all backdrop-blur-sm border border-white/20 hover:scale-105 group"
+                    className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg px-3 py-2 text-sm transition-colors"
                   >
-                    <span className="flex items-center gap-2">
-                      <span>Close All</span>
-                      <span className="group-hover:rotate-90 transition-transform duration-300 inline-block">✕</span>
-                    </span>
+                    Close All
                   </button>
                 </div>
 
-                {/* Maps Grid - Modern Cards */}
-                <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                {/* Maps Grid - Clean Cards */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
                   {mapPanelMaps.map((map, index) => (
                     <div
                       key={map.id}
-                      className="group bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden border border-gray-200/50 hover:border-purple-400/50 hover:shadow-2xl transition-all duration-300 cursor-pointer hover:scale-[1.02]"
+                      className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all cursor-pointer"
                       onClick={() => setEnlargedMapIndex(index)}
                     >
-                      {/* Map Header - Modern */}
-                      <div className="relative bg-gradient-to-r from-slate-700 via-gray-700 to-slate-800 text-white p-4 flex justify-between items-start">
-                        <div className="absolute inset-0 bg-gradient-to-r from-slate-700/0 via-gray-600/20 to-slate-700/0 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <div className="relative flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-lg">👤</span>
-                            <div className="font-bold text-sm">{map.candidateName}</div>
-                          </div>
-                          <div className="flex items-center gap-2 mb-2 text-xs opacity-90">
-                            <span>→</span>
-                            <span className="flex items-center gap-1">
-                              <span>🏢</span>
-                              <span>{map.clientName}</span>
-                            </span>
-                          </div>
-                          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-500/20 backdrop-blur-sm rounded-full border border-green-400/30">
-                            <span className="text-xs font-bold text-green-300">{map.commuteDisplay}</span>
+                      {/* Map Header - Clean */}
+                      <div className="bg-gray-50 border-b border-gray-200 p-3 flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="text-sm font-semibold text-gray-800 mb-1">{map.candidateName}</div>
+                          <div className="text-xs text-gray-500 mb-2">→ {map.clientName}</div>
+                          <div className="inline-flex items-center px-2 py-1 bg-green-50 border border-green-200 rounded text-xs font-medium text-green-700">
+                            {map.commuteDisplay}
                           </div>
                         </div>
                         <button
@@ -697,14 +638,14 @@ export function AIChat() {
                             e.stopPropagation();
                             removeMap(map.id);
                           }}
-                          className="relative hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm transition-all hover:scale-110 hover:rotate-90 backdrop-blur-sm border border-white/10"
+                          className="text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-lg w-7 h-7 flex items-center justify-center text-sm transition-colors"
                         >
                           ✕
                         </button>
                       </div>
 
-                      {/* Map Preview - Modern Overlay */}
-                      <div className="relative h-52 overflow-hidden bg-gradient-to-br from-slate-100 to-blue-50">
+                      {/* Map Preview - Clean */}
+                      <div className="relative h-48 overflow-hidden bg-gray-100">
                         <CommuteMapModal
                           isOpen={true}
                           onClose={() => {}}
@@ -716,10 +657,9 @@ export function AIChat() {
                           commuteDisplay={map.commuteDisplay}
                           embedded={true}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <div className="bg-white/95 backdrop-blur-md px-6 py-3 rounded-2xl text-sm font-bold text-gray-800 shadow-xl border border-white/20 flex items-center gap-2">
-                            <span>🔍</span>
-                            <span>Click to Enlarge</span>
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 hover:opacity-100 transition-opacity bg-black/5">
+                          <div className="bg-white px-4 py-2 rounded-lg text-xs font-medium text-gray-700 shadow-sm border border-gray-200">
+                            Click to enlarge
                           </div>
                         </div>
                       </div>
