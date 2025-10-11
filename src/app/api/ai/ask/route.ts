@@ -556,16 +556,9 @@ Cli: ${JSON.stringify(compactClients)}
 Match: ${JSON.stringify(compactMatches)}
 
 ${isAboutMap ? `
-🗺️🗺️🗺️ MAP QUESTION DETECTED! 🗺️🗺️🗺️
-CRITICAL INSTRUCTIONS:
-1. OUTPUT MAP_ACTION FIRST in your response (before any text!)
-2. Use FULL postcodes from the data above (pc or can_pc/cl_pc fields)
-3. Format EXACTLY like this:
-
-MAP_ACTION:{"action":"openMap","data":{"originPostcode":"E1 6AN","destinationPostcode":"N1 9GU","candidateName":"CAN24","clientName":"CL1760153553911754","commuteMinutes":22,"commuteDisplay":"🟢🟢 22m"}}
-
-Then add your text explanation AFTER the MAP_ACTION marker.
-DO NOT SKIP THE MAP_ACTION - it's required!
+🗺️ MAP QUESTION: Just provide a brief text description of the best commute.
+The system will automatically show maps - you don't need to generate MAP_ACTION markers.
+Keep your answer short (1-2 sentences).
 ` : ''}
 ${ragConversations ? `RAG MEMORY (relevant past conversations):\n${ragConversations}\n` : ''}
 ${ragKnowledge ? `RAG KNOWLEDGE (relevant system info):\n${ragKnowledge}\n` : ''}
@@ -650,6 +643,30 @@ Q: ${question}`;
 
       console.log(`✅ Received response from RunPod vLLM (${aiAnswer.length} chars)`);
       console.log('📝 AI Response:', aiAnswer.substring(0, 500));
+
+      // ==========================================
+      // AUTO-INJECT MAP_ACTION for map questions
+      // ==========================================
+      // Mistral 7B is too small to reliably generate complex JSON
+      // So we detect map questions and inject MAP_ACTION automatically
+      if (isAboutMap && enrichedMatches.length > 0) {
+        console.log('🗺️ Map question detected - auto-injecting MAP_ACTION markers');
+
+        // Get top 3 best matches (sorted by commute time)
+        const topMatches = enrichedMatches
+          .filter(m => m.candidate && m.client && m.candidate.postcode && m.client.postcode)
+          .slice(0, 3);
+
+        // Generate MAP_ACTION markers
+        const mapActions = topMatches.map(match => {
+          const display = match.commute_display || `${match.commute_minutes}m`;
+          return `MAP_ACTION:{"action":"openMap","data":{"originPostcode":"${match.candidate.postcode}","destinationPostcode":"${match.client.postcode}","candidateName":"${match.candidate_id}","clientName":"${match.client_id}","commuteMinutes":${match.commute_minutes},"commuteDisplay":"${display}"}}`;
+        }).join('\n');
+
+        // Inject MAP_ACTION at the START of the response
+        aiAnswer = mapActions + '\n\n' + aiAnswer;
+        console.log('✅ Injected MAP_ACTION markers:', topMatches.length);
+      }
 
       // Parse and execute any JSON actions in the AI response
       const actionResults: string[] = [];
