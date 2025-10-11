@@ -102,27 +102,18 @@ export default function MultiNotesPopup({
     }
   };
 
-  // Format timestamp to readable format
+  // Format timestamp to exact date and time
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-
-    // Otherwise show full date
+    // Format: "15 Jan 2025, 14:30"
     const options: Intl.DateTimeFormatOptions = {
-      year: 'numeric',
+      day: '2-digit',
       month: 'short',
-      day: 'numeric',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: false,
     };
     return date.toLocaleString('en-GB', options);
   };
@@ -310,6 +301,7 @@ export default function MultiNotesPopup({
               outline: 'none',
               fontFamily: 'system-ui, -apple-system, sans-serif',
               transition: 'border-color 0.2s',
+              color: '#1e293b',
             }}
             onFocus={(e) => {
               e.currentTarget.style.borderColor = '#667eea';
