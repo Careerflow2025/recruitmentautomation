@@ -9,6 +9,7 @@ import { NewItemIndicator } from '../ui/NewItemIndicator';
 import { CommuteMapModal } from './CommuteMapModal';
 import { supabase } from '@/lib/supabase/browser';
 import { getCurrentUserId } from '@/lib/auth-helpers';
+import NotesPopup from '../grid/NotesPopup';
 
 interface MatchesTableProps {
   matches: Match[];
@@ -58,6 +59,8 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
   const openModalsRef = useRef(openModals);
   const [editingModalId, setEditingModalId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Candidate | Client>>({});
+  const [candidateNotesPopup, setCandidateNotesPopup] = useState<{ candidate: Candidate } | null>(null);
+  const [clientNotesPopup, setClientNotesPopup] = useState<{ client: Client } | null>(null);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -614,60 +617,60 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-gradient-to-r from-blue-600 to-blue-700">
+            <tr style={{ backgroundColor: '#1e293b' }}>
               {/* Match Info Section */}
-              <th className="px-3 py-2 text-left text-xs font-bold text-white uppercase tracking-wide border-r border-blue-500">
+              <th className="px-3 py-3 text-left text-xs font-bold text-white uppercase tracking-wide border-r" style={{ borderColor: '#334155' }}>
                 Commute
               </th>
-              <th className="px-3 py-2 text-left text-xs font-bold text-white uppercase tracking-wide border-r-4 border-white">
+              <th className="px-3 py-3 text-left text-xs font-bold text-white uppercase tracking-wide border-r-4 border-white">
                 Role Match
               </th>
 
               {/* Alternating Candidate/Client Columns */}
-              <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-700 border-r border-blue-600">
+              <th className="px-2 py-3 text-left text-[10px] font-bold text-white uppercase tracking-wide border-r" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
                 CAN ID
               </th>
-              <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-800 border-r border-blue-700">
+              <th className="px-2 py-3 text-left text-[10px] font-bold text-white uppercase tracking-wide border-r" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
                 CL ID
               </th>
 
-              <th className="px-2 py-2 text-left text-xs font-bold text-white uppercase tracking-wide bg-blue-700 border-r border-blue-600">
+              <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wide border-r" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
                 CAN Postcode
               </th>
-              <th className="px-2 py-2 text-left text-xs font-bold text-white uppercase tracking-wide bg-blue-800 border-r border-blue-700">
+              <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wide border-r" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
                 CL Postcode
               </th>
 
               {visibleColumns.salary_budget && (
                 <>
-                  <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-700 border-r border-blue-600">
+                  <th className="px-2 py-3 text-left text-[10px] font-bold text-white uppercase tracking-wide border-r" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
                     CAN Salary
                   </th>
-                  <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-800 border-r border-blue-700">
+                  <th className="px-2 py-3 text-left text-[10px] font-bold text-white uppercase tracking-wide border-r" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
                     CL Budget
                   </th>
                 </>
               )}
 
-              <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-700 border-r border-blue-600">
+              <th className="px-2 py-3 text-left text-[10px] font-bold text-white uppercase tracking-wide border-r" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
                 CAN Role
               </th>
-              <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-800 border-r border-blue-700">
+              <th className="px-2 py-3 text-left text-[10px] font-bold text-white uppercase tracking-wide border-r" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
                 CL Role
               </th>
 
               {visibleColumns.availability_requirement && (
                 <>
-                  <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-700 border-r border-blue-600">
+                  <th className="px-2 py-3 text-left text-[10px] font-bold text-white uppercase tracking-wide border-r" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
                     CAN Availability
                   </th>
-                  <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wide bg-blue-800 border-r border-blue-700">
+                  <th className="px-2 py-3 text-left text-[10px] font-bold text-white uppercase tracking-wide border-r" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
                     CL Requirement
                   </th>
                 </>
               )}
 
-              <th className="px-4 py-2 text-center text-xs font-bold text-white uppercase tracking-wide bg-blue-800 sticky right-0 z-10 min-w-[140px]">
+              <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wide sticky right-0 z-10 min-w-[140px]" style={{ backgroundColor: '#1e293b' }}>
                 Status
               </th>
             </tr>
@@ -711,15 +714,18 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleCandidateClick(match.candidate);
+                      setCandidateNotesPopup({ candidate: match.candidate });
                     }}
-                    className="w-full text-left hover:text-blue-600 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1 bg-blue-50 hover:bg-blue-100 transition-colors"
-                    title="Click to view candidate details"
+                    className="w-full text-left hover:text-blue-600 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1 bg-blue-50 hover:bg-blue-100 transition-colors flex items-center gap-1"
+                    title="Click to view/edit candidate notes"
                   >
-                    <NewItemIndicator
-                      id={match.candidate.id}
-                      addedAt={match.candidate.added_at}
-                    />
+                    <span className="flex-1">
+                      <NewItemIndicator
+                        id={match.candidate.id}
+                        addedAt={match.candidate.added_at}
+                      />
+                    </span>
+                    <span className="text-[10px] opacity-60">📝</span>
                   </button>
                 </td>
                 {/* CL ID */}
@@ -727,15 +733,18 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleClientClick(match.client);
+                      setClientNotesPopup({ client: match.client });
                     }}
-                    className="w-full text-left hover:text-orange-600 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500 rounded p-1 bg-orange-50 hover:bg-orange-100 transition-colors"
-                    title="Click to view client details"
+                    className="w-full text-left hover:text-orange-600 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500 rounded p-1 bg-orange-50 hover:bg-orange-100 transition-colors flex items-center gap-1"
+                    title="Click to view/edit client notes"
                   >
-                    <NewItemIndicator
-                      id={match.client.id}
-                      addedAt={match.client.added_at}
-                    />
+                    <span className="flex-1">
+                      <NewItemIndicator
+                        id={match.client.id}
+                        addedAt={match.client.added_at}
+                      />
+                    </span>
+                    <span className="text-[10px] opacity-60">📝</span>
                   </button>
                 </td>
 
@@ -1482,6 +1491,66 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
             />
           </div>
         </div>
+      )}
+
+      {/* Candidate Notes Popup */}
+      {candidateNotesPopup && (
+        <NotesPopup
+          content={candidateNotesPopup.candidate.notes || ''}
+          title={`Candidate Notes - ${candidateNotesPopup.candidate.id}`}
+          onClose={() => setCandidateNotesPopup(null)}
+          onSave={async (newContent) => {
+            try {
+              const userId = await getCurrentUserId();
+              if (!userId) throw new Error('User not authenticated');
+
+              const { error } = await supabase
+                .from('candidates')
+                .update({ notes: newContent })
+                .eq('id', candidateNotesPopup.candidate.id)
+                .eq('user_id', userId);
+
+              if (error) throw error;
+
+              setCandidateNotesPopup(null);
+              // Optionally reload matches to reflect changes
+              window.location.reload();
+            } catch (error) {
+              console.error('Failed to save candidate notes:', error);
+              alert('Failed to save notes. Please try again.');
+            }
+          }}
+        />
+      )}
+
+      {/* Client Notes Popup */}
+      {clientNotesPopup && (
+        <NotesPopup
+          content={clientNotesPopup.client.notes || ''}
+          title={`Client Notes - ${clientNotesPopup.client.id}`}
+          onClose={() => setClientNotesPopup(null)}
+          onSave={async (newContent) => {
+            try {
+              const userId = await getCurrentUserId();
+              if (!userId) throw new Error('User not authenticated');
+
+              const { error } = await supabase
+                .from('clients')
+                .update({ notes: newContent })
+                .eq('id', clientNotesPopup.client.id)
+                .eq('user_id', userId);
+
+              if (error) throw error;
+
+              setClientNotesPopup(null);
+              // Optionally reload matches to reflect changes
+              window.location.reload();
+            } catch (error) {
+              console.error('Failed to save client notes:', error);
+              alert('Failed to save notes. Please try again.');
+            }
+          }}
+        />
       )}
     </div>
   );

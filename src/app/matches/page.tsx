@@ -330,31 +330,32 @@ export default function MatchesPage() {
 
   return (
     <div className="h-screen flex flex-col">
-      {/* Toolbar */}
-      <div className="grid-toolbar">
-        <div className="grid-toolbar-title">
-          <span>🔗 Matches</span>
-          <span className="text-sm font-normal opacity-90">
-            ({filteredMatches.length} {filteredMatches.length !== matches.length ? `of ${matches.length}` : 'total'})
+      {/* Enhanced Professional Toolbar */}
+      <div className="grid-toolbar" style={{ padding: '20px 24px', minHeight: '80px' }}>
+        <div className="grid-toolbar-title" style={{ gap: '16px' }}>
+          <span style={{ fontSize: '24px' }}>🔗 Matches</span>
+          <span className="text-base font-semibold" style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '6px 14px', borderRadius: '8px' }}>
+            {filteredMatches.length} {filteredMatches.length !== matches.length ? `of ${matches.length}` : 'total'}
           </span>
           {showStats && (
             <>
-              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-semibold border border-green-300">
-                ✅ {matches.filter(m => m.role_match).length} Role
+              <span className="text-sm font-bold px-4 py-2 rounded-lg shadow-md" style={{ backgroundColor: '#10b981', color: 'white', border: '2px solid #059669' }}>
+                ✅ {matches.filter(m => m.role_match).length} Role Match
               </span>
-              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded font-semibold border border-orange-300">
+              <span className="text-sm font-bold px-4 py-2 rounded-lg shadow-md" style={{ backgroundColor: '#f59e0b', color: 'white', border: '2px solid #d97706' }}>
                 📍 {matches.filter(m => !m.role_match).length} Location
               </span>
-              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-semibold border border-blue-300">
-                🟢 {matches.filter(m => m.commute_minutes <= 20).length} &lt;20m
+              <span className="text-sm font-bold px-4 py-2 rounded-lg shadow-md" style={{ backgroundColor: '#3b82f6', color: 'white', border: '2px solid #2563eb' }}>
+                🟢 {matches.filter(m => m.commute_minutes <= 20).length} &lt;20min
               </span>
             </>
           )}
         </div>
-        <div className="grid-toolbar-actions">
+        <div className="grid-toolbar-actions" style={{ gap: '14px' }}>
           <button
             onClick={() => setShowStats(!showStats)}
             className="grid-toolbar-button"
+            style={{ padding: '10px 20px', fontSize: '15px', fontWeight: '700' }}
             title={showStats ? "Hide Statistics" : "Show Statistics"}
           >
             {showStats ? '👁️ Hide Stats' : '👁️ Show Stats'}
@@ -363,13 +364,14 @@ export default function MatchesPage() {
             onClick={handleGenerateMatches}
             disabled={generating}
             className={`grid-toolbar-button ${generating ? '' : 'grid-toolbar-button-primary'}`}
+            style={{ padding: '10px 20px', fontSize: '15px', fontWeight: '700' }}
           >
             {generating ? '⏳ Generating...' : '🔄 Generate Matches'}
           </button>
-          <Link href="/candidates" className="grid-toolbar-button">
+          <Link href="/candidates" className="grid-toolbar-button" style={{ padding: '10px 20px', fontSize: '15px', fontWeight: '700' }}>
             👥 Candidates
           </Link>
-          <Link href="/clients" className="grid-toolbar-button">
+          <Link href="/clients" className="grid-toolbar-button" style={{ padding: '10px 20px', fontSize: '15px', fontWeight: '700' }}>
             🏥 Clients
           </Link>
         </div>
@@ -377,66 +379,84 @@ export default function MatchesPage() {
 
       <div className="flex-1 overflow-auto p-4 bg-gray-50">
 
-        {/* Generate Result Message */}
+        {/* Enhanced Generate Result Message */}
         {generateResult && (
-          <div className={`mb-4 p-4 rounded-lg shadow-sm text-sm ${
+          <div className={`mb-6 p-5 rounded-xl shadow-lg text-sm border-2 ${
             generateResult.success
-              ? 'bg-blue-50 border border-blue-200 text-blue-900'
-              : 'bg-red-50 border border-red-200 text-red-900'
+              ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300 text-blue-900'
+              : 'bg-gradient-to-r from-red-50 to-pink-50 border-red-300 text-red-900'
           }`}>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {generateResult.processing ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-3 border-blue-600"></div>
               ) : generateResult.success ? (
-                <span>✅</span>
+                <span className="text-xl">✅</span>
               ) : (
-                <span>❌</span>
+                <span className="text-xl">❌</span>
               )}
-              <span className="font-medium">{generateResult.message}</span>
+              <span className="font-bold text-base">{generateResult.message}</span>
             </div>
-            
+
             {generateResult.stats && (
-              <div className="mt-2 text-xs space-y-1">
-                <div className="flex gap-4">
-                  <span>📋 Candidates: {generateResult.stats.candidates}</span>
-                  <span>🏥 Clients: {generateResult.stats.clients}</span>
+              <div className="mt-4 text-sm space-y-2 bg-white bg-opacity-50 rounded-lg p-4 border border-opacity-30" style={{ borderColor: generateResult.success ? '#3b82f6' : '#ef4444' }}>
+                <div className="flex gap-6 font-semibold">
+                  <span className="flex items-center gap-2">
+                    <span className="text-lg">📋</span>
+                    <span>Candidates: <span className="text-blue-700">{generateResult.stats.candidates}</span></span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-lg">🏥</span>
+                    <span>Clients: <span className="text-orange-700">{generateResult.stats.clients}</span></span>
+                  </span>
                 </div>
-                
+
                 {generateResult.processing && generateResult.stats.total_pairs_to_process && (
-                  <div>
-                    <span>🔄 Processing {generateResult.stats.total_pairs_to_process} candidate-client pairs</span>
+                  <div className="font-semibold">
+                    <span className="flex items-center gap-2">
+                      <span className="text-lg">🔄</span>
+                      <span>Processing <span className="text-purple-700">{generateResult.stats.total_pairs_to_process}</span> candidate-client pairs</span>
+                    </span>
                     {generateResult.stats.estimated_time_seconds && (
-                      <span className="ml-2 text-gray-600">
+                      <span className="ml-2 text-gray-600 font-normal text-xs">
                         (Est. time: ~{Math.ceil(generateResult.stats.estimated_time_seconds / 60)} minutes)
                       </span>
                     )}
                   </div>
                 )}
-                
+
                 {generateResult.stats.current_matches !== undefined && (
-                  <div className="flex items-center gap-2">
-                    <span>📊 Matches found: {generateResult.stats.current_matches}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold flex items-center gap-2">
+                      <span className="text-lg">📊</span>
+                      <span>Matches found: <span className="text-green-700">{generateResult.stats.current_matches}</span></span>
+                    </span>
                     {generateResult.stats.completion_percentage !== undefined && (
                       <>
-                        <div className="w-20 bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                        <div className="w-32 bg-gray-300 rounded-full h-3 shadow-inner">
+                          <div
+                            className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-300 shadow-sm"
                             style={{ width: `${Math.min(generateResult.stats.completion_percentage, 100)}%` }}
                           ></div>
                         </div>
-                        <span className="text-xs text-gray-600">
+                        <span className="text-sm font-bold text-blue-700">
                           {generateResult.stats.completion_percentage}%
                         </span>
                       </>
                     )}
                   </div>
                 )}
-                
+
                 {!generateResult.processing && generateResult.stats.matches_created !== undefined && (
-                  <div>
-                    <span>✅ Total matches created: {generateResult.stats.matches_created}</span>
+                  <div className="font-semibold flex items-center gap-4">
+                    <span className="flex items-center gap-2">
+                      <span className="text-lg">✅</span>
+                      <span>Total matches created: <span className="text-green-700">{generateResult.stats.matches_created}</span></span>
+                    </span>
                     {generateResult.stats.excluded_over_80min > 0 && (
-                      <span className="ml-3">⊗ Excluded (&gt;80min): {generateResult.stats.excluded_over_80min}</span>
+                      <span className="flex items-center gap-2 text-red-700">
+                        <span className="text-lg">⊗</span>
+                        <span>Excluded (&gt;80min): {generateResult.stats.excluded_over_80min}</span>
+                      </span>
                     )}
                   </div>
                 )}
