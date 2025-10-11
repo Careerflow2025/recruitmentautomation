@@ -32,6 +32,7 @@ export function CommuteMapModal({
   const [isLoadingRoute, setIsLoadingRoute] = useState(true);
   const [usingApproximate, setUsingApproximate] = useState(false);
   const [activeTab, setActiveTab] = useState<'driving' | 'transit'>('driving');
+  const [directionsCollapsed, setDirectionsCollapsed] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !mapRef.current) return;
@@ -187,12 +188,14 @@ export function CommuteMapModal({
             // Automatically fit the map bounds to show the entire route
             if (result.routes[0] && result.routes[0].bounds && map) {
               map.fitBounds(result.routes[0].bounds);
-              
-              // Add some padding to the bounds for better visualization
+
+              // Zoom out by 25% for better overview
               const boundsListener = google.maps.event.addListenerOnce(map, 'bounds_changed', () => {
                 const currentZoom = map.getZoom();
-                if (currentZoom && currentZoom > 6) {
-                  map.setZoom(6); // Cap the zoom level to prevent over-zooming
+                if (currentZoom) {
+                  // Reduce zoom by 25% (zoom out)
+                  const newZoom = Math.max(3, currentZoom - (currentZoom * 0.25));
+                  map.setZoom(newZoom);
                 }
               });
             }
@@ -419,17 +422,22 @@ export function CommuteMapModal({
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-2xl w-[95vw] h-[95vh] overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-white">
+          <div className="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-4 text-white flex-shrink-0">
             <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold">🗺️ Route Visualization</h2>
-                <p className="text-blue-100 text-sm mt-1">Google Maps Driving Directions</p>
+              <div className="flex items-center gap-3">
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <span>🗺️</span>
+                  <span>Route Visualization</span>
+                </h2>
+                <div className="bg-white bg-opacity-20 px-3 py-1 rounded-lg text-sm font-semibold">
+                  {commuteDisplay}
+                </div>
               </div>
               <button
                 onClick={onClose}
-                className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition"
+                className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -438,166 +446,191 @@ export function CommuteMapModal({
             </div>
           </div>
 
-          {/* Journey Info */}
-          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            {/* Time Difference Notice */}
-            <div className="mb-3 bg-blue-50 border border-blue-300 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xl">ℹ️</span>
-                <p className="text-sm font-semibold text-blue-900">Google Maps API Configuration</p>
-              </div>
-              <p className="text-xs text-blue-700">
-                Both the database matching system and live map use Google Maps APIs with identical parameters: 
-                driving mode, traffic_model: 'best_guess', departure_time: 'now', no route restrictions, imperial units.
-                Small differences are due to the timing of API calls and real-time traffic changes.
-              </p>
+          {/* Journey Info - Collapsible */}
+          <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200">
+            {/* Collapsible Header */}
+            <div
+              className="px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 cursor-pointer hover:from-slate-500 hover:to-slate-600 transition-all duration-200 flex items-center justify-between"
+              onClick={() => setDirectionsCollapsed(!directionsCollapsed)}
+            >
+              <h3 className="text-white font-bold flex items-center gap-2 select-none">
+                <span className="text-xl">📊</span>
+                <span>Route Details & Configuration</span>
+              </h3>
+              <span className="text-white text-sm transition-transform duration-200" style={{ transform: directionsCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
+                ▼
+              </span>
             </div>
 
-            {usingApproximate && (
-              <div className="mb-3 bg-yellow-50 border border-yellow-300 rounded-lg p-3 flex items-center gap-2">
-                <span className="text-xl">⚠️</span>
-                <div>
-                  <p className="text-sm font-semibold text-yellow-900">Using Approximate Areas</p>
-                  <p className="text-xs text-yellow-700">
-                    Exact postcodes not found. Showing route between general areas for estimation.
+            {/* Collapsible Content */}
+            {!directionsCollapsed && (
+              <div className="px-6 py-4">
+                {/* Time Difference Notice */}
+                <div className="mb-3 bg-slate-50 border-2 border-slate-300 rounded-xl p-3 shadow-sm">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xl">ℹ️</span>
+                    <p className="text-sm font-bold text-slate-900">Google Maps API Configuration</p>
+                  </div>
+                  <p className="text-xs text-slate-700 leading-relaxed">
+                    Both the database matching system and live map use Google Maps APIs with identical parameters:
+                    driving mode, traffic_model: 'best_guess', departure_time: 'now', no route restrictions, imperial units.
+                    Small differences are due to the timing of API calls and real-time traffic changes.
                   </p>
+                </div>
+
+                {usingApproximate && (
+                  <div className="mb-3 bg-yellow-50 border-2 border-yellow-300 rounded-xl p-3 flex items-center gap-2 shadow-sm">
+                    <span className="text-xl">⚠️</span>
+                    <div>
+                      <p className="text-sm font-bold text-yellow-900">Using Approximate Areas</p>
+                      <p className="text-xs text-yellow-700">
+                        Exact postcodes not found. Showing route between general areas for estimation.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                  {/* Origin */}
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border-2 border-green-300 shadow-md hover:shadow-lg transition-all duration-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">📍</span>
+                      <span className="text-xs font-bold text-green-700 uppercase tracking-wide">Origin</span>
+                    </div>
+                    <p className="font-bold text-gray-900 text-sm">{candidateName}</p>
+                    <p className="text-sm text-gray-700 font-semibold mt-1">{originPostcode}</p>
+                  </div>
+
+                  {/* Commute Time (Database) */}
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border-2 border-blue-300 shadow-md hover:shadow-lg transition-all duration-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">💾</span>
+                      <span className="text-xs font-bold text-blue-700 uppercase tracking-wide">Database</span>
+                    </div>
+                    <p className="font-bold text-2xl text-blue-900">{commuteMinutes}m</p>
+                    <p className="text-xs text-gray-600 mt-1">Used for matching</p>
+                  </div>
+
+                  {/* Live Driving Route Info */}
+                  <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-4 border-2 border-emerald-300 shadow-md hover:shadow-lg transition-all duration-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">🚗</span>
+                      <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Live Driving</span>
+                    </div>
+                    {routeInfo ? (
+                      <>
+                        <p className="font-bold text-lg text-emerald-900">{routeInfo.duration}</p>
+                        <p className="text-xs text-gray-600 mt-1">{routeInfo.distance}</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-bold text-lg text-gray-400">Loading...</p>
+                        <p className="text-xs text-gray-400">Please wait</p>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Live Transit Route Info */}
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border-2 border-purple-300 shadow-md hover:shadow-lg transition-all duration-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">🚆</span>
+                      <span className="text-xs font-bold text-purple-700 uppercase tracking-wide">Public Transit</span>
+                    </div>
+                    {transitRouteInfo ? (
+                      <>
+                        <p className="font-bold text-lg text-purple-900">{transitRouteInfo.duration}</p>
+                        <p className="text-xs text-gray-600 mt-1">{transitRouteInfo.distance}</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-bold text-lg text-gray-400">Loading...</p>
+                        <p className="text-xs text-gray-400">Please wait</p>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Destination */}
+                  <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-xl p-4 border-2 border-red-300 shadow-md hover:shadow-lg transition-all duration-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">🏥</span>
+                      <span className="text-xs font-bold text-red-700 uppercase tracking-wide">Destination</span>
+                    </div>
+                    <p className="font-bold text-gray-900 text-sm">{clientName}</p>
+                    <p className="text-sm text-gray-700 font-semibold mt-1">{destinationPostcode}</p>
+                  </div>
                 </div>
               </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              {/* Origin */}
-              <div className="bg-white rounded-lg p-3 border border-green-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl">📍</span>
-                  <span className="text-xs font-semibold text-green-600 uppercase">Origin</span>
-                </div>
-                <p className="font-bold text-gray-900">{candidateName}</p>
-                <p className="text-sm text-gray-600">{originPostcode}</p>
-              </div>
+          </div>
 
-              {/* Commute Time (Database) */}
-              <div className="bg-white rounded-lg p-3 border border-blue-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl">💾</span>
-                  <span className="text-xs font-semibold text-blue-600 uppercase">Database (Used for Matching)</span>
+          {/* Map Container - Full Width and Flexible */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Google Map - Edge to Edge */}
+            <div className="flex-1 relative">
+              {mapError ? (
+                <div className="flex items-center justify-center h-full bg-red-50">
+                  <div className="text-center p-6">
+                    <p className="text-red-800 font-bold mb-2">⚠️ Map Error</p>
+                    <p className="text-red-600 text-sm">{mapError}</p>
+                    <p className="text-xs text-gray-600 mt-4">
+                      Check browser console (F12) for detailed error messages
+                    </p>
+                  </div>
                 </div>
-                <p className="font-bold text-2xl text-blue-900">{commuteMinutes} min</p>
-                <p className="text-sm text-gray-600">{commuteDisplay}</p>
-                <p className="text-xs text-gray-500 mt-1">From Google Maps Distance Matrix API</p>
-              </div>
-
-              {/* Live Driving Route Info */}
-              <div className="bg-white rounded-lg p-3 border border-green-300">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl">🔄</span>
-                  <span className="text-xs font-semibold text-green-700 uppercase">Live Route (Current Traffic)</span>
-                </div>
-                {routeInfo ? (
-                  <>
-                    <p className="font-bold text-lg text-green-900">{routeInfo.duration}</p>
-                    <p className="text-sm text-gray-600">{routeInfo.distance}</p>
-                    <p className="text-xs text-gray-500 mt-1">From Google Maps Directions API</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="font-bold text-lg text-gray-400">Calculating...</p>
-                    <p className="text-sm text-gray-400">Please wait</p>
-                  </>
-                )}
-              </div>
-
-              {/* Live Transit Route Info */}
-              <div className="bg-white rounded-lg p-3 border border-purple-300">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl">🚆</span>
-                  <span className="text-xs font-semibold text-purple-700 uppercase">Public Transport</span>
-                </div>
-                {transitRouteInfo ? (
-                  <>
-                    <p className="font-bold text-lg text-purple-900">{transitRouteInfo.duration}</p>
-                    <p className="text-sm text-gray-600">{transitRouteInfo.distance}</p>
-                    <p className="text-xs text-gray-500 mt-1">Live Google Maps transit route</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="font-bold text-lg text-gray-400">Calculating...</p>
-                    <p className="text-sm text-gray-400">Please wait</p>
-                  </>
-                )}
-              </div>
-
-              {/* Destination */}
-              <div className="bg-white rounded-lg p-3 border border-red-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl">🏥</span>
-                  <span className="text-xs font-semibold text-red-600 uppercase">Destination</span>
-                </div>
-                <p className="font-bold text-gray-900">{clientName}</p>
-                <p className="text-sm text-gray-600">{destinationPostcode}</p>
-              </div>
+              ) : (
+                <>
+                  <div ref={mapRef} className="w-full h-full" />
+                  {isLoadingRoute && (
+                    <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-600 mx-auto mb-4"></div>
+                        <p className="text-gray-900 font-medium">Calculating route...</p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          From {originPostcode} to {destinationPostcode}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
-          {/* Map and Directions Container */}
-          <div className="flex" style={{ height: '500px' }}>
-            {/* Turn-by-Turn Directions Panel */}
-            <div className="w-1/3 bg-white border-r border-gray-200 flex flex-col">
-              {/* Tabs */}
-              <div className="flex border-b border-gray-200">
-                <button
-                  onClick={() => setActiveTab('driving')}
-                  className={`flex-1 px-4 py-3 text-sm font-semibold transition ${
-                    activeTab === 'driving'
-                      ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                      : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <span>🚗</span>
-                    <span>Driving</span>
-                  </div>
-                  {routeInfo && (
-                    <p className="text-xs mt-1">{routeInfo.duration}</p>
-                  )}
-                </button>
-                <button
-                  onClick={() => setActiveTab('transit')}
-                  className={`flex-1 px-4 py-3 text-sm font-semibold transition ${
-                    activeTab === 'transit'
-                      ? 'bg-green-50 text-green-700 border-b-2 border-green-600'
-                      : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <span>🚆</span>
-                    <span>Transit</span>
-                  </div>
-                  {transitRouteInfo && transitRouteInfo.duration !== 'Not available' && (
-                    <p className="text-xs mt-1">{transitRouteInfo.duration}</p>
-                  )}
-                </button>
-              </div>
+          {/* Footer with Turn-by-Turn Toggle */}
+          <div className="flex-shrink-0 bg-gray-50 border-t border-gray-200">
+            {/* Turn-by-Turn Directions - Collapsible */}
+            <div
+              className="px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 cursor-pointer hover:from-slate-500 hover:to-slate-600 transition-all duration-200 flex items-center justify-between"
+              onClick={() => setActiveTab(activeTab === 'driving' ? 'transit' : 'driving')}
+            >
+              <h3 className="text-white font-bold flex items-center gap-2 select-none">
+                <span className="text-xl">🗺️</span>
+                <span>Turn-by-Turn Directions</span>
+                <span className="text-sm font-normal opacity-80">
+                  ({activeTab === 'driving' ? '🚗 Driving' : '🚆 Transit'} - Click to switch)
+                </span>
+              </h3>
+            </div>
 
-              {/* Directions Panel Content */}
-              <div className="flex-1 overflow-y-auto">
-                {activeTab === 'driving' ? (
-                  <div
-                    ref={directionsPanel}
-                    className="directions-panel px-4 py-2 text-sm"
-                    style={{
-                      lineHeight: '1.4',
-                    }}
-                  />
-                ) : (
-                  <div
-                    ref={transitDirectionsPanel}
-                    className="directions-panel px-4 py-2 text-sm"
-                    style={{
-                      lineHeight: '1.4',
-                    }}
-                  />
-                )}
-              </div>
+            {/* Directions Content */}
+            <div className="px-6 py-4 max-h-64 overflow-y-auto bg-white">
+              {activeTab === 'driving' ? (
+                <div
+                  ref={directionsPanel}
+                  className="directions-panel text-sm"
+                  style={{
+                    lineHeight: '1.4',
+                  }}
+                />
+              ) : (
+                <div
+                  ref={transitDirectionsPanel}
+                  className="directions-panel text-sm"
+                  style={{
+                    lineHeight: '1.4',
+                  }}
+                />
+              )}
 
               <style jsx>{`
                 .directions-panel :global(table) {
@@ -619,7 +652,7 @@ export function CommuteMapModal({
                   width: 40px;
                   text-align: center;
                   font-weight: bold;
-                  color: #2563eb;
+                  color: #475569;
                   font-size: 14px;
                 }
                 .directions-panel :global(img) {
@@ -648,57 +681,6 @@ export function CommuteMapModal({
                 }
               `}</style>
             </div>
-
-            {/* Google Map */}
-            <div className="flex-1 relative">
-              {mapError ? (
-                <div className="flex items-center justify-center h-full bg-red-50">
-                  <div className="text-center p-6">
-                    <p className="text-red-800 font-bold mb-2">⚠️ Map Error</p>
-                    <p className="text-red-600 text-sm">{mapError}</p>
-                    <p className="text-xs text-gray-600 mt-4">
-                      Check browser console (F12) for detailed error messages
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div ref={mapRef} className="w-full h-full" />
-                  {isLoadingRoute && (
-                    <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                        <p className="text-gray-900 font-medium">Calculating route...</p>
-                        <p className="text-sm text-gray-600 mt-1">
-                          From {originPostcode} to {destinationPostcode}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-            <div className="flex items-center gap-4 text-sm text-gray-600">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-1 bg-blue-600 rounded"></div>
-                <span>🚗 Driving (Live)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-1 bg-purple-600 rounded"></div>
-                <span>🚆 Transit (Live)</span>
-              </div>
-              <span className="text-xs text-gray-500">All routes use Google Maps APIs with identical parameters</span>
-            </div>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition"
-            >
-              Close
-            </button>
           </div>
         </div>
       </div>
