@@ -661,6 +661,7 @@ export function AIChat() {
                           clientName={map.clientName}
                           commuteMinutes={map.commuteMinutes}
                           commuteDisplay={map.commuteDisplay}
+                          embedded={true}
                         />
                         <div className="absolute inset-0 bg-black/10 flex items-center justify-center pointer-events-none">
                           <div className="bg-white/90 px-4 py-2 rounded-full text-sm font-bold text-gray-800">

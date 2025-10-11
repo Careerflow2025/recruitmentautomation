@@ -11,6 +11,7 @@ interface CommuteMapModalProps {
   clientName: string;
   commuteMinutes: number;
   commuteDisplay: string;
+  embedded?: boolean; // New prop for embedded mode (no modal wrapper)
 }
 
 export function CommuteMapModal({
@@ -22,6 +23,7 @@ export function CommuteMapModal({
   clientName,
   commuteMinutes,
   commuteDisplay,
+  embedded = false, // Default to false (full modal mode)
 }: CommuteMapModalProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const directionsPanel = useRef<HTMLDivElement>(null);
@@ -413,6 +415,38 @@ export function CommuteMapModal({
 
   if (!isOpen) return null;
 
+  // Embedded mode: render just the map without modal wrapper
+  if (embedded) {
+    return (
+      <div className="w-full h-full flex flex-col overflow-hidden bg-white">
+        {/* Just the map, no header/footer */}
+        <div className="flex-1 relative">
+          {mapError ? (
+            <div className="flex items-center justify-center h-full bg-red-50">
+              <div className="text-center p-6">
+                <p className="text-red-800 font-bold mb-2">⚠️ Map Error</p>
+                <p className="text-red-600 text-sm">{mapError}</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div ref={mapRef} className="w-full h-full" />
+              {isLoadingRoute && (
+                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-600 mx-auto mb-2"></div>
+                    <p className="text-xs text-gray-600">Loading...</p>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Full modal mode (original behavior)
   return (
     <>
       {/* Backdrop */}
