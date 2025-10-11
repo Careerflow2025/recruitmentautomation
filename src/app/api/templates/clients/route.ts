@@ -9,16 +9,19 @@ import * as XLSX from 'xlsx';
  */
 export async function GET() {
   try {
-    // Define the template structure with headers and ONE sample row
-    // ID removed - system auto-generates IDs
-    // Fields ordered by priority: Postcode (required) → Role → Surgery → Details
+    // Define the template structure matching actual database schema
+    // Field names match database columns exactly
+    // Order as specified: ID → Surgery → Contact Info → Role → Location → Details
     const templateData = [
       {
-        'Postcode': 'SW1A 1AA',
-        'Role': 'Dentist',
+        'ID': 'Auto-generated',
         'Surgery': 'Sample Dental Practice',
-        'Pay': '£500/day',
-        'Days': 'Mon-Fri',
+        'Contact Name': 'Dr. Smith',
+        'Contact Phone': '02071234567',
+        'Contact Email': 'contact@sampledental.com',
+        'Role': 'Dentist',
+        'Postcode': 'SW1A 1AA',
+        'Budget': '£500/day',
         'Requirement': 'GDC registered',
         'System': 'R4',
         'Notes': 'Sample notes'
@@ -31,11 +34,14 @@ export async function GET() {
 
     // Set column widths for better readability
     worksheet['!cols'] = [
-      { wch: 12 },  // Postcode (REQUIRED - first)
-      { wch: 20 },  // Role
+      { wch: 15 },  // ID (auto-generated)
       { wch: 30 },  // Surgery
-      { wch: 15 },  // Pay
-      { wch: 12 },  // Days
+      { wch: 20 },  // Contact Name
+      { wch: 15 },  // Contact Phone
+      { wch: 25 },  // Contact Email
+      { wch: 20 },  // Role
+      { wch: 12 },  // Postcode
+      { wch: 15 },  // Budget
       { wch: 25 },  // Requirement
       { wch: 15 },  // System
       { wch: 35 }   // Notes

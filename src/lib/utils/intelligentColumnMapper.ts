@@ -97,7 +97,7 @@ export function isRole(value: string): boolean {
  */
 const COLUMN_ALIASES: Record<string, string[]> = {
   'postcode': ['postcode', 'post code', 'postal code', 'zip', 'pc', 'location', 'address'],
-  'phone': ['phone', 'telephone', 'tel', 'mobile', 'cell', 'contact', 'number'],
+  'phone': ['phone', 'telephone', 'tel', 'mobile', 'cell', 'number'],
   'email': ['email', 'e-mail', 'mail', 'email address'],
   'first_name': ['first name', 'firstname', 'fname', 'given name', 'forename'],
   'last_name': ['last name', 'lastname', 'surname', 'family name', 'lname'],
@@ -106,6 +106,13 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   'days': ['days', 'availability', 'schedule', 'hours', 'working days'],
   'experience': ['experience', 'exp', 'years', 'background'],
   'notes': ['notes', 'comments', 'remarks', 'additional info', 'info'],
+  'client_name': ['contact name', 'client name', 'contact person', 'contact'],
+  'client_phone': ['contact phone', 'client phone', 'contact tel', 'contact number'],
+  'client_email': ['contact email', 'client email', 'contact e-mail'],
+  'surgery': ['surgery', 'practice', 'clinic', 'surgery name', 'practice name'],
+  'budget': ['budget', 'pay', 'rate', 'daily rate'],
+  'requirement': ['requirement', 'requirements', 'needed', 'days needed'],
+  'system': ['system', 'software', 'pms', 'practice management'],
 };
 
 export function fuzzyMatchColumnName(columnName: string): string | null {
@@ -183,7 +190,7 @@ export function detectFieldFromValue(value: string, columnName?: string): FieldD
 }
 
 /**
- * Intelligently map a row of Excel data to candidate fields
+ * Intelligently map a row of Excel data to candidate/client fields
  */
 export interface MappedCandidate {
   id?: string;
@@ -197,6 +204,14 @@ export interface MappedCandidate {
   days?: string;
   experience?: string;
   notes?: string;
+  // Client-specific fields
+  surgery?: string;
+  client_name?: string;
+  client_phone?: string;
+  client_email?: string;
+  budget?: string;
+  requirement?: string;
+  system?: string;
   unmappedData?: string[]; // Extra data that couldn't be mapped
 }
 
@@ -235,7 +250,7 @@ export function intelligentlyMapRow(row: any): MappedCandidate {
     }
   }
 
-  // Assign detected fields
+  // Assign detected fields (candidates)
   mapped.id = fieldAssignments['id'];
   mapped.first_name = fieldAssignments['first_name'];
   mapped.last_name = fieldAssignments['last_name'];
@@ -247,6 +262,15 @@ export function intelligentlyMapRow(row: any): MappedCandidate {
   mapped.days = fieldAssignments['days'];
   mapped.experience = fieldAssignments['experience'];
   mapped.notes = fieldAssignments['notes'];
+
+  // Assign client-specific fields
+  mapped.surgery = fieldAssignments['surgery'];
+  mapped.client_name = fieldAssignments['client_name'];
+  mapped.client_phone = fieldAssignments['client_phone'];
+  mapped.client_email = fieldAssignments['client_email'];
+  mapped.budget = fieldAssignments['budget'];
+  mapped.requirement = fieldAssignments['requirement'];
+  mapped.system = fieldAssignments['system'];
 
   // Combine unmapped data into notes
   if (unmapped.length > 0) {

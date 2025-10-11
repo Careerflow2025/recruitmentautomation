@@ -122,27 +122,20 @@ export async function POST(request: NextRequest) {
           ? mapped.role.trim()
           : 'General';
 
-        // For clients, we need surgery name - use a reasonable default
-        // Check if first_name or last_name could be surgery name
-        let surgery = 'Unnamed Practice';
-        if (mapped.first_name && !mapped.last_name) {
-          // Single name field might be surgery name
-          surgery = mapped.first_name;
-        } else if (mapped.first_name && mapped.last_name) {
-          // Both names provided - combine as surgery name
-          surgery = `${mapped.first_name} ${mapped.last_name}`;
-        }
-
         // Create client object from AI-mapped data
+        // The intelligent mapper now properly handles client-specific fields
         const client = {
           id: id,
-          surgery: surgery,
+          surgery: (mapped as any).surgery || mapped.first_name || 'Unnamed Practice',
+          client_name: (mapped as any).client_name || null,
+          client_phone: (mapped as any).client_phone || mapped.phone || null,
+          client_email: (mapped as any).client_email || mapped.email || null,
           role: role,
           postcode: mapped.postcode.toUpperCase(),
-          budget: mapped.salary || null,  // For clients, salary field becomes budget
-          requirement: mapped.days || null,  // Days field becomes requirement
+          budget: (mapped as any).budget || mapped.salary || null,
+          requirement: (mapped as any).requirement || mapped.days || null,
+          system: (mapped as any).system || mapped.experience || null,
           notes: mapped.notes || null,
-          system: mapped.experience || null,  // Experience field becomes system info
           user_id: user.id,
           added_at: new Date().toISOString()
         };

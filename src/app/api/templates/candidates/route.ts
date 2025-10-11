@@ -9,19 +9,20 @@ import * as XLSX from 'xlsx';
  */
 export async function GET() {
   try {
-    // Define the template structure with headers and ONE sample row
-    // ID removed - system auto-generates IDs
-    // Fields ordered by priority: Postcode (required) → Role → Contact Info → Details
+    // Define the template structure matching actual database schema
+    // Field names match database columns exactly
+    // Order as specified: ID → Names → Contact → Role → Location → Details
     const templateData = [
       {
-        'Postcode': 'SW1A 1AA',
-        'Role': 'Dentist',
+        'ID': 'Auto-generated',
         'First Name': 'John',
         'Last Name': 'Doe',
         'Email': 'john.doe@example.com',
         'Phone': '07700900001',
+        'Role': 'Dentist',
+        'Postcode': 'SW1A 1AA',
         'Salary': '£80k-£100k',
-        'Days': 'Mon-Fri',
+        'Availability': 'Mon-Fri',
         'Experience': '5 years',
         'Notes': 'Sample notes'
       }
@@ -33,14 +34,15 @@ export async function GET() {
 
     // Set column widths for better readability
     worksheet['!cols'] = [
-      { wch: 12 },  // Postcode (REQUIRED - first)
-      { wch: 20 },  // Role
+      { wch: 15 },  // ID (auto-generated)
       { wch: 15 },  // First Name
       { wch: 15 },  // Last Name
       { wch: 25 },  // Email
       { wch: 15 },  // Phone
+      { wch: 20 },  // Role
+      { wch: 12 },  // Postcode
       { wch: 15 },  // Salary
-      { wch: 12 },  // Days
+      { wch: 15 },  // Availability
       { wch: 20 },  // Experience
       { wch: 35 }   // Notes
     ];
