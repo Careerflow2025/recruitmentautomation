@@ -161,16 +161,19 @@ export function AIChat() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   
-  // Map modal state
-  const [mapModalOpen, setMapModalOpen] = useState(false);
-  const [mapModalData, setMapModalData] = useState<{
+  // Multi-map panel state (up to 3 maps side-by-side)
+  const [mapPanelMaps, setMapPanelMaps] = useState<Array<{
+    id: string;
     originPostcode: string;
     destinationPostcode: string;
     candidateName: string;
     clientName: string;
     commuteMinutes: number;
     commuteDisplay: string;
-  } | null>(null);
+  }>>([]);
+
+  // Enlarged map modal state
+  const [enlargedMapIndex, setEnlargedMapIndex] = useState<number | null>(null);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -209,27 +212,43 @@ export function AIChat() {
     }
   }, [chatHistory, loading, isOpen]);
 
-  // Process AI response for map actions
+  // Process AI response for map actions (supports multiple maps)
   const processMapActions = (response: string) => {
-    const mapActionMatch = response.match(/MAP_ACTION:({.*?})/);
-    if (mapActionMatch) {
-      try {
-        const mapAction = JSON.parse(mapActionMatch[1]);
-        if (mapAction.action === 'openMap' && mapAction.data) {
-          setMapModalData({
-            originPostcode: mapAction.data.originPostcode,
-            destinationPostcode: mapAction.data.destinationPostcode,
-            candidateName: mapAction.data.candidateName,
-            clientName: mapAction.data.clientName,
-            commuteMinutes: mapAction.data.commuteMinutes,
-            commuteDisplay: mapAction.data.commuteDisplay,
-          });
-          setMapModalOpen(true);
+    // Match all MAP_ACTION occurrences
+    const mapActionRegex = /MAP_ACTION:(\{.*?\})/g;
+    const matches = Array.from(response.matchAll(mapActionRegex));
+
+    if (matches.length > 0) {
+      const newMaps: typeof mapPanelMaps = [];
+
+      for (const match of matches.slice(0, 3)) { // Max 3 maps
+        try {
+          const mapAction = JSON.parse(match[1]);
+          if (mapAction.action === 'openMap' && mapAction.data) {
+            newMaps.push({
+              id: `map_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              originPostcode: mapAction.data.originPostcode,
+              destinationPostcode: mapAction.data.destinationPostcode,
+              candidateName: mapAction.data.candidateName,
+              clientName: mapAction.data.clientName,
+              commuteMinutes: mapAction.data.commuteMinutes,
+              commuteDisplay: mapAction.data.commuteDisplay,
+            });
+          }
+        } catch (e) {
+          console.error('Error parsing map action:', e);
         }
-      } catch (e) {
-        console.error('Error parsing map action:', e);
+      }
+
+      if (newMaps.length > 0) {
+        setMapPanelMaps(newMaps);
       }
     }
+  };
+
+  // Remove a map from panel
+  const removeMap = (mapId: string) => {
+    setMapPanelMaps(prev => prev.filter(m => m.id !== mapId));
   };
 
   // Clean response text by removing MAP_ACTION markers
@@ -396,10 +415,14 @@ export function AIChat() {
         </button>
       )}
 
-      {/* Full Screen Chat Modal */}
+      {/* Full Screen Chat Modal with Map Panel */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-5xl h-[90vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+          <div className={`w-full h-[90vh] bg-white rounded-2xl shadow-2xl flex overflow-hidden transition-all duration-300 ${
+            mapPanelMaps.length > 0 ? 'max-w-[95vw]' : 'max-w-5xl'
+          }`}>
+            {/* CHAT SECTION (LEFT) */}
+            <div className="flex-1 flex flex-col min-w-0">
             {/* Header */}
             <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-blue-600 text-white p-6 flex justify-between items-center shadow-lg">
               <div className="flex items-center gap-4">
@@ -582,12 +605,98 @@ export function AIChat() {
                 </div>
               </div>
             </div>
+            </div>
+
+            {/* MAP PANEL (RIGHT) - Shows up to 3 maps */}
+            {mapPanelMaps.length > 0 && (
+              <div className="w-[600px] border-l-2 border-gray-200 bg-gray-50 flex flex-col overflow-hidden">
+                {/* Map Panel Header */}
+                <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">🗺️</span>
+                    <h3 className="text-lg font-bold">{mapPanelMaps.length} Map{mapPanelMaps.length > 1 ? 's' : ''}</h3>
+                  </div>
+                  <button
+                    onClick={() => setMapPanelMaps([])}
+                    className="hover:bg-white/20 rounded-lg px-3 py-1 text-sm font-bold transition-colors"
+                  >
+                    Close All ✕
+                  </button>
+                </div>
+
+                {/* Maps Grid */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {mapPanelMaps.map((map, index) => (
+                    <div
+                      key={map.id}
+                      className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-gray-200 hover:border-purple-400 transition-all cursor-pointer"
+                      onClick={() => setEnlargedMapIndex(index)}
+                    >
+                      {/* Map Header */}
+                      <div className="bg-gradient-to-r from-gray-700 to-gray-800 text-white p-3 flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="font-bold text-sm mb-1">{map.candidateName}</div>
+                          <div className="text-xs opacity-90">→ {map.clientName}</div>
+                          <div className="text-xs font-bold mt-1 text-green-300">{map.commuteDisplay}</div>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeMap(map.id);
+                          }}
+                          className="hover:bg-white/20 rounded-full w-6 h-6 flex items-center justify-center text-sm"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      {/* Map Preview */}
+                      <div className="relative h-48 overflow-hidden">
+                        <CommuteMapModal
+                          isOpen={true}
+                          onClose={() => {}}
+                          originPostcode={map.originPostcode}
+                          destinationPostcode={map.destinationPostcode}
+                          candidateName={map.candidateName}
+                          clientName={map.clientName}
+                          commuteMinutes={map.commuteMinutes}
+                          commuteDisplay={map.commuteDisplay}
+                        />
+                        <div className="absolute inset-0 bg-black/10 flex items-center justify-center pointer-events-none">
+                          <div className="bg-white/90 px-4 py-2 rounded-full text-sm font-bold text-gray-800">
+                            Click to Enlarge
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
-      
-      {/* Map Modal */}
-      {mapModalData && (
+
+      {/* Enlarged Map Modal */}
+      {enlargedMapIndex !== null && mapPanelMaps[enlargedMapIndex] && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-6xl h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <CommuteMapModal
+              isOpen={true}
+              onClose={() => setEnlargedMapIndex(null)}
+              originPostcode={mapPanelMaps[enlargedMapIndex].originPostcode}
+              destinationPostcode={mapPanelMaps[enlargedMapIndex].destinationPostcode}
+              candidateName={mapPanelMaps[enlargedMapIndex].candidateName}
+              clientName={mapPanelMaps[enlargedMapIndex].clientName}
+              commuteMinutes={mapPanelMaps[enlargedMapIndex].commuteMinutes}
+              commuteDisplay={mapPanelMaps[enlargedMapIndex].commuteDisplay}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Legacy Map Modal - Removed */}
+      {/* {mapModalData && (
         <CommuteMapModal
           isOpen={mapModalOpen}
           onClose={() => {

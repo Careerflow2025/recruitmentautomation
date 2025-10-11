@@ -523,7 +523,10 @@ ${ragKnowledge ? `RAG KNOWLEDGE (relevant system info):\n${ragKnowledge}\n` : ''
 Summary: ${existingSummary?.summary || 'None'}
 Facts: ${Object.keys(userFacts).length > 0 ? Object.entries(userFacts).map(([k, v]) => `${k}:${v}`).join('; ') : 'None'}
 
-ACTIONS: add_candidate, update_candidate, delete_candidate, add_client, update_client, delete_client, update_match_status, add_match_note, bulk_add_candidates, bulk_add_clients, bulk_delete_candidates, bulk_delete_clients, parse_and_organize
+ACTIONS: add_candidate, update_candidate, delete_candidate, add_client, update_client, delete_client, update_match_status, add_match_note, bulk_add_candidates, bulk_add_clients, bulk_delete_candidates, bulk_delete_clients, parse_and_organize, bulk_add_chunked, bulk_delete_chunked
+
+MULTI-MAP: To show maps, add MAP_ACTION:{json} to response. Can show up to 3 maps.
+Example: "Here are your top 3 matches: MAP_ACTION:{"action":"openMap","data":{"originPostcode":"SW1A 1AA","destinationPostcode":"E1 6AN","candidateName":"CAN001","clientName":"CL001","commuteMinutes":25,"commuteDisplay":"🟢🟢 25m"}} MAP_ACTION:{"action":"openMap","data":{...}} MAP_ACTION:{"action":"openMap","data":{...}}"
 
 RULES: Commute ≤80min sorted asc, IDs auto-gen CAN###/CL###, Use client_phone/budget for clients
 
@@ -890,6 +893,128 @@ Q: ${question}`;
                 } else {
                   actionResults.push(`✅ Deleted ${idsToDelete.length} clients: ${idsToDelete.join(', ')}`);
                 }
+                break;
+              }
+
+              case 'bulk_add_chunked': {
+                // Add candidates or clients in chunks to avoid overwhelming the database
+                const { type, items, chunkSize = 50 } = action.data;
+                const itemsToAdd = items || [];
+
+                if (itemsToAdd.length === 0) {
+                  actionResults.push('⚠️ No items provided for bulk add');
+                  break;
+                }
+
+                const totalItems = itemsToAdd.length;
+                const chunks = Math.ceil(totalItems / chunkSize);
+                let totalSuccess = 0;
+                let totalError = 0;
+
+                actionResults.push(`🔄 Starting chunked bulk add: ${totalItems} items in ${chunks} chunk(s) of ${chunkSize}...`);
+
+                for (let i = 0; i < chunks; i++) {
+                  const start = i * chunkSize;
+                  const end = Math.min(start + chunkSize, totalItems);
+                  const chunk = itemsToAdd.slice(start, end);
+
+                  let successCount = 0;
+                  let errorCount = 0;
+
+                  if (type === 'candidates') {
+                    for (const item of chunk) {
+                      // Auto-generate ID if not provided
+                      if (!item.id) {
+                        const highestId = getHighestId(candidates, 'CAN');
+                        const numPart = parseInt(highestId.substring(3), 10);
+                        item.id = `CAN${String(numPart + totalSuccess + successCount + 1).padStart(3, '0')}`;
+                      }
+
+                      const { error } = await userClient.from('candidates').insert({
+                        ...item,
+                        user_id: user.id,
+                        added_at: new Date().toISOString(),
+                      });
+
+                      if (error) {
+                        errorCount++;
+                        console.error(`Error adding candidate ${item.id}:`, error.message);
+                      } else {
+                        successCount++;
+                      }
+                    }
+                  } else if (type === 'clients') {
+                    for (const item of chunk) {
+                      // Auto-generate ID if not provided
+                      if (!item.id) {
+                        const highestId = getHighestId(clients, 'CL');
+                        const numPart = parseInt(highestId.substring(2), 10);
+                        item.id = `CL${String(numPart + totalSuccess + successCount + 1).padStart(3, '0')}`;
+                      }
+
+                      const { error } = await userClient.from('clients').insert({
+                        ...item,
+                        user_id: user.id,
+                        added_at: new Date().toISOString(),
+                      });
+
+                      if (error) {
+                        errorCount++;
+                        console.error(`Error adding client ${item.id}:`, error.message);
+                      } else {
+                        successCount++;
+                      }
+                    }
+                  }
+
+                  totalSuccess += successCount;
+                  totalError += errorCount;
+
+                  actionResults.push(`  Chunk ${i + 1}/${chunks}: ✅ ${successCount} added${errorCount > 0 ? `, ❌ ${errorCount} failed` : ''}`);
+                }
+
+                actionResults.push(`✅ Chunked bulk add complete: ${totalSuccess}/${totalItems} ${type} added${totalError > 0 ? ` (${totalError} errors)` : ''}`);
+                break;
+              }
+
+              case 'bulk_delete_chunked': {
+                // Delete candidates or clients in chunks
+                const { type, ids, chunkSize = 50 } = action.data;
+                const idsToDelete = ids || [];
+
+                if (idsToDelete.length === 0) {
+                  actionResults.push('⚠️ No IDs provided for bulk delete');
+                  break;
+                }
+
+                const totalIds = idsToDelete.length;
+                const chunks = Math.ceil(totalIds / chunkSize);
+                let totalDeleted = 0;
+
+                actionResults.push(`🔄 Starting chunked bulk delete: ${totalIds} items in ${chunks} chunk(s) of ${chunkSize}...`);
+
+                const tableName = type === 'candidates' ? 'candidates' : 'clients';
+
+                for (let i = 0; i < chunks; i++) {
+                  const start = i * chunkSize;
+                  const end = Math.min(start + chunkSize, totalIds);
+                  const chunk = idsToDelete.slice(start, end);
+
+                  const { error, count } = await userClient
+                    .from(tableName)
+                    .delete()
+                    .in('id', chunk);
+
+                  if (error) {
+                    actionResults.push(`  Chunk ${i + 1}/${chunks}: ❌ Error - ${error.message}`);
+                  } else {
+                    const deleted = count || chunk.length;
+                    totalDeleted += deleted;
+                    actionResults.push(`  Chunk ${i + 1}/${chunks}: ✅ Deleted ${deleted} ${type}`);
+                  }
+                }
+
+                actionResults.push(`✅ Chunked bulk delete complete: ${totalDeleted}/${totalIds} ${type} deleted`);
                 break;
               }
 
