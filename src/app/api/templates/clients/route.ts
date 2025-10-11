@@ -10,15 +10,17 @@ import * as XLSX from 'xlsx';
 export async function GET() {
   try {
     // Define the template structure with headers and ONE sample row
+    // ID removed - system auto-generates IDs
+    // Fields ordered by priority: Postcode (required) → Role → Surgery → Details
     const templateData = [
       {
-        'ID': 'CL001',
-        'Surgery': 'Sample Dental Practice',
-        'Role': 'Dentist',
         'Postcode': 'SW1A 1AA',
+        'Role': 'Dentist',
+        'Surgery': 'Sample Dental Practice',
         'Pay': '£500/day',
-        'Days': '3-5',
+        'Days': 'Mon-Fri',
         'Requirement': 'GDC registered',
+        'System': 'R4',
         'Notes': 'Sample notes'
       }
     ];
@@ -29,14 +31,14 @@ export async function GET() {
 
     // Set column widths for better readability
     worksheet['!cols'] = [
-      { wch: 10 },  // ID
-      { wch: 30 },  // Surgery
+      { wch: 12 },  // Postcode (REQUIRED - first)
       { wch: 20 },  // Role
-      { wch: 12 },  // Postcode
+      { wch: 30 },  // Surgery
       { wch: 15 },  // Pay
-      { wch: 10 },  // Days
+      { wch: 12 },  // Days
       { wch: 25 },  // Requirement
-      { wch: 30 }   // Notes
+      { wch: 15 },  // System
+      { wch: 35 }   // Notes
     ];
 
     // Add worksheet to workbook
