@@ -329,89 +329,60 @@ export default function MatchesPage() {
   }
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col">
-      {/* Page Title */}
-      <div className="px-4 py-3 border-b border-gray-200 bg-white">
-        <h1 className="text-2xl font-bold text-gray-900">Matches</h1>
-      </div>
-
-      <div className="flex-1 overflow-auto px-4 py-3">
-
-        {/* Collapsible Stats */}
-        {showStats && (
-          <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3 bg-white border border-gray-300 rounded p-3">
-            <div className="text-center">
-              <p className="text-xs text-gray-600">Total Matches</p>
-              <p className="text-xl font-bold text-blue-900">{matches.length}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-600">✅ Role Match</p>
-              <p className="text-xl font-bold text-green-900">
-                {matches.filter(m => m.role_match).length}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-600">❌ Location-Only</p>
-              <p className="text-xl font-bold text-orange-900">
-                {matches.filter(m => !m.role_match).length}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-600">🟢🟢🟢 Under 20min</p>
-              <p className="text-xl font-bold text-purple-900">
-                {matches.filter(m => m.commute_minutes <= 20).length}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Action Buttons - Excel Style */}
-        <div className="mb-3 flex flex-wrap items-center gap-2 bg-white border border-gray-300 rounded p-2">
+    <div className="h-screen flex flex-col">
+      {/* Toolbar */}
+      <div className="grid-toolbar">
+        <div className="grid-toolbar-title">
+          <span>🔗 Matches</span>
+          <span className="text-sm font-normal opacity-90">
+            ({filteredMatches.length} {filteredMatches.length !== matches.length ? `of ${matches.length}` : 'total'})
+          </span>
+          {showStats && (
+            <>
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-semibold border border-green-300">
+                ✅ {matches.filter(m => m.role_match).length} Role
+              </span>
+              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded font-semibold border border-orange-300">
+                📍 {matches.filter(m => !m.role_match).length} Location
+              </span>
+              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-semibold border border-blue-300">
+                🟢 {matches.filter(m => m.commute_minutes <= 20).length} &lt;20m
+              </span>
+            </>
+          )}
+        </div>
+        <div className="grid-toolbar-actions">
           <button
             onClick={() => setShowStats(!showStats)}
-            className="px-3 py-1.5 bg-gray-100 border border-gray-400 rounded text-sm font-semibold text-gray-900 hover:bg-gray-200"
+            className="grid-toolbar-button"
             title={showStats ? "Hide Statistics" : "Show Statistics"}
           >
-            👁️ Stats
+            {showStats ? '👁️ Hide Stats' : '👁️ Show Stats'}
           </button>
-
-          <div className="border-l border-gray-300 h-6 mx-1"></div>
-
           <button
             onClick={handleGenerateMatches}
             disabled={generating}
-            className={`px-3 py-1.5 border border-gray-400 rounded text-sm font-semibold text-gray-900 ${
-              generating
-                ? 'bg-gray-100 cursor-not-allowed'
-                : 'bg-green-100 hover:bg-green-200'
-            }`}
+            className={`grid-toolbar-button ${generating ? '' : 'grid-toolbar-button-primary'}`}
           >
             {generating ? '⏳ Generating...' : '🔄 Generate Matches'}
           </button>
-
-          <div className="border-l border-gray-300 h-6 mx-1"></div>
-
-          <Link
-            href="/candidates"
-            className="px-3 py-1.5 bg-white border border-gray-400 rounded text-sm font-semibold text-gray-900 hover:bg-gray-50"
-          >
-            Candidates
+          <Link href="/candidates" className="grid-toolbar-button">
+            👥 Candidates
           </Link>
-
-          <Link
-            href="/clients"
-            className="px-3 py-1.5 bg-white border border-gray-400 rounded text-sm font-semibold text-gray-900 hover:bg-gray-50"
-          >
-            Clients
+          <Link href="/clients" className="grid-toolbar-button">
+            🏥 Clients
           </Link>
         </div>
+      </div>
+
+      <div className="flex-1 overflow-auto p-4 bg-gray-50">
 
         {/* Generate Result Message */}
         {generateResult && (
-          <div className={`mb-3 p-3 rounded text-sm ${
+          <div className={`mb-4 p-4 rounded-lg shadow-sm text-sm ${
             generateResult.success
-              ? 'bg-blue-50 border border-blue-300 text-blue-900'
-              : 'bg-red-50 border border-red-300 text-red-900'
+              ? 'bg-blue-50 border border-blue-200 text-blue-900'
+              : 'bg-red-50 border border-red-200 text-red-900'
           }`}>
             <div className="flex items-center gap-2">
               {generateResult.processing ? (
