@@ -484,20 +484,7 @@ export default function ClientsDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['role'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('role', value)}
-          >
-            <ColumnFilter
-              columnKey="role"
-              columnName="Role"
-              options={getFilterOptions('role')}
-              selectedValues={columnFilters['role'] || []}
-              onFilterChange={(values) => {
-                updateColumnFilters({
-                  ...columnFilters,
-                  role: values,
-                });
-              }}
-            />
-          </EditableColumnHeader>
+          />
         ),
       },
       {
@@ -532,20 +519,7 @@ export default function ClientsDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['postcode'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('postcode', value)}
-          >
-            <ColumnFilter
-              columnKey="postcode"
-              columnName="Postcode"
-              options={getFilterOptions('postcode')}
-              selectedValues={columnFilters['postcode'] || []}
-              onFilterChange={(values) => {
-                updateColumnFilters({
-                  ...columnFilters,
-                  postcode: values,
-                });
-              }}
-            />
-          </EditableColumnHeader>
+          />
         ),
       },
       {
@@ -578,20 +552,7 @@ export default function ClientsDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['budget'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('budget', value)}
-          >
-            <ColumnFilter
-              columnKey="budget"
-              columnName="Budget"
-              options={getFilterOptions('budget')}
-              selectedValues={columnFilters['budget'] || []}
-              onFilterChange={(values) => {
-                updateColumnFilters({
-                  ...columnFilters,
-                  budget: values,
-                });
-              }}
-            />
-          </EditableColumnHeader>
+          />
         ),
       },
       {
@@ -624,20 +585,7 @@ export default function ClientsDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['requirement'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('requirement', value)}
-          >
-            <ColumnFilter
-              columnKey="requirement"
-              columnName="Requirement"
-              options={getFilterOptions('requirement')}
-              selectedValues={columnFilters['requirement'] || []}
-              onFilterChange={(values) => {
-                updateColumnFilters({
-                  ...columnFilters,
-                  requirement: values,
-                });
-              }}
-            />
-          </EditableColumnHeader>
+          />
         ),
       },
       {
@@ -670,20 +618,7 @@ export default function ClientsDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['system'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('system', value)}
-          >
-            <ColumnFilter
-              columnKey="system"
-              columnName="System"
-              options={getFilterOptions('system')}
-              selectedValues={columnFilters['system'] || []}
-              onFilterChange={(values) => {
-                updateColumnFilters({
-                  ...columnFilters,
-                  system: values,
-                });
-              }}
-            />
-          </EditableColumnHeader>
+          />
         ),
       },
       {

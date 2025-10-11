@@ -504,20 +504,7 @@ export default function CandidatesDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['role'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('role', value)}
-          >
-            <ColumnFilter
-              columnKey="role"
-              columnName="Role"
-              options={getFilterOptions('role')}
-              selectedValues={columnFilters['role'] || []}
-              onFilterChange={(values) => {
-                updateColumnFilters({
-                  ...columnFilters,
-                  role: values,
-                });
-              }}
-            />
-          </EditableColumnHeader>
+          />
         ),
       },
       {
@@ -552,20 +539,7 @@ export default function CandidatesDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['postcode'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('postcode', value)}
-          >
-            <ColumnFilter
-              columnKey="postcode"
-              columnName="Postcode"
-              options={getFilterOptions('postcode')}
-              selectedValues={columnFilters['postcode'] || []}
-              onFilterChange={(values) => {
-                updateColumnFilters({
-                  ...columnFilters,
-                  postcode: values,
-                });
-              }}
-            />
-          </EditableColumnHeader>
+          />
         ),
       },
       {
@@ -598,20 +572,7 @@ export default function CandidatesDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['salary'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('salary', value)}
-          >
-            <ColumnFilter
-              columnKey="salary"
-              columnName="Salary"
-              options={getFilterOptions('salary')}
-              selectedValues={columnFilters['salary'] || []}
-              onFilterChange={(values) => {
-                updateColumnFilters({
-                  ...columnFilters,
-                  salary: values,
-                });
-              }}
-            />
-          </EditableColumnHeader>
+          />
         ),
       },
       {
@@ -644,20 +605,7 @@ export default function CandidatesDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['days'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('days', value)}
-          >
-            <ColumnFilter
-              columnKey="days"
-              columnName="Availability"
-              options={getFilterOptions('days')}
-              selectedValues={columnFilters['days'] || []}
-              onFilterChange={(values) => {
-                updateColumnFilters({
-                  ...columnFilters,
-                  days: values,
-                });
-              }}
-            />
-          </EditableColumnHeader>
+          />
         ),
       },
       {
@@ -690,20 +638,7 @@ export default function CandidatesDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['experience'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('experience', value)}
-          >
-            <ColumnFilter
-              columnKey="experience"
-              columnName="Experience"
-              options={getFilterOptions('experience')}
-              selectedValues={columnFilters['experience'] || []}
-              onFilterChange={(values) => {
-                updateColumnFilters({
-                  ...columnFilters,
-                  experience: values,
-                });
-              }}
-            />
-          </EditableColumnHeader>
+          />
         ),
       },
       {
