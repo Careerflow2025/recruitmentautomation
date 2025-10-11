@@ -9,7 +9,6 @@ import { NewItemIndicator } from '../ui/NewItemIndicator';
 import { CommuteMapModal } from './CommuteMapModal';
 import { supabase } from '@/lib/supabase/browser';
 import { getCurrentUserId } from '@/lib/auth-helpers';
-import NotesPopup from '../grid/NotesPopup';
 
 interface MatchesTableProps {
   matches: Match[];
@@ -59,8 +58,6 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
   const openModalsRef = useRef(openModals);
   const [editingModalId, setEditingModalId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Candidate | Client>>({});
-  const [candidateNotesPopup, setCandidateNotesPopup] = useState<{ candidate: Candidate } | null>(null);
-  const [clientNotesPopup, setClientNotesPopup] = useState<{ client: Client } | null>(null);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -714,18 +711,15 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setCandidateNotesPopup({ candidate: match.candidate });
+                      handleCandidateClick(match.candidate);
                     }}
-                    className="w-full text-left hover:text-blue-600 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1 bg-blue-50 hover:bg-blue-100 transition-colors flex items-center gap-1"
-                    title="Click to view/edit candidate notes"
+                    className="w-full text-left hover:text-blue-600 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1 bg-blue-50 hover:bg-blue-100 transition-colors"
+                    title="Click to view candidate details"
                   >
-                    <span className="flex-1">
-                      <NewItemIndicator
-                        id={match.candidate.id}
-                        addedAt={match.candidate.added_at}
-                      />
-                    </span>
-                    <span className="text-[10px] opacity-60">📝</span>
+                    <NewItemIndicator
+                      id={match.candidate.id}
+                      addedAt={match.candidate.added_at}
+                    />
                   </button>
                 </td>
                 {/* CL ID */}
@@ -733,18 +727,15 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setClientNotesPopup({ client: match.client });
+                      handleClientClick(match.client);
                     }}
-                    className="w-full text-left hover:text-orange-600 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500 rounded p-1 bg-orange-50 hover:bg-orange-100 transition-colors flex items-center gap-1"
-                    title="Click to view/edit client notes"
+                    className="w-full text-left hover:text-orange-600 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500 rounded p-1 bg-orange-50 hover:bg-orange-100 transition-colors"
+                    title="Click to view client details"
                   >
-                    <span className="flex-1">
-                      <NewItemIndicator
-                        id={match.client.id}
-                        addedAt={match.client.added_at}
-                      />
-                    </span>
-                    <span className="text-[10px] opacity-60">📝</span>
+                    <NewItemIndicator
+                      id={match.client.id}
+                      addedAt={match.client.added_at}
+                    />
                   </button>
                 </td>
 
@@ -1491,66 +1482,6 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
             />
           </div>
         </div>
-      )}
-
-      {/* Candidate Notes Popup */}
-      {candidateNotesPopup && (
-        <NotesPopup
-          content={candidateNotesPopup.candidate.notes || ''}
-          title={`Candidate Notes - ${candidateNotesPopup.candidate.id}`}
-          onClose={() => setCandidateNotesPopup(null)}
-          onSave={async (newContent) => {
-            try {
-              const userId = await getCurrentUserId();
-              if (!userId) throw new Error('User not authenticated');
-
-              const { error } = await supabase
-                .from('candidates')
-                .update({ notes: newContent })
-                .eq('id', candidateNotesPopup.candidate.id)
-                .eq('user_id', userId);
-
-              if (error) throw error;
-
-              setCandidateNotesPopup(null);
-              // Optionally reload matches to reflect changes
-              window.location.reload();
-            } catch (error) {
-              console.error('Failed to save candidate notes:', error);
-              alert('Failed to save notes. Please try again.');
-            }
-          }}
-        />
-      )}
-
-      {/* Client Notes Popup */}
-      {clientNotesPopup && (
-        <NotesPopup
-          content={clientNotesPopup.client.notes || ''}
-          title={`Client Notes - ${clientNotesPopup.client.id}`}
-          onClose={() => setClientNotesPopup(null)}
-          onSave={async (newContent) => {
-            try {
-              const userId = await getCurrentUserId();
-              if (!userId) throw new Error('User not authenticated');
-
-              const { error } = await supabase
-                .from('clients')
-                .update({ notes: newContent })
-                .eq('id', clientNotesPopup.client.id)
-                .eq('user_id', userId);
-
-              if (error) throw error;
-
-              setClientNotesPopup(null);
-              // Optionally reload matches to reflect changes
-              window.location.reload();
-            } catch (error) {
-              console.error('Failed to save client notes:', error);
-              alert('Failed to save notes. Please try again.');
-            }
-          }}
-        />
       )}
     </div>
   );
