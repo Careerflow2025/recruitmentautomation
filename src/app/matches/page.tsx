@@ -20,6 +20,7 @@ export default function MatchesPage() {
   const [generating, setGenerating] = useState(false);
   const [generateResult, setGenerateResult] = useState<{success: boolean; message: string; stats?: any} | null>(null);
   const [showStats, setShowStats] = useState(true);
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState({
     salary_budget: true,
     availability_requirement: true,
@@ -519,6 +520,8 @@ export default function MatchesPage() {
           onRoleFilterChange={setRoleFilter}
           visibleColumns={visibleColumns}
           onColumnVisibilityChange={handleColumnVisibilityChange}
+          collapsed={filtersCollapsed}
+          onToggleCollapse={() => setFiltersCollapsed(!filtersCollapsed)}
         />
 
         {/* Table */}

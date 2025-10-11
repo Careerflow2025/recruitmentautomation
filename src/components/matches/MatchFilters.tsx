@@ -13,6 +13,8 @@ interface MatchFiltersProps {
     availability_requirement: boolean;
   };
   onColumnVisibilityChange: (column: string, visible: boolean) => void;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
 export function MatchFilters({
@@ -25,19 +27,29 @@ export function MatchFilters({
   onRoleFilterChange,
   visibleColumns,
   onColumnVisibilityChange,
+  collapsed,
+  onToggleCollapse,
 }: MatchFiltersProps) {
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 mb-6 overflow-hidden">
-      {/* Modern Header */}
-      <div className="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-4 border-b border-slate-600">
-        <h3 className="text-base font-bold text-white flex items-center gap-2">
+      {/* Modern Header - Clickable */}
+      <div
+        className="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-4 border-b border-slate-600 cursor-pointer hover:from-slate-600 hover:to-slate-700 transition-all duration-200"
+        onClick={onToggleCollapse}
+      >
+        <h3 className="text-base font-bold text-white flex items-center gap-2 select-none">
           <span className="text-xl">🎯</span>
           <span>Filters & Display Options</span>
+          <span className="ml-auto text-sm transition-transform duration-200" style={{ transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
+            ▼
+          </span>
         </h3>
       </div>
 
-      <div className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      {/* Collapsible Content */}
+      {!collapsed && (
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Role Match Filter */}
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
@@ -165,6 +177,7 @@ export function MatchFilters({
           </p>
         </div>
       </div>
+      )}
     </div>
   );
 }
