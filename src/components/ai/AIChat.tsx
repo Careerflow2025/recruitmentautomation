@@ -694,23 +694,6 @@ export function AIChat() {
           </div>
         </div>
       )}
-
-      {/* Legacy Map Modal - Removed */}
-      {/* {mapModalData && (
-        <CommuteMapModal
-          isOpen={mapModalOpen}
-          onClose={() => {
-            setMapModalOpen(false);
-            setMapModalData(null);
-          }}
-          originPostcode={mapModalData.originPostcode}
-          destinationPostcode={mapModalData.destinationPostcode}
-          candidateName={mapModalData.candidateName}
-          clientName={mapModalData.clientName}
-          commuteMinutes={mapModalData.commuteMinutes}
-          commuteDisplay={mapModalData.commuteDisplay}
-        />
-      )}
     </>
   );
 }
