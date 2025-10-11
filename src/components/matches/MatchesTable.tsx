@@ -9,6 +9,7 @@ import { NewItemIndicator } from '../ui/NewItemIndicator';
 import { CommuteMapModal } from './CommuteMapModal';
 import { supabase } from '@/lib/supabase/browser';
 import { getCurrentUserId } from '@/lib/auth-helpers';
+import NotesPopup from '../grid/NotesPopup';
 
 interface MatchesTableProps {
   matches: Match[];
@@ -46,13 +47,8 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
   const [draggingModalId, setDraggingModalId] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [matchStatuses, setMatchStatuses] = useState<Record<string, MatchStatusData>>({});
-  const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [selectedMatchForNote, setSelectedMatchForNote] = useState<Match | null>(null);
   const [noteText, setNoteText] = useState('');
-  const [noteModalPosition, setNoteModalPosition] = useState({ x: 150, y: 150 });
-  const [noteModalSize, setNoteModalSize] = useState({ width: 600, height: 500 });
-  const [isDraggingNote, setIsDraggingNote] = useState(false);
-  const [noteDragStart, setNoteDragStart] = useState({ x: 0, y: 0 });
   const [isResizing, setIsResizing] = useState<string | null>(null);
   const [resizeStart, setResizeStart] = useState({ mouseX: 0, mouseY: 0, x: 0, y: 0, width: 0, height: 0 });
   const openModalsRef = useRef(openModals);
@@ -69,63 +65,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
     const handleGlobalMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
 
-      // Handle note modal resize
-      if (isResizing.startsWith('note-')) {
-        const direction = isResizing.split('-')[1];
-        const deltaX = e.clientX - resizeStart.mouseX;
-        const deltaY = e.clientY - resizeStart.mouseY;
-
-        setNoteModalSize(prevSize => {
-          setNoteModalPosition(prevPos => {
-            let newWidth = prevSize.width;
-            let newHeight = prevSize.height;
-            let newX = prevPos.x;
-            let newY = prevPos.y;
-
-            if (direction.includes('e')) {
-              newWidth = Math.max(300, resizeStart.width + deltaX);
-            }
-            if (direction.includes('s')) {
-              newHeight = Math.max(200, resizeStart.height + deltaY);
-            }
-            if (direction.includes('w')) {
-              const widthChange = resizeStart.width - deltaX;
-              if (widthChange >= 300) {
-                newWidth = widthChange;
-                newX = resizeStart.x - (resizeStart.width - widthChange);
-              }
-            }
-            if (direction.includes('n')) {
-              const heightChange = resizeStart.height - deltaY;
-              if (heightChange >= 200) {
-                newHeight = heightChange;
-                newY = resizeStart.y - (resizeStart.height - heightChange);
-              }
-            }
-
-            return { x: newX, y: newY };
-          });
-
-          let newWidth = prevSize.width;
-          let newHeight = prevSize.height;
-
-          if (direction.includes('e')) {
-            newWidth = Math.max(300, resizeStart.width + deltaX);
-          }
-          if (direction.includes('s')) {
-            newHeight = Math.max(200, resizeStart.height + deltaY);
-          }
-          if (direction.includes('w')) {
-            newWidth = Math.max(300, resizeStart.width - deltaX);
-          }
-          if (direction.includes('n')) {
-            newHeight = Math.max(200, resizeStart.height - deltaY);
-          }
-
-          return { width: newWidth, height: newHeight };
-        });
-      } else {
-        // Handle candidate/client modal resize
+      // Handle candidate/client modal resize
         const modalId = isResizing.split('-').slice(0, -1).join('-');
         const direction = isResizing.split('-').slice(-1)[0];
         const deltaX = e.clientX - resizeStart.mouseX;
@@ -415,11 +355,29 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
   const handleNoteClick = (match: Match) => {
     setSelectedMatchForNote(match);
     setNoteText('');
-    setNoteModalOpen(true);
   };
 
-  const handleSaveNote = async () => {
-    if (selectedMatchForNote && noteText.trim()) {
+  const getAllMatchNotes = () => {
+    if (!selectedMatchForNote) return '';
+    const key = getMatchKey(selectedMatchForNote);
+    const notes = matchStatuses[key]?.notes || [];
+
+    if (notes.length === 0) return '';
+
+    return notes.map(note => {
+      const timestamp = new Date(note.timestamp).toLocaleString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      return `[${timestamp}]\n${note.text}`;
+    }).join('\n\n---\n\n');
+  };
+
+  const handleSaveNote = async (newContent: string) => {
+    if (selectedMatchForNote && newContent.trim()) {
       const key = getMatchKey(selectedMatchForNote);
       const currentData = matchStatuses[key] || { status: null, notes: [] };
 
@@ -437,7 +395,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
           .insert({
             candidate_id: selectedMatchForNote.candidate.id,
             client_id: selectedMatchForNote.client.id,
-            note_text: noteText.trim(),
+            note_text: newContent.trim(),
             user_id: userId
           })
           .select()
@@ -460,14 +418,15 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
             notes: [...currentData.notes, newNote]
           }
         }));
+
+        // Close the popup
+        setSelectedMatchForNote(null);
+        setNoteText('');
       } catch (error) {
         console.error('Failed to save note:', error);
         alert('Failed to save note. Please try again.');
       }
     }
-    setNoteModalOpen(false);
-    setSelectedMatchForNote(null);
-    setNoteText('');
   };
 
   const handleDeleteNote = async (noteId: string) => {
@@ -501,30 +460,6 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
     }
   };
 
-  const handleNoteMouseDown = (e: React.MouseEvent) => {
-    // Only start dragging if not resizing
-    if (!isResizing) {
-      setIsDraggingNote(true);
-      setNoteDragStart({ x: e.clientX, y: e.clientY });
-    }
-  };
-
-  const handleNoteMouseMove = (e: React.MouseEvent) => {
-    // Prioritize resizing over dragging
-    if (isResizing && isResizing.startsWith('note-')) {
-      return; // Resize handler will handle this
-    }
-
-    if (!isDraggingNote) return;
-    const deltaX = e.clientX - noteDragStart.x;
-    const deltaY = e.clientY - noteDragStart.y;
-    setNoteModalPosition(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
-    setNoteDragStart({ x: e.clientX, y: e.clientY });
-  };
-
-  const handleNoteMouseUp = () => {
-    setIsDraggingNote(false);
-  };
 
   // Resize handlers for candidate/client modals
   const handleResizeMouseDown = (e: React.MouseEvent, modalId: string, direction: string) => {
@@ -543,19 +478,6 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
     }
   };
 
-  // Resize handlers for note modal
-  const handleNoteResizeMouseDown = (e: React.MouseEvent, direction: string) => {
-    e.stopPropagation();
-    setIsResizing(`note-${direction}`);
-    setResizeStart({
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      x: noteModalPosition.x,
-      y: noteModalPosition.y,
-      width: noteModalSize.width,
-      height: noteModalSize.height
-    });
-  };
 
   const getRowStyle = (match: Match) => {
     const key = getMatchKey(match);
@@ -1323,165 +1245,14 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
         </div>
       ))}
 
-      {/* Note Modal */}
-      {noteModalOpen && selectedMatchForNote && (
-        <div className="fixed inset-0 z-50">
-          {/* Modal */}
-          <div
-            className="absolute bg-white border-2 border-gray-400 shadow-2xl pointer-events-auto flex flex-col"
-            style={{
-              left: noteModalPosition.x,
-              top: noteModalPosition.y,
-              width: noteModalSize.width,
-              height: noteModalSize.height,
-              overflow: 'hidden'
-            }}
-            onMouseMove={handleNoteMouseMove}
-            onMouseUp={handleNoteMouseUp}
-            onMouseLeave={handleNoteMouseUp}
-          >
-            {/* Header */}
-            <div
-              className="bg-yellow-100 border-b-2 border-yellow-400 px-3 py-2 cursor-move flex justify-between items-center"
-              onMouseDown={handleNoteMouseDown}
-            >
-              <h3 className="font-bold text-sm text-gray-900 uppercase">
-                📝 Match Notes - CAN {selectedMatchForNote.candidate.id} ↔ CL {selectedMatchForNote.client.id}
-              </h3>
-              <button
-                onClick={() => setNoteModalOpen(false)}
-                className="text-gray-900 hover:text-gray-600 text-xl font-bold leading-none px-2 hover:bg-yellow-200 rounded"
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="p-4 bg-gray-50 flex-1 overflow-auto" style={{ minHeight: 0 }}>
-              <div className="mb-4">
-                <p className="text-xs text-gray-600 mb-3">
-                  <strong>Candidate:</strong> {selectedMatchForNote.candidate.id} - {selectedMatchForNote.candidate.role}
-                  <br />
-                  <strong>Client:</strong> {selectedMatchForNote.client.id} - {selectedMatchForNote.client.surgery}
-                </p>
-              </div>
-
-              {/* Existing Notes */}
-              {matchStatuses[getMatchKey(selectedMatchForNote)]?.notes?.length > 0 && (
-                <div className="mb-4">
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-2">
-                    Note History
-                  </label>
-                  <div className="space-y-2">
-                    {matchStatuses[getMatchKey(selectedMatchForNote)].notes.map((note) => (
-                      <div
-                        key={note.id}
-                        className="bg-white border-2 border-gray-300 p-3 rounded"
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="text-[10px] text-gray-500 font-semibold">
-                            {new Date(note.timestamp).toLocaleString('en-GB', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                          <button
-                            onClick={() => handleDeleteNote(note.id)}
-                            className="text-red-500 hover:text-red-700 text-xs font-bold"
-                            title="Delete note"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                        <p className="text-sm text-gray-900 whitespace-pre-wrap">{note.text}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Add New Note */}
-              <div className="mb-4">
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-2">
-                  Add New Note
-                </label>
-                <textarea
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                  className="w-full h-24 px-3 py-2 border-2 border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:border-blue-500"
-                  placeholder="Enter note about this match (e.g., 'Waiting for client callback', 'Client said no - budget issue')..."
-                />
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setNoteModalOpen(false)}
-                  className="px-4 py-2 bg-white border-2 border-gray-400 rounded text-sm font-semibold text-gray-900 hover:bg-gray-100"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={handleSaveNote}
-                  disabled={!noteText.trim()}
-                  className={`px-4 py-2 border-2 rounded text-sm font-semibold ${
-                    noteText.trim()
-                      ? 'bg-blue-500 border-blue-600 text-white hover:bg-blue-600'
-                      : 'bg-gray-200 border-gray-300 text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  Add Note
-                </button>
-              </div>
-            </div>
-
-            {/* Resize Handles - Large and Visible */}
-            {/* Edge handles */}
-            <div
-              className="absolute top-0 left-0 right-0 h-1 cursor-n-resize bg-yellow-300 hover:bg-yellow-500 z-50 opacity-50 hover:opacity-100"
-              onMouseDown={(e) => handleNoteResizeMouseDown(e, 'n')}
-              title="Resize from top"
-            />
-            <div
-              className="absolute bottom-0 left-0 right-0 h-1 cursor-s-resize bg-yellow-300 hover:bg-yellow-500 z-50 opacity-50 hover:opacity-100"
-              onMouseDown={(e) => handleNoteResizeMouseDown(e, 's')}
-              title="Resize from bottom"
-            />
-            <div
-              className="absolute top-0 left-0 bottom-0 w-1 cursor-w-resize bg-yellow-300 hover:bg-yellow-500 z-50 opacity-50 hover:opacity-100"
-              onMouseDown={(e) => handleNoteResizeMouseDown(e, 'w')}
-              title="Resize from left"
-            />
-            <div
-              className="absolute top-0 right-0 bottom-0 w-1 cursor-e-resize bg-yellow-300 hover:bg-yellow-500 z-50 opacity-50 hover:opacity-100"
-              onMouseDown={(e) => handleNoteResizeMouseDown(e, 'e')}
-              title="Resize from right"
-            />
-            {/* Corner handles - Larger and more visible */}
-            <div
-              className="absolute top-0 left-0 w-3 h-3 cursor-nw-resize bg-yellow-500 hover:bg-yellow-700 z-50"
-              onMouseDown={(e) => handleNoteResizeMouseDown(e, 'nw')}
-              title="Resize from top-left corner"
-            />
-            <div
-              className="absolute top-0 right-0 w-3 h-3 cursor-ne-resize bg-yellow-500 hover:bg-yellow-700 z-50"
-              onMouseDown={(e) => handleNoteResizeMouseDown(e, 'ne')}
-              title="Resize from top-right corner"
-            />
-            <div
-              className="absolute bottom-0 left-0 w-3 h-3 cursor-sw-resize bg-yellow-500 hover:bg-yellow-700 z-50"
-              onMouseDown={(e) => handleNoteResizeMouseDown(e, 'sw')}
-              title="Resize from bottom-left corner"
-            />
-            <div
-              className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize bg-yellow-500 hover:bg-yellow-700 z-50"
-              onMouseDown={(e) => handleNoteResizeMouseDown(e, 'se')}
-              title="Resize from bottom-right corner"
-            />
-          </div>
-        </div>
+      {/* Match Notes Popup */}
+      {selectedMatchForNote && (
+        <NotesPopup
+          content={getAllMatchNotes()}
+          title={`Match Notes - CAN ${selectedMatchForNote.candidate.id} ↔ CL ${selectedMatchForNote.client.id}`}
+          onClose={() => setSelectedMatchForNote(null)}
+          onSave={handleSaveNote}
+        />
       )}
     </div>
   );
