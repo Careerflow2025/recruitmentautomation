@@ -3,6 +3,154 @@
 import { useState, useEffect, useRef } from 'react';
 import { CommuteMapModal } from '../matches/CommuteMapModal';
 
+// Simple Markdown-like formatter for AI responses
+function FormattedResponse({ text }: { text: string }) {
+  const lines = text.split('\n');
+  const elements: JSX.Element[] = [];
+  let currentListItems: string[] = [];
+  let listType: 'ul' | 'ol' | null = null;
+
+  const flushList = () => {
+    if (currentListItems.length > 0 && listType) {
+      const ListTag = listType;
+      elements.push(
+        <ListTag key={`list-${elements.length}`} className="my-3 space-y-1.5 pl-6">
+          {currentListItems.map((item, i) => (
+            <li key={i} className="text-gray-800 leading-relaxed">
+              {renderInlineFormatting(item)}
+            </li>
+          ))}
+        </ListTag>
+      );
+      currentListItems = [];
+      listType = null;
+    }
+  };
+
+  const renderInlineFormatting = (text: string) => {
+    // Handle bold **text** or __text__
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong class="font-bold text-gray-900">$1</strong>');
+    text = text.replace(/__(.+?)__/g, '<strong class="font-bold text-gray-900">$1</strong>');
+
+    // Handle italic *text* or _text_
+    text = text.replace(/\*(.+?)\*/g, '<em class="italic">$1</em>');
+    text = text.replace(/_(.+?)_/g, '<em class="italic">$1</em>');
+
+    // Handle inline code `code`
+    text = text.replace(/`(.+?)`/g, '<code class="bg-gray-100 text-purple-700 px-1.5 py-0.5 rounded text-sm font-mono">$1</code>');
+
+    return <span dangerouslySetInnerHTML={{ __html: text }} />;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Empty line
+    if (!line.trim()) {
+      flushList();
+      elements.push(<div key={`empty-${i}`} className="h-2" />);
+      continue;
+    }
+
+    // Headers (### Header)
+    if (line.match(/^#{1,6}\s/)) {
+      flushList();
+      const level = line.match(/^(#{1,6})/)?.[1].length || 1;
+      const text = line.replace(/^#{1,6}\s/, '');
+      const HeadingTag = `h${Math.min(level, 6)}` as keyof JSX.IntrinsicElements;
+      const sizeClass = level === 1 ? 'text-2xl' : level === 2 ? 'text-xl' : level === 3 ? 'text-lg' : 'text-base';
+      elements.push(
+        <HeadingTag key={`heading-${i}`} className={`${sizeClass} font-bold text-gray-900 mt-4 mb-2`}>
+          {renderInlineFormatting(text)}
+        </HeadingTag>
+      );
+      continue;
+    }
+
+    // Bullet list (• or - or *)
+    if (line.match(/^[•\-\*]\s/)) {
+      if (listType !== 'ul') {
+        flushList();
+        listType = 'ul';
+      }
+      currentListItems.push(line.replace(/^[•\-\*]\s/, ''));
+      continue;
+    }
+
+    // Numbered list (1. or 1️⃣)
+    if (line.match(/^\d+[\.\)]\s/) || line.match(/^\d+️⃣\s/)) {
+      if (listType !== 'ol') {
+        flushList();
+        listType = 'ol';
+      }
+      currentListItems.push(line.replace(/^\d+[\.\)]\s/, '').replace(/^\d+️⃣\s/, ''));
+      continue;
+    }
+
+    // Section dividers (═══ or ---)
+    if (line.match(/^[═\-]{3,}$/)) {
+      flushList();
+      elements.push(
+        <hr key={`hr-${i}`} className="my-4 border-t-2 border-gray-200" />
+      );
+      continue;
+    }
+
+    // Code block detection (start and end with ```)
+    if (line.trim() === '```json' || line.trim() === '```') {
+      flushList();
+      const codeLines: string[] = [];
+      i++; // Skip opening ```
+      while (i < lines.length && lines[i].trim() !== '```') {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      elements.push(
+        <pre key={`code-${i}`} className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto my-3 text-sm font-mono">
+          <code>{codeLines.join('\n')}</code>
+        </pre>
+      );
+      continue;
+    }
+
+    // Status badges (✅, ❌, 🔄, etc. at start of line)
+    if (line.match(/^[✅❌🔄📊💼📞🎯🟢🟡🔴]/)) {
+      flushList();
+      elements.push(
+        <div key={`badge-${i}`} className="flex items-start gap-2 my-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
+          <span className="text-xl flex-shrink-0">{line.match(/^[✅❌🔄📊💼📞🎯🟢🟡🔴]/)?.[0]}</span>
+          <span className="text-gray-800 leading-relaxed">{renderInlineFormatting(line.slice(2))}</span>
+        </div>
+      );
+      continue;
+    }
+
+    // Section headers with emoji (🎯 TEXT, 📊 TEXT, etc.)
+    if (line.match(/^[🎯📊💼📞🔧🧠👁️⚡🏗️💬]\s/)) {
+      flushList();
+      elements.push(
+        <div key={`section-${i}`} className="mt-4 mb-2 pb-2 border-b-2 border-purple-200">
+          <span className="text-lg font-bold text-purple-700">{line}</span>
+        </div>
+      );
+      continue;
+    }
+
+    // Regular paragraph
+    flushList();
+    elements.push(
+      <p key={`p-${i}`} className="text-gray-800 text-base leading-relaxed my-2">
+        {renderInlineFormatting(line)}
+      </p>
+    );
+  }
+
+  // Flush any remaining list
+  flushList();
+
+  return <div className="space-y-1">{elements}</div>;
+}
+
 export function AIChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [question, setQuestion] = useState('');
@@ -328,7 +476,7 @@ export function AIChat() {
                               🤖
                             </div>
                             <div className="bg-white border-2 border-gray-200 rounded-2xl rounded-tl-sm px-6 py-4 shadow-sm">
-                              <div className="text-gray-800 text-base leading-relaxed whitespace-pre-wrap">{item.a}</div>
+                              <FormattedResponse text={item.a} />
                             </div>
                           </div>
                         </div>
