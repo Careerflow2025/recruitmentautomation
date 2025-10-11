@@ -50,14 +50,12 @@ function calculateOptimalBatchSize(totalOrigins: number, totalDestinations: numb
   totalBatches: number;
   estimatedTime: string;
 } {
-  // Google Maps allows max 25 origins × 25 destinations = 625 elements
-  // But we use much smaller batches to be more conservative and avoid rate limits
+  // ULTRA CONSERVATIVE: Process 1 origin × 1 destination = 1 pair at a time
+  // This ensures we don't hit any rate limits and can see exactly what's failing
+  // Slower but guaranteed to work
 
-  // Strategy: Use 5 origins × 5 destinations = 25 elements per batch
-  // This is more conservative and less likely to hit rate limits
-
-  const originBatchSize = Math.min(5, totalOrigins);
-  const destinationBatchSize = Math.min(5, totalDestinations);
+  const originBatchSize = 1;
+  const destinationBatchSize = 1;
 
   const originBatches = Math.ceil(totalOrigins / originBatchSize);
   const destinationBatches = Math.ceil(totalDestinations / destinationBatchSize);
@@ -258,10 +256,11 @@ export async function calculateAllCommutesSmartBatch(
   };
 
   // Process all batches with enhanced rate limiting
+  // ULTRA CONSERVATIVE: Process 1 batch at a time (no concurrency)
   const allBatchResults = await BatchRequestOptimizer.processWithRateLimit(
-    userId, 
-    batchProcessors, 
-    Math.min(3, batchRequests.length), // Process max 3 batches concurrently
+    userId,
+    batchProcessors,
+    1, // Process only 1 batch at a time
     priority
   );
 

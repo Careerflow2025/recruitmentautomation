@@ -21,11 +21,11 @@ interface QueueItem {
 class GoogleMapsRateLimiter {
   private queue: QueueItem[] = [];
   private isProcessing = false;
-  private requestsPerSecond = 5; // More conservative rate (Google allows 10/sec)
-  private delayBetweenRequests = 1000 / this.requestsPerSecond; // 200ms delay
+  private requestsPerSecond = 1; // ULTRA CONSERVATIVE: 1 request per second
+  private delayBetweenRequests = 1000; // 1 second delay between requests
   private maxRetries = 3;
   private userRequestCounts = new Map<string, { count: number; resetTime: number }>();
-  private maxRequestsPerUserPerMinute = 500; // Allow more requests for large match generation (was 30)
+  private maxRequestsPerUserPerMinute = 1000; // Very high limit - we're rate limiting by time instead
 
   /**
    * Add a request to the queue with priority
@@ -327,11 +327,10 @@ export async function rateLimitedGoogleMapsRequest(
 
       const url = `https://maps.googleapis.com/maps/api/distancematrix/json?${params}`;
 
-      console.log(`🌐 Making Google Maps API request for user ${userId}:`, {
-        origins: origins.length,
-        destinations: destinations.length,
-        url: url.replace(apiKey, 'API_KEY_HIDDEN')
-      });
+      console.log(`🌐 Making Google Maps API request for user ${userId}:`);
+      console.log(`   Origins (${origins.length}): ${origins.join(', ')}`);
+      console.log(`   Destinations (${destinations.length}): ${destinations.join(', ')}`);
+      console.log(`   URL: ${url.replace(apiKey, 'API_KEY_HIDDEN')}`);
 
       // Add 15 second timeout to prevent hanging forever
       const response = await fetchWithTimeout(url, {
