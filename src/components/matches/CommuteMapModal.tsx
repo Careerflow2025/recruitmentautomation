@@ -672,10 +672,8 @@ export function CommuteMapModal({
                     />
                   )}
                 </div>
-              </div>
-            )}
 
-              <style jsx>{`
+                <style jsx>{`
                 .directions-panel :global(table) {
                   width: 100%;
                   border-collapse: collapse;
@@ -723,7 +721,8 @@ export function CommuteMapModal({
                   line-height: 1.5;
                 }
               `}</style>
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
