@@ -1015,7 +1015,7 @@ export default function ClientsDataGrid() {
       client_name: '',
       client_phone: '',
       client_email: '',
-      role: 'Dental Nurse',
+      role: '',
       postcode: '',
       budget: '',
       requirement: '',

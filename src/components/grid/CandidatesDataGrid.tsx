@@ -998,7 +998,7 @@ export default function CandidatesDataGrid() {
       last_name: '',
       email: '',
       phone: '',
-      role: 'Dental Nurse',
+      role: '',
       postcode: '',
       salary: '',
       days: '',
