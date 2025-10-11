@@ -302,7 +302,7 @@ export default function MatchesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-900 font-medium">Loading matches...</p>
@@ -313,7 +313,7 @@ export default function MatchesPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
           <h2 className="text-red-900 font-bold text-lg mb-2">Error Loading Data</h2>
           <p className="text-red-800">{error}</p>
@@ -329,10 +329,13 @@ export default function MatchesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Page Title */}
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Matches</h1>
+    <div className="h-screen bg-gray-50 flex flex-col">
+      {/* Page Title */}
+      <div className="px-4 py-3 border-b border-gray-200 bg-white">
+        <h1 className="text-2xl font-bold text-gray-900">Matches</h1>
+      </div>
+
+      <div className="flex-1 overflow-auto px-4 py-3">
 
         {/* Collapsible Stats */}
         {showStats && (
