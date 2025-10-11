@@ -279,20 +279,23 @@ export default function ClientsDataGrid() {
         name: '',
         width: 50,
         frozen: true,
+        resizable: false,
         headerCellClass: 'rdg-checkbox-label',
         renderHeaderCell: () => (
-          <input
-            type="checkbox"
-            className="rdg-checkbox-input"
-            checked={selectedRows.size === clients.length && clients.length > 0}
-            onChange={(e) => {
-              if (e.target.checked) {
-                setSelectedRows(new Set(clients.map((c) => c.id)));
-              } else {
-                setSelectedRows(new Set());
-              }
-            }}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <input
+              type="checkbox"
+              className="rdg-checkbox-input"
+              checked={selectedRows.size === clients.length && clients.length > 0}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setSelectedRows(new Set(clients.map((c) => c.id)));
+                } else {
+                  setSelectedRows(new Set());
+                }
+              }}
+            />
+          </div>
         ),
         renderCell: ({ row }) => (
           <input
