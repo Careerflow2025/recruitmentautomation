@@ -557,12 +557,15 @@ Match: ${JSON.stringify(compactMatches)}
 
 ${isAboutMap ? `
 🗺️🗺️🗺️ MAP QUESTION DETECTED! 🗺️🗺️🗺️
-CRITICAL: You MUST include MAP_ACTION markers in your response!
-Use the FULL postcodes provided in the data above (pc fields).
-Example format:
-MAP_ACTION:{"action":"openMap","data":{"originPostcode":"SW1A 1AA","destinationPostcode":"E1 6AN","candidateName":"CAN001","clientName":"CL001","commuteMinutes":22,"commuteDisplay":"🟢🟢 22m"}}
+CRITICAL INSTRUCTIONS:
+1. OUTPUT MAP_ACTION FIRST in your response (before any text!)
+2. Use FULL postcodes from the data above (pc or can_pc/cl_pc fields)
+3. Format EXACTLY like this:
 
-DO NOT just describe the match - SHOW THE MAP!
+MAP_ACTION:{"action":"openMap","data":{"originPostcode":"E1 6AN","destinationPostcode":"N1 9GU","candidateName":"CAN24","clientName":"CL1760153553911754","commuteMinutes":22,"commuteDisplay":"🟢🟢 22m"}}
+
+Then add your text explanation AFTER the MAP_ACTION marker.
+DO NOT SKIP THE MAP_ACTION - it's required!
 ` : ''}
 ${ragConversations ? `RAG MEMORY (relevant past conversations):\n${ragConversations}\n` : ''}
 ${ragKnowledge ? `RAG KNOWLEDGE (relevant system info):\n${ragKnowledge}\n` : ''}
@@ -629,7 +632,7 @@ Q: ${question}`;
           messages: [
             { role: 'user', content: combinedPrompt }
           ],
-          max_tokens: 300, // Concise responses (was 600, then 1500)
+          max_tokens: isAboutMap ? 600 : 300, // More tokens for map responses (need room for MAP_ACTION JSON)
           temperature: 0.7,
           stream: false
         }),
