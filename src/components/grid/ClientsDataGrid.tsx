@@ -282,7 +282,7 @@ export default function ClientsDataGrid() {
         resizable: false,
         headerCellClass: 'rdg-checkbox-label',
         renderHeaderCell: () => (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', height: '100%', paddingLeft: '8px' }}>
             <input
               type="checkbox"
               className="rdg-checkbox-input"
@@ -298,7 +298,7 @@ export default function ClientsDataGrid() {
           </div>
         ),
         renderCell: ({ row }) => (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', height: '100%', paddingLeft: '8px' }}>
             <input
               type="checkbox"
               className="rdg-checkbox-input"
