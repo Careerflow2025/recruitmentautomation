@@ -32,7 +32,8 @@ export function CommuteMapModal({
   const [isLoadingRoute, setIsLoadingRoute] = useState(true);
   const [usingApproximate, setUsingApproximate] = useState(false);
   const [activeTab, setActiveTab] = useState<'driving' | 'transit'>('driving');
-  const [directionsCollapsed, setDirectionsCollapsed] = useState(false);
+  const [routeDetailsCollapsed, setRouteDetailsCollapsed] = useState(false);
+  const [turnByTurnCollapsed, setTurnByTurnCollapsed] = useState(true); // Closed by default
 
   useEffect(() => {
     if (!isOpen || !mapRef.current) return;
@@ -451,19 +452,19 @@ export function CommuteMapModal({
             {/* Collapsible Header */}
             <div
               className="px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 cursor-pointer hover:from-slate-500 hover:to-slate-600 transition-all duration-200 flex items-center justify-between"
-              onClick={() => setDirectionsCollapsed(!directionsCollapsed)}
+              onClick={() => setRouteDetailsCollapsed(!routeDetailsCollapsed)}
             >
               <h3 className="text-white font-bold flex items-center gap-2 select-none">
                 <span className="text-xl">📊</span>
                 <span>Route Details & Configuration</span>
               </h3>
-              <span className="text-white text-sm transition-transform duration-200" style={{ transform: directionsCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
+              <span className="text-white text-sm transition-transform duration-200" style={{ transform: routeDetailsCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
                 ▼
               </span>
             </div>
 
             {/* Collapsible Content */}
-            {!directionsCollapsed && (
+            {!routeDetailsCollapsed && (
               <div className="px-6 py-4">
                 {/* Time Difference Notice */}
                 <div className="mb-3 bg-slate-50 border-2 border-slate-300 rounded-xl p-3 shadow-sm">
@@ -596,41 +597,83 @@ export function CommuteMapModal({
             </div>
           </div>
 
-          {/* Footer with Turn-by-Turn Toggle */}
+          {/* Footer with Turn-by-Turn Directions - Collapsible */}
           <div className="flex-shrink-0 bg-gray-50 border-t border-gray-200">
-            {/* Turn-by-Turn Directions - Collapsible */}
+            {/* Turn-by-Turn Directions Header - Collapsible */}
             <div
               className="px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 cursor-pointer hover:from-slate-500 hover:to-slate-600 transition-all duration-200 flex items-center justify-between"
-              onClick={() => setActiveTab(activeTab === 'driving' ? 'transit' : 'driving')}
+              onClick={() => setTurnByTurnCollapsed(!turnByTurnCollapsed)}
             >
               <h3 className="text-white font-bold flex items-center gap-2 select-none">
                 <span className="text-xl">🗺️</span>
                 <span>Turn-by-Turn Directions</span>
-                <span className="text-sm font-normal opacity-80">
-                  ({activeTab === 'driving' ? '🚗 Driving' : '🚆 Transit'} - Click to switch)
-                </span>
               </h3>
+              <span className="text-white text-sm transition-transform duration-200" style={{ transform: turnByTurnCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
+                ▼
+              </span>
             </div>
 
-            {/* Directions Content */}
-            <div className="px-6 py-4 max-h-64 overflow-y-auto bg-white">
-              {activeTab === 'driving' ? (
-                <div
-                  ref={directionsPanel}
-                  className="directions-panel text-sm"
-                  style={{
-                    lineHeight: '1.4',
-                  }}
-                />
-              ) : (
-                <div
-                  ref={transitDirectionsPanel}
-                  className="directions-panel text-sm"
-                  style={{
-                    lineHeight: '1.4',
-                  }}
-                />
-              )}
+            {/* Directions Content - Collapsible */}
+            {!turnByTurnCollapsed && (
+              <div className="bg-white">
+                {/* Tabs for Driving/Transit */}
+                <div className="flex border-b border-gray-200">
+                  <button
+                    onClick={() => setActiveTab('driving')}
+                    className={`flex-1 px-4 py-3 text-sm font-semibold transition ${
+                      activeTab === 'driving'
+                        ? 'bg-slate-50 text-slate-700 border-b-2 border-slate-600'
+                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <span>🚗</span>
+                      <span>Driving</span>
+                    </div>
+                    {routeInfo && (
+                      <p className="text-xs mt-1">{routeInfo.duration}</p>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('transit')}
+                    className={`flex-1 px-4 py-3 text-sm font-semibold transition ${
+                      activeTab === 'transit'
+                        ? 'bg-slate-50 text-slate-700 border-b-2 border-slate-600'
+                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <span>🚆</span>
+                      <span>Transit</span>
+                    </div>
+                    {transitRouteInfo && transitRouteInfo.duration !== 'Not available' && (
+                      <p className="text-xs mt-1">{transitRouteInfo.duration}</p>
+                    )}
+                  </button>
+                </div>
+
+                {/* Directions Panel Content */}
+                <div className="px-6 py-4 max-h-64 overflow-y-auto">
+                  {activeTab === 'driving' ? (
+                    <div
+                      ref={directionsPanel}
+                      className="directions-panel text-sm"
+                      style={{
+                        lineHeight: '1.4',
+                      }}
+                    />
+                  ) : (
+                    <div
+                      ref={transitDirectionsPanel}
+                      className="directions-panel text-sm"
+                      style={{
+                        lineHeight: '1.4',
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
 
               <style jsx>{`
                 .directions-panel :global(table) {
