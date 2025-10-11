@@ -509,11 +509,40 @@ export async function POST(request: Request) {
         `${k.title}: ${k.content.substring(0, 150)}... (relevance: ${Math.round(k.similarity * 100)}%)`
       ).join('\n');
 
-      const systemPrompt = `AI for dental recruitment with full database access via actions.
+      // ==========================================
+      // LOAD SYSTEM PROMPT FROM DATABASE
+      // ==========================================
+      console.log('📖 Loading system prompt from database...');
+
+      let baseSystemPrompt = 'You are a helpful AI assistant for a dental recruitment platform.'; // Fallback
+
+      try {
+        const { data: promptData, error: promptError } = await userClient.rpc('get_active_system_prompt', {
+          p_prompt_name: 'dental_matcher_default'
+        });
+
+        if (promptError) {
+          console.warn('⚠️ Error loading system prompt from database:', promptError.message);
+          console.warn('⚠️ Using fallback system prompt');
+        } else if (promptData) {
+          baseSystemPrompt = promptData;
+          console.log('✅ Loaded system prompt from database');
+        }
+      } catch (promptLoadError: any) {
+        console.warn('⚠️ Failed to load system prompt:', promptLoadError.message);
+        console.warn('⚠️ Using fallback system prompt');
+      }
+
+      // Build complete system prompt with context
+      const systemPrompt = `${baseSystemPrompt}
+
+═══════════════════════════════════════════════
+CURRENT CONTEXT:
+═══════════════════════════════════════════════
 
 USER: ${user.id.substring(0, 8)} | Cand: ${candidates.length} | Cli: ${clients.length} | Match: ${totalMatches} (✅${placedMatches} 🔄${inProgressMatches} ❌${rejectedMatches})
 
-DATA (filtered):
+DATA (filtered for this question):
 Cand: ${JSON.stringify(compactCandidates)}
 Cli: ${JSON.stringify(compactClients)}
 Match: ${JSON.stringify(compactMatches)}
@@ -522,15 +551,6 @@ ${ragConversations ? `RAG MEMORY (relevant past conversations):\n${ragConversati
 ${ragKnowledge ? `RAG KNOWLEDGE (relevant system info):\n${ragKnowledge}\n` : ''}
 Summary: ${existingSummary?.summary || 'None'}
 Facts: ${Object.keys(userFacts).length > 0 ? Object.entries(userFacts).map(([k, v]) => `${k}:${v}`).join('; ') : 'None'}
-
-ACTIONS: add_candidate, update_candidate, delete_candidate, add_client, update_client, delete_client, update_match_status, add_match_note, bulk_add_candidates, bulk_add_clients, bulk_delete_candidates, bulk_delete_clients, parse_and_organize, bulk_add_chunked, bulk_delete_chunked
-
-MULTI-MAP: To show maps, add MAP_ACTION:{json} to response. Can show up to 3 maps.
-Example: "Here are your top 3 matches: MAP_ACTION:{"action":"openMap","data":{"originPostcode":"SW1A 1AA","destinationPostcode":"E1 6AN","candidateName":"CAN001","clientName":"CL001","commuteMinutes":25,"commuteDisplay":"🟢🟢 25m"}} MAP_ACTION:{"action":"openMap","data":{...}} MAP_ACTION:{"action":"openMap","data":{...}}"
-
-RULES: Commute ≤80min sorted asc, IDs auto-gen CAN###/CL###, Use client_phone/budget for clients
-
-STYLE: Short (2-3 sent), visual (✅❌🔄📊), bullets, direct
 
 Q: ${question}`;
 
