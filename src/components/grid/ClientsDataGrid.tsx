@@ -1081,7 +1081,7 @@ export default function ClientsDataGrid() {
           onColumnResize={handleColumnResize}
           defaultColumnOptions={{
             resizable: true,
-            sortable: true,
+            sortable: false,
           }}
           className="rdg-light fill-grid"
           style={{ height: '100%' }}
