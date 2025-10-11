@@ -14,6 +14,10 @@ import {
   shouldRegenerateSummary,
   getRecentContext
 } from '@/lib/ai-memory';
+import {
+  getRAGContext,
+  storeConversationEmbedding
+} from '@/lib/rag';
 
 /**
  * Promise timeout wrapper for enterprise-grade stability
@@ -332,19 +336,19 @@ export async function POST(request: Request) {
       const currentSessionId = sessionId || await conversationStorage.createSessionId(user.id);
       const fullConversationHistory = await conversationStorage.getRecentConversations(user.id, 100, 100);
 
-      // MEMORY SYSTEM - Load summary and facts
+      // ==========================================
+      // RAG SYSTEM - Retrieve relevant context
+      // ==========================================
+      console.log('🔍 RAG: Retrieving relevant context for question...');
+
+      const { relevantConversations, relevantKnowledge } = await getRAGContext(
+        user.id,
+        question
+      );
+
+      // MEMORY SYSTEM - Load summary and facts (kept for compatibility)
       const existingSummary = await getSummary(user.id, currentSessionId);
       const userFacts = await getFacts(user.id, currentSessionId);
-
-      // Only send LAST 4 TURNS to AI (reduced from 6 for token efficiency)
-      const recentContext = getRecentContext(
-        fullConversationHistory.map((msg, i) => ({
-          question: msg.question,
-          answer: msg.answer,
-          turn: i + 1
-        })),
-        4
-      );
 
       const turnCount = fullConversationHistory.length;
 
@@ -496,36 +500,34 @@ export async function POST(request: Request) {
         st: m.status ? m.status.substring(0, 3) : '' // pla/in-/rej
       }));
 
-      // Minimal professional system prompt - keeps context under 2000 tokens
-      const systemPrompt = `AI Assistant for dental recruitment matching. You have full database access via actions.
+      // RAG-POWERED SYSTEM PROMPT - Uses semantic retrieval instead of recent history
+      const ragConversations = relevantConversations.map(c =>
+        `Past Q: ${c.question.substring(0, 80)}... A: ${c.answer.substring(0, 80)}... (similarity: ${Math.round(c.similarity * 100)}%)`
+      ).join('\n');
 
-USER: ${user.id.substring(0, 8)} | Candidates: ${candidates.length} | Clients: ${clients.length} | Matches: ${totalMatches} (Placed: ${placedMatches}, In-Progress: ${inProgressMatches}, Rejected: ${rejectedMatches})
+      const ragKnowledge = relevantKnowledge.map(k =>
+        `${k.title}: ${k.content.substring(0, 150)}... (relevance: ${Math.round(k.similarity * 100)}%)`
+      ).join('\n');
 
-DATA (filtered by question type):
-Candidates: ${JSON.stringify(compactCandidates)}
-Clients: ${JSON.stringify(compactClients)}
-Matches: ${JSON.stringify(compactMatches)}
+      const systemPrompt = `AI for dental recruitment with full database access via actions.
 
-MEMORY:
+USER: ${user.id.substring(0, 8)} | Cand: ${candidates.length} | Cli: ${clients.length} | Match: ${totalMatches} (✅${placedMatches} 🔄${inProgressMatches} ❌${rejectedMatches})
+
+DATA (filtered):
+Cand: ${JSON.stringify(compactCandidates)}
+Cli: ${JSON.stringify(compactClients)}
+Match: ${JSON.stringify(compactMatches)}
+
+${ragConversations ? `RAG MEMORY (relevant past conversations):\n${ragConversations}\n` : ''}
+${ragKnowledge ? `RAG KNOWLEDGE (relevant system info):\n${ragKnowledge}\n` : ''}
 Summary: ${existingSummary?.summary || 'None'}
 Facts: ${Object.keys(userFacts).length > 0 ? Object.entries(userFacts).map(([k, v]) => `${k}:${v}`).join('; ') : 'None'}
-Recent: ${recentContext.map(m => `[${m.turn}] Q:${m.question.substring(0, 50)} A:${m.answer.substring(0, 50)}`).join(' | ')}
 
-ACTIONS (use JSON code blocks):
-Single: add_candidate, update_candidate, delete_candidate, add_client, update_client, delete_client, update_match_status, add_match_note
-Bulk: bulk_add_candidates, bulk_add_clients, bulk_delete_candidates, bulk_delete_clients
-Parse: parse_and_organize (extracts structured data from messy text)
+ACTIONS: add_candidate, update_candidate, delete_candidate, add_client, update_client, delete_client, update_match_status, add_match_note, bulk_add_candidates, bulk_add_clients, bulk_delete_candidates, bulk_delete_clients, parse_and_organize
 
-Example: {"action":"add_candidate","data":{"first_name":"John","role":"Dental Nurse","postcode":"SW1A","phone":"07123456789"}}
+RULES: Commute ≤80min sorted asc, IDs auto-gen CAN###/CL###, Use client_phone/budget for clients
 
-SYSTEM RULES:
-- Commute matches: ≤80min only, sorted by time ascending
-- IDs: Auto-generate CAN### or CL### if missing
-- Matching: Role match + location (Google Maps driving time)
-- Statuses: placed/in-progress/rejected
-- Fields: Use client_phone (not phone), budget (not pay) for clients
-
-RESPONSE STYLE: Short (2-3 sentences), visual (use ✅❌🔄📊💼📞), structured (bullets), direct
+STYLE: Short (2-3 sent), visual (✅❌🔄📊), bullets, direct
 
 Q: ${question}`;
 
@@ -1070,8 +1072,12 @@ Q: ${question}`;
     // Save conversation to storage
     await conversationStorage.saveMessage(user.id, currentSessionId, question, answer);
 
-    // MEMORY SYSTEM - Extract and save facts from this turn
+    // RAG SYSTEM - Store conversation as embedding for future retrieval (async, don't await)
     const newTurnNumber = turnCount + 1;
+    storeConversationEmbedding(user.id, currentSessionId, newTurnNumber, question, answer)
+      .catch(err => console.error('Error storing RAG embedding:', err));
+
+    // MEMORY SYSTEM - Extract and save facts from this turn
     const factsFromTurn = await extractFacts(question, answer, newTurnNumber);
     for (const fact of factsFromTurn) {
       await updateFact(user.id, currentSessionId, fact.fact_key, fact.fact_value, fact.source_turn);
