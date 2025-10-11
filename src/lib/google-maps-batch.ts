@@ -51,13 +51,13 @@ function calculateOptimalBatchSize(totalOrigins: number, totalDestinations: numb
   estimatedTime: string;
 } {
   // Google Maps allows max 25 origins × 25 destinations = 625 elements
-  // But we limit to 100 elements per request for server-side (Google recommendation)
+  // But we use much smaller batches to be more conservative and avoid rate limits
 
-  // Strategy: Use 10 origins × 10 destinations = 100 elements per batch
-  // This gives us maximum efficiency while staying under limits
+  // Strategy: Use 5 origins × 5 destinations = 25 elements per batch
+  // This is more conservative and less likely to hit rate limits
 
-  const originBatchSize = Math.min(10, totalOrigins);
-  const destinationBatchSize = Math.min(10, totalDestinations);
+  const originBatchSize = Math.min(5, totalOrigins);
+  const destinationBatchSize = Math.min(5, totalDestinations);
 
   const originBatches = Math.ceil(totalOrigins / originBatchSize);
   const destinationBatches = Math.ceil(totalDestinations / destinationBatchSize);

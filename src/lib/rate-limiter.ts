@@ -21,11 +21,11 @@ interface QueueItem {
 class GoogleMapsRateLimiter {
   private queue: QueueItem[] = [];
   private isProcessing = false;
-  private requestsPerSecond = 8; // Conservative rate (Google allows 10/sec)
-  private delayBetweenRequests = 1000 / this.requestsPerSecond; // 125ms delay
+  private requestsPerSecond = 5; // More conservative rate (Google allows 10/sec)
+  private delayBetweenRequests = 1000 / this.requestsPerSecond; // 200ms delay
   private maxRetries = 3;
   private userRequestCounts = new Map<string, { count: number; resetTime: number }>();
-  private maxRequestsPerUserPerMinute = 30; // Prevent one user from overwhelming the system
+  private maxRequestsPerUserPerMinute = 500; // Allow more requests for large match generation (was 30)
 
   /**
    * Add a request to the queue with priority
@@ -148,7 +148,7 @@ class GoogleMapsRateLimiter {
   }
 
   /**
-   * Check if error is a rate limit error
+   * Check if error is a rate limit or timeout error (retriable errors)
    */
   private isRateLimitError(error: any): boolean {
     const message = error.message?.toLowerCase() || '';
@@ -157,7 +157,10 @@ class GoogleMapsRateLimiter {
       message.includes('rate limit') ||
       message.includes('too many requests') ||
       message.includes('quota exceeded') ||
-      message.includes('over_query_limit')
+      message.includes('over_query_limit') ||
+      message.includes('timeout') ||
+      message.includes('econnreset') ||
+      message.includes('etimedout')
     );
   }
 
@@ -277,7 +280,32 @@ export class BatchRequestOptimizer {
 }
 
 /**
- * Enhanced Google Maps API wrapper with rate limiting
+ * Fetch with timeout wrapper
+ */
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 15000): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    return response;
+  } catch (error: any) {
+    clearTimeout(timeout);
+    if (error.name === 'AbortError') {
+      throw new Error(`Request timeout after ${timeoutMs}ms`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Enhanced Google Maps API wrapper with rate limiting and timeout
  */
 export async function rateLimitedGoogleMapsRequest(
   userId: string,
@@ -298,21 +326,22 @@ export async function rateLimitedGoogleMapsRequest(
       });
 
       const url = `https://maps.googleapis.com/maps/api/distancematrix/json?${params}`;
-      
+
       console.log(`🌐 Making Google Maps API request for user ${userId}:`, {
         origins: origins.length,
         destinations: destinations.length,
         url: url.replace(apiKey, 'API_KEY_HIDDEN')
       });
-      
-      const response = await fetch(url, {
+
+      // Add 15 second timeout to prevent hanging forever
+      const response = await fetchWithTimeout(url, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
           'User-Agent': 'Netlify-Function/1.0',
           'Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://localhost:8888'
         }
-      });
+      }, 15000);
       
       if (!response.ok) {
         const errorBody = await response.text();
