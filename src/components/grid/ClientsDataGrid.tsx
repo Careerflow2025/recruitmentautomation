@@ -14,7 +14,7 @@ import { normalizeRole } from '@/lib/utils/roleNormalizer';
 import { debounce } from 'lodash';
 import CustomColumnManager from './CustomColumnManager';
 import EditableColumnHeader from './EditableColumnHeader';
-import NotesPopup from './NotesPopup';
+import MultiNotesPopup from './MultiNotesPopup';
 
 // Extended Client type with user_id (exists in DB but not in type definition)
 type ClientWithUser = Client & { user_id?: string };
@@ -30,7 +30,7 @@ export default function ClientsDataGrid() {
   const [columnRenames, setColumnRenames] = useState<Record<string, string>>({});
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
   const [textFilters, setTextFilters] = useState<Record<string, string>>({});
-  const [notesPopup, setNotesPopup] = useState<{ clientId: string; content: string } | null>(null);
+  const [notesPopupClientId, setNotesPopupClientId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -685,7 +685,7 @@ export default function ClientsDataGrid() {
             title="Click to view/edit notes"
             onClick={(e) => {
               e.stopPropagation();
-              setNotesPopup({ clientId: row.id, content: row.notes || '' });
+              setNotesPopupClientId(row.id);
             }}
             style={{
               cursor: 'pointer',
@@ -1125,15 +1125,12 @@ export default function ClientsDataGrid() {
       </div>
 
       {/* Notes Popup */}
-      {notesPopup && (
-        <NotesPopup
-          content={notesPopup.content}
+      {notesPopupClientId && (
+        <MultiNotesPopup
+          entityId={notesPopupClientId}
+          entityType="client"
           title="Client Notes"
-          onClose={() => setNotesPopup(null)}
-          onSave={async (newContent) => {
-            await updateRow(notesPopup.clientId, { notes: newContent } as Partial<ClientWithUser>);
-            setNotesPopup(null);
-          }}
+          onClose={() => setNotesPopupClientId(null)}
         />
       )}
     </div>

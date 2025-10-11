@@ -14,7 +14,7 @@ import { normalizeRole } from '@/lib/utils/roleNormalizer';
 import { debounce } from 'lodash';
 import CustomColumnManager from './CustomColumnManager';
 import EditableColumnHeader from './EditableColumnHeader';
-import NotesPopup from './NotesPopup';
+import MultiNotesPopup from './MultiNotesPopup';
 
 export default function CandidatesDataGrid() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -28,7 +28,7 @@ export default function CandidatesDataGrid() {
   const [editingHeaderId, setEditingHeaderId] = useState<string | null>(null);
   const [headerEditValue, setHeaderEditValue] = useState<string>('');
   const [textFilters, setTextFilters] = useState<Record<string, string>>({});
-  const [notesPopup, setNotesPopup] = useState<{ candidateId: string; content: string } | null>(null);
+  const [notesPopupCandidateId, setNotesPopupCandidateId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -705,7 +705,7 @@ export default function CandidatesDataGrid() {
             title="Click to view/edit notes"
             onClick={(e) => {
               e.stopPropagation();
-              setNotesPopup({ candidateId: row.id, content: row.notes || '' });
+              setNotesPopupCandidateId(row.id);
             }}
             style={{
               cursor: 'pointer',
@@ -1204,15 +1204,12 @@ export default function CandidatesDataGrid() {
       </div>
 
       {/* Notes Popup */}
-      {notesPopup && (
-        <NotesPopup
-          content={notesPopup.content}
+      {notesPopupCandidateId && (
+        <MultiNotesPopup
+          entityId={notesPopupCandidateId}
+          entityType="candidate"
           title="Candidate Notes"
-          onClose={() => setNotesPopup(null)}
-          onSave={async (newContent) => {
-            await updateRow(notesPopup.candidateId, { notes: newContent } as Partial<Candidate>);
-            setNotesPopup(null);
-          }}
+          onClose={() => setNotesPopupCandidateId(null)}
         />
       )}
     </div>
