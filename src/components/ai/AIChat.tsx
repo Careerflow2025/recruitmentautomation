@@ -214,8 +214,8 @@ export function AIChat() {
 
   // Process AI response for map actions (supports multiple maps)
   const processMapActions = (response: string) => {
-    // Match all MAP_ACTION occurrences
-    const mapActionRegex = /MAP_ACTION:(\{.*?\})/g;
+    // Match all MAP_ACTION occurrences (handles nested JSON with double closing braces)
+    const mapActionRegex = /MAP_ACTION:(\{[\s\S]*?\}\})/g;
     const matches = Array.from(response.matchAll(mapActionRegex));
 
     if (matches.length > 0) {
@@ -251,9 +251,9 @@ export function AIChat() {
     setMapPanelMaps(prev => prev.filter(m => m.id !== mapId));
   };
 
-  // Clean response text by removing MAP_ACTION markers
+  // Clean response text by removing MAP_ACTION markers (handles nested JSON)
   const cleanResponse = (response: string) => {
-    return response.replace(/MAP_ACTION:{.*?}/g, '').trim();
+    return response.replace(/MAP_ACTION:\{[\s\S]*?\}\}/g, '').trim();
   };
 
   const ask = async () => {
