@@ -31,6 +31,7 @@ export default function ClientsDataGrid() {
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
   const [textFilters, setTextFilters] = useState<Record<string, string>>({});
   const [notesPopupClientId, setNotesPopupClientId] = useState<string | null>(null);
+  const [latestNotes, setLatestNotes] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -139,6 +140,28 @@ export default function ClientsDataGrid() {
 
     loadCustomData();
   }, [clients, customColumns]);
+
+  // Load latest notes for all clients
+  const loadLatestNotes = useCallback(async () => {
+    try {
+      const response = await fetch('/api/notes/clients/latest');
+      const data = await response.json();
+
+      if (data.success) {
+        setLatestNotes(data.latestNotes || {});
+      } else {
+        console.error('Failed to fetch latest notes:', data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching latest notes:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (clients.length > 0) {
+      loadLatestNotes();
+    }
+  }, [clients.length, loadLatestNotes]);
 
   // Debounced update for cell changes - increased to 1500ms for better typing experience
   const debouncedUpdate = useMemo(
@@ -680,32 +703,37 @@ export default function ClientsDataGrid() {
             onTextFilterChange={(value) => handleTextFilterChange('notes', value)}
           />
         ),
-        renderCell: ({ row }) => (
-          <div
-            title="Click to view/edit notes"
-            onClick={(e) => {
-              e.stopPropagation();
-              setNotesPopupClientId(row.id);
-            }}
-            style={{
-              cursor: 'pointer',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}
-          >
-            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {row.notes || '(Click to add notes)'}
-            </span>
-            <span style={{ fontSize: '12px', opacity: 0.6, flexShrink: 0 }}>📝</span>
-          </div>
-        ),
+        renderCell: ({ row }) => {
+          const latestNote = latestNotes[row.id]?.content || '';
+          const displayText = latestNote || '(Click to add notes)';
+
+          return (
+            <div
+              title={latestNote ? latestNote : "Click to view/edit notes"}
+              onClick={(e) => {
+                e.stopPropagation();
+                setNotesPopupClientId(row.id);
+              }}
+              style={{
+                cursor: 'pointer',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {displayText}
+              </span>
+              <span style={{ fontSize: '12px', opacity: 0.6, flexShrink: 0 }}>📝</span>
+            </div>
+          );
+        },
       },
     ],
-    [clients, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths, textFilters, handleTextFilterChange]
+    [clients, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths, textFilters, handleTextFilterChange, latestNotes]
   );
 
   // Handle renaming custom column
@@ -1130,7 +1158,11 @@ export default function ClientsDataGrid() {
           entityId={notesPopupClientId}
           entityType="client"
           title="Client Notes"
-          onClose={() => setNotesPopupClientId(null)}
+          onClose={() => {
+            setNotesPopupClientId(null);
+            // Reload latest notes after closing popup (in case user added/edited notes)
+            loadLatestNotes();
+          }}
         />
       )}
     </div>
