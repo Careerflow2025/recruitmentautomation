@@ -330,50 +330,93 @@ export default function MatchesPage() {
 
   return (
     <div className="h-screen flex flex-col">
-      {/* Enhanced Professional Toolbar */}
-      <div className="grid-toolbar" style={{ padding: '20px 24px', minHeight: '80px' }}>
-        <div className="grid-toolbar-title" style={{ gap: '16px' }}>
-          <span style={{ fontSize: '24px' }}>🔗 Matches</span>
-          <span className="text-base font-semibold" style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '6px 14px', borderRadius: '8px' }}>
-            {filteredMatches.length} {filteredMatches.length !== matches.length ? `of ${matches.length}` : 'total'}
-          </span>
+      {/* Modern Card-Based Dashboard */}
+      <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 border-b border-gray-200">
+        <div className="px-6 py-6">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <span className="text-4xl">🔗</span>
+                <span>Matches</span>
+              </h1>
+              <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-200">
+                <span className="text-sm font-semibold text-gray-600">Total:</span>
+                <span className="text-xl font-bold text-gray-900 ml-2">{filteredMatches.length}</span>
+                {filteredMatches.length !== matches.length && (
+                  <span className="text-sm text-gray-500 ml-1">of {matches.length}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowStats(!showStats)}
+                className="px-5 py-2.5 bg-white text-gray-700 rounded-xl font-semibold shadow-sm border border-gray-200 hover:shadow-md hover:border-gray-300 transition-all duration-200 flex items-center gap-2"
+              >
+                <span>{showStats ? '👁️' : '👁️'}</span>
+                <span>{showStats ? 'Hide Stats' : 'Show Stats'}</span>
+              </button>
+              <button
+                onClick={handleGenerateMatches}
+                disabled={generating}
+                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span>{generating ? '⏳' : '🔄'}</span>
+                <span>{generating ? 'Generating...' : 'Generate Matches'}</span>
+              </button>
+              <Link href="/candidates" className="px-5 py-2.5 bg-white text-blue-700 rounded-xl font-semibold shadow-sm border border-blue-200 hover:shadow-md hover:bg-blue-50 transition-all duration-200 flex items-center gap-2">
+                <span>👥</span>
+                <span>Candidates</span>
+              </Link>
+              <Link href="/clients" className="px-5 py-2.5 bg-white text-orange-700 rounded-xl font-semibold shadow-sm border border-orange-200 hover:shadow-md hover:bg-orange-50 transition-all duration-200 flex items-center gap-2">
+                <span>🏥</span>
+                <span>Clients</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* Stats Cards */}
           {showStats && (
-            <>
-              <span className="text-sm font-bold px-4 py-2 rounded-lg shadow-md" style={{ backgroundColor: '#10b981', color: 'white', border: '2px solid #059669' }}>
-                ✅ {matches.filter(m => m.role_match).length} Role Match
-              </span>
-              <span className="text-sm font-bold px-4 py-2 rounded-lg shadow-md" style={{ backgroundColor: '#f59e0b', color: 'white', border: '2px solid #d97706' }}>
-                📍 {matches.filter(m => !m.role_match).length} Location
-              </span>
-              <span className="text-sm font-bold px-4 py-2 rounded-lg shadow-md" style={{ backgroundColor: '#3b82f6', color: 'white', border: '2px solid #2563eb' }}>
-                🟢 {matches.filter(m => m.commute_minutes <= 20).length} &lt;20min
-              </span>
-            </>
+            <div className="grid grid-cols-3 gap-4">
+              {/* Role Match Card */}
+              <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg p-5 text-white transform hover:scale-105 transition-all duration-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-green-100 text-sm font-medium mb-1">Role Match</div>
+                    <div className="text-4xl font-bold">{matches.filter(m => m.role_match).length}</div>
+                  </div>
+                  <div className="text-6xl opacity-20">✅</div>
+                </div>
+                <div className="mt-3 text-green-100 text-xs font-medium">Perfect role alignment</div>
+              </div>
+
+              {/* Location Only Card */}
+              <div className="bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl shadow-lg p-5 text-white transform hover:scale-105 transition-all duration-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-orange-100 text-sm font-medium mb-1">Location Only</div>
+                    <div className="text-4xl font-bold">{matches.filter(m => !m.role_match).length}</div>
+                  </div>
+                  <div className="text-6xl opacity-20">📍</div>
+                </div>
+                <div className="mt-3 text-orange-100 text-xs font-medium">Close proximity matches</div>
+              </div>
+
+              {/* Under 20min Card */}
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg p-5 text-white transform hover:scale-105 transition-all duration-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-blue-100 text-sm font-medium mb-1">Under 20 Minutes</div>
+                    <div className="text-4xl font-bold">{matches.filter(m => m.commute_minutes <= 20).length}</div>
+                  </div>
+                  <div className="text-6xl opacity-20">🟢</div>
+                </div>
+                <div className="mt-3 text-blue-100 text-xs font-medium">Ultra-short commute</div>
+              </div>
+            </div>
           )}
-        </div>
-        <div className="grid-toolbar-actions" style={{ gap: '14px' }}>
-          <button
-            onClick={() => setShowStats(!showStats)}
-            className="grid-toolbar-button"
-            style={{ padding: '10px 20px', fontSize: '15px', fontWeight: '700' }}
-            title={showStats ? "Hide Statistics" : "Show Statistics"}
-          >
-            {showStats ? '👁️ Hide Stats' : '👁️ Show Stats'}
-          </button>
-          <button
-            onClick={handleGenerateMatches}
-            disabled={generating}
-            className={`grid-toolbar-button ${generating ? '' : 'grid-toolbar-button-primary'}`}
-            style={{ padding: '10px 20px', fontSize: '15px', fontWeight: '700' }}
-          >
-            {generating ? '⏳ Generating...' : '🔄 Generate Matches'}
-          </button>
-          <Link href="/candidates" className="grid-toolbar-button" style={{ padding: '10px 20px', fontSize: '15px', fontWeight: '700' }}>
-            👥 Candidates
-          </Link>
-          <Link href="/clients" className="grid-toolbar-button" style={{ padding: '10px 20px', fontSize: '15px', fontWeight: '700' }}>
-            🏥 Clients
-          </Link>
         </div>
       </div>
 
