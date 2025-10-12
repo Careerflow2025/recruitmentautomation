@@ -14,6 +14,7 @@ export default function MatchesPage() {
   const [roleMatchFilter, setRoleMatchFilter] = useState<'all' | 'match' | 'location'>('all');
   const [timeFilter, setTimeFilter] = useState<number>(80);
   const [roleFilter, setRoleFilter] = useState<string>('');
+  const [searchText, setSearchText] = useState<string>('');
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -282,14 +283,17 @@ export default function MatchesPage() {
   const filteredMatches = useMemo(() => {
     let filtered = [...matches];
 
+    // Role match filter
     if (roleMatchFilter === 'match') {
       filtered = filtered.filter(m => m.role_match);
     } else if (roleMatchFilter === 'location') {
       filtered = filtered.filter(m => !m.role_match);
     }
 
+    // Time filter
     filtered = filtered.filter(m => m.commute_minutes <= timeFilter);
 
+    // Role type filter
     if (roleFilter) {
       const normalizedFilter = normalizeRole(roleFilter);
       filtered = filtered.filter(m =>
@@ -298,8 +302,48 @@ export default function MatchesPage() {
       );
     }
 
+    // Universal text search - searches across ALL fields
+    if (searchText) {
+      const searchLower = searchText.toLowerCase().trim();
+
+      filtered = filtered.filter(m => {
+        const candidate = m.candidate;
+        const client = m.client;
+
+        // Search candidate fields
+        const candidateMatches =
+          candidate.id.toLowerCase().includes(searchLower) ||
+          candidate.role.toLowerCase().includes(searchLower) ||
+          candidate.postcode.toLowerCase().includes(searchLower) ||
+          (candidate.first_name && candidate.first_name.toLowerCase().includes(searchLower)) ||
+          (candidate.last_name && candidate.last_name.toLowerCase().includes(searchLower)) ||
+          (candidate.email && candidate.email.toLowerCase().includes(searchLower)) ||
+          (candidate.phone && candidate.phone.toLowerCase().includes(searchLower)) ||
+          (candidate.salary && candidate.salary.toLowerCase().includes(searchLower)) ||
+          (candidate.days && candidate.days.toLowerCase().includes(searchLower)) ||
+          (candidate.notes && candidate.notes.toLowerCase().includes(searchLower)) ||
+          (candidate.experience && candidate.experience.toLowerCase().includes(searchLower));
+
+        // Search client fields
+        const clientMatches =
+          client.id.toLowerCase().includes(searchLower) ||
+          client.surgery.toLowerCase().includes(searchLower) ||
+          client.role.toLowerCase().includes(searchLower) ||
+          client.postcode.toLowerCase().includes(searchLower) ||
+          (client.client_name && client.client_name.toLowerCase().includes(searchLower)) ||
+          (client.client_email && client.client_email.toLowerCase().includes(searchLower)) ||
+          (client.client_phone && client.client_phone.toLowerCase().includes(searchLower)) ||
+          (client.budget && client.budget.toLowerCase().includes(searchLower)) ||
+          (client.requirement && client.requirement.toLowerCase().includes(searchLower)) ||
+          (client.system && client.system.toLowerCase().includes(searchLower)) ||
+          (client.notes && client.notes.toLowerCase().includes(searchLower));
+
+        return candidateMatches || clientMatches;
+      });
+    }
+
     return filtered;
-  }, [matches, roleMatchFilter, timeFilter, roleFilter]);
+  }, [matches, roleMatchFilter, timeFilter, roleFilter, searchText]);
 
   if (loading) {
     return (
@@ -514,10 +558,12 @@ export default function MatchesPage() {
           roleMatchFilter={roleMatchFilter}
           timeFilter={timeFilter}
           roleFilter={roleFilter}
+          searchText={searchText}
           availableRoles={availableRoles}
           onRoleMatchFilterChange={setRoleMatchFilter}
           onTimeFilterChange={setTimeFilter}
           onRoleFilterChange={setRoleFilter}
+          onSearchTextChange={setSearchText}
           visibleColumns={visibleColumns}
           onColumnVisibilityChange={handleColumnVisibilityChange}
           collapsed={filtersCollapsed}
