@@ -374,63 +374,66 @@ export default function MatchesPage() {
 
   return (
     <div className="h-screen flex flex-col">
-      {/* Compact Header Bar */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="px-4 py-3">
+      {/* Premium Header Bar */}
+      <div className="bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 border-b-2 border-slate-700 shadow-xl">
+        <div className="px-6 py-4">
           <div className="flex items-center justify-between gap-6">
             {/* Left: Title + Stats Badges */}
-            <div className="flex items-center gap-4">
-              <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <div className="flex items-center gap-5">
+              <h1 className="text-xl font-bold text-white flex items-center gap-2.5 tracking-tight">
                 <span className="text-2xl">🔗</span>
                 <span>Matches</span>
               </h1>
 
+              {/* Divider */}
+              <div className="h-8 w-px bg-slate-600"></div>
+
               {/* Total Count Badge */}
-              <div className="px-3 py-1.5 bg-gray-100 rounded-lg border border-gray-300">
-                <span className="text-xs font-semibold text-gray-600">Total:</span>
-                <span className="text-sm font-bold text-gray-900 ml-1.5">{filteredMatches.length}</span>
+              <div className="px-4 py-2 bg-slate-700 rounded-lg border border-slate-600 shadow-inner">
+                <span className="text-xs font-semibold text-slate-300 uppercase tracking-wide">Total:</span>
+                <span className="text-base font-bold text-white ml-2">{filteredMatches.length}</span>
                 {filteredMatches.length !== matches.length && (
-                  <span className="text-xs text-gray-500 ml-1">/ {matches.length}</span>
+                  <span className="text-xs text-slate-400 ml-1">/ {matches.length}</span>
                 )}
               </div>
 
               {/* Stats Badges (always visible, compact) */}
-              <div className="flex items-center gap-2">
-                <div className="px-3 py-1.5 bg-green-50 rounded-lg border border-green-200 flex items-center gap-2">
-                  <span className="text-sm">✅</span>
-                  <span className="text-xs font-semibold text-green-700">Role Match:</span>
-                  <span className="text-sm font-bold text-green-900">{matches.filter(m => m.role_match).length}</span>
+              <div className="flex items-center gap-2.5">
+                <div className="px-3 py-2 bg-gradient-to-br from-emerald-600 to-green-700 rounded-lg shadow-lg border border-emerald-500 flex items-center gap-2">
+                  <span className="text-base">✅</span>
+                  <span className="text-xs font-semibold text-emerald-100">Match:</span>
+                  <span className="text-base font-bold text-white">{matches.filter(m => m.role_match).length}</span>
                 </div>
 
-                <div className="px-3 py-1.5 bg-orange-50 rounded-lg border border-orange-200 flex items-center gap-2">
-                  <span className="text-sm">📍</span>
-                  <span className="text-xs font-semibold text-orange-700">Location:</span>
-                  <span className="text-sm font-bold text-orange-900">{matches.filter(m => !m.role_match).length}</span>
+                <div className="px-3 py-2 bg-gradient-to-br from-orange-600 to-amber-700 rounded-lg shadow-lg border border-orange-500 flex items-center gap-2">
+                  <span className="text-base">📍</span>
+                  <span className="text-xs font-semibold text-orange-100">Location:</span>
+                  <span className="text-base font-bold text-white">{matches.filter(m => !m.role_match).length}</span>
                 </div>
 
-                <div className="px-3 py-1.5 bg-blue-50 rounded-lg border border-blue-200 flex items-center gap-2">
-                  <span className="text-sm">🟢</span>
-                  <span className="text-xs font-semibold text-blue-700">&lt;20min:</span>
-                  <span className="text-sm font-bold text-blue-900">{matches.filter(m => m.commute_minutes <= 20).length}</span>
+                <div className="px-3 py-2 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg shadow-lg border border-blue-500 flex items-center gap-2">
+                  <span className="text-base">🟢</span>
+                  <span className="text-xs font-semibold text-blue-100">&lt;20min:</span>
+                  <span className="text-base font-bold text-white">{matches.filter(m => m.commute_minutes <= 20).length}</span>
                 </div>
               </div>
             </div>
 
             {/* Right: Action Buttons */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <button
                 onClick={handleGenerateMatches}
                 disabled={generating}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm font-semibold shadow-md hover:shadow-lg hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm font-bold shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-500"
               >
                 <span>{generating ? '⏳' : '🔄'}</span>
                 <span>{generating ? 'Generating...' : 'Generate'}</span>
               </button>
-              <Link href="/candidates" className="px-4 py-2 bg-white text-blue-700 rounded-lg text-sm font-semibold border border-blue-200 hover:bg-blue-50 transition-all flex items-center gap-1.5">
+              <Link href="/candidates" className="px-5 py-2.5 bg-slate-700 text-white rounded-lg text-sm font-semibold border border-slate-600 hover:bg-slate-600 hover:shadow-lg transition-all flex items-center gap-2">
                 <span>👥</span>
                 <span>Candidates</span>
               </Link>
-              <Link href="/clients" className="px-4 py-2 bg-white text-orange-700 rounded-lg text-sm font-semibold border border-orange-200 hover:bg-orange-50 transition-all flex items-center gap-1.5">
+              <Link href="/clients" className="px-5 py-2.5 bg-slate-700 text-white rounded-lg text-sm font-semibold border border-slate-600 hover:bg-slate-600 hover:shadow-lg transition-all flex items-center gap-2">
                 <span>🏥</span>
                 <span>Clients</span>
               </Link>
