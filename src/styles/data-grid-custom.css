@@ -484,6 +484,12 @@
   }
 }
 
+/* New Item Indicator - Orange background for items added within last 48 hours */
+.rdg-cell-new-item {
+  background-color: #fef3c7 !important; /* Light yellow/orange background */
+  border-left: 4px solid #f59e0b !important; /* Orange left border */
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .rdg {

@@ -373,10 +373,30 @@ export default function ClientsDataGrid() {
       {
         key: 'id',
         name: 'ID',
-        width: 100,
+        width: 120,
         frozen: true,
         editable: false,
-        cellClass: 'font-semibold text-gray-700',
+        cellClass: (row) => {
+          const newItemClass = isNewItem(row.created_at) ? 'rdg-cell-new-item' : '';
+          return `font-semibold text-gray-700 ${newItemClass}`;
+        },
+        renderCell: ({ row }) => {
+          const isNew = isNewItem(row.created_at);
+          return (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontWeight: 'bold'
+              }}
+              title={isNew ? 'Added within last 48 hours' : ''}
+            >
+              {isNew && <span style={{ fontSize: '16px' }}>🟨</span>}
+              {row.id}
+            </div>
+          );
+        },
       },
       {
         key: 'surgery',
@@ -958,10 +978,26 @@ export default function ClientsDataGrid() {
     return filtered;
   }, [clients, columnFilters, textFilters, customData]);
 
-  // Apply sorting
-  const sortedClients = useMemo(() => {
-    if (sortColumns.length === 0) return filteredClients;
+  // Helper function: Check if item is new (within 48 hours)
+  const isNewItem = useCallback((createdAt: string) => {
+    const now = new Date();
+    const created = new Date(createdAt);
+    const hoursDiff = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
+    return hoursDiff <= 48;
+  }, []);
 
+  // Apply sorting - ALWAYS sort by created_at DESC when no user sorting is applied
+  const sortedClients = useMemo(() => {
+    // If no user-defined sort columns, maintain created_at DESC (newest first)
+    if (sortColumns.length === 0) {
+      return [...filteredClients].sort((a, b) => {
+        const aTime = new Date(a.created_at).getTime();
+        const bTime = new Date(b.created_at).getTime();
+        return bTime - aTime; // Descending (newest first)
+      });
+    }
+
+    // User has clicked a column header to sort
     return [...filteredClients].sort((a, b) => {
       for (const sort of sortColumns) {
         const aValue = a[sort.columnKey as keyof ClientWithUser];

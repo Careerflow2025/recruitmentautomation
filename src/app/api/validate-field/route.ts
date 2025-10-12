@@ -61,34 +61,36 @@ async function validateRole(role: string): Promise<{ valid: boolean; message: st
     return { valid: false, message: 'Role is required for matching' };
   }
 
-  const systemPrompt = `You are a UK dental recruitment validation assistant. Your job is to validate role field entries.
+  const systemPrompt = `You are a GENERAL recruitment validation assistant. Your job is to validate role field entries for ANY type of job.
 
-VALID DENTAL ROLES:
-- Dentist (DT, DDS, BDS, GDP)
-- Dental Nurse (DN, D.N., Nurse)
-- Dental Receptionist (Receptionist, Reception, Front Desk, FOH)
-- Dental Hygienist (Hygienist)
-- Treatment Coordinator (TCO, TC)
-- Practice Manager (PM, Manager)
-- Trainee Dental Nurse (TDN, Trainee)
+VALID ROLES (ANY INDUSTRY):
+- ANY job title: Nurse, Receptionist, Doctor, Dentist, Software Engineer, Architect, Teacher, Manager, etc.
+- ANY industry: Healthcare, IT, Construction, Education, Finance, Retail, etc.
+- Abbreviations and variations are OK: "SE" for Software Engineer, "PM" for Project Manager, "RN" for Registered Nurse
+- Multiple roles: "Nurse / Healthcare Assistant"
 
-VALIDATION RULES (FLEXIBLE):
-1. Check if the text looks like a dental role (allow variations, abbreviations, typos)
-2. REJECT if it's clearly: phone number, email, address, random text, salary
-3. ACCEPT if it contains any dental-related keywords or role terms
-4. Be LENIENT - when in doubt, ACCEPT
+VALIDATION RULES (VERY FLEXIBLE):
+1. ACCEPT any text that looks like a job title or role name
+2. ACCEPT any industry-specific roles (dental, IT, construction, education, etc.)
+3. ACCEPT abbreviations, variations, and informal names
+4. ONLY REJECT if it's clearly: phone number, email, address, salary, postcode, or random gibberish
+5. Be VERY LENIENT - when in doubt, ACCEPT
 
 OUTPUT FORMAT:
 Reply ONLY with: "VALID" or "INVALID: reason"
 
 Examples:
+- "Nurse" → VALID
 - "Dental Nurse" → VALID
-- "dn" → VALID
-- "dentist" → VALID
+- "Receptionist" → VALID
+- "Software Engineer" → VALID
+- "Architect" → VALID
+- "IT Support" → VALID
+- "Teacher" → VALID
 - "07723610278" → INVALID: phone number not a role
 - "£15" → INVALID: salary not a role
-- "Croydon" → INVALID: location not a role
-- "hygienist trainee" → VALID`;
+- "SW1A 1AA" → INVALID: postcode not a role
+- "abc123xyz" → INVALID: random text not a role`;
 
   const userPrompt = `Validate this role entry: "${role}"`;
 
@@ -106,7 +108,8 @@ Examples:
     // If AI fails, do basic validation
     const phonePattern = /^[\d\s+()-]+$/;
     const emailPattern = /@/;
-    const salaryPattern = /^[£\d\s-]+$/;
+    const salaryPattern = /^[£$€\d\s,-]+$/;
+    const postcodePattern = /^[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d?[A-Z]{0,2}$/i;
 
     if (phonePattern.test(role)) {
       return { valid: false, message: 'Phone number not a valid role' };
@@ -114,8 +117,11 @@ Examples:
     if (emailPattern.test(role)) {
       return { valid: false, message: 'Email not a valid role' };
     }
-    if (salaryPattern.test(role)) {
+    if (salaryPattern.test(role) && role.length < 10) {
       return { valid: false, message: 'Salary not a valid role' };
+    }
+    if (postcodePattern.test(role)) {
+      return { valid: false, message: 'Postcode not a valid role' };
     }
 
     // If basic checks pass, accept it
