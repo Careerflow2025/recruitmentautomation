@@ -363,9 +363,17 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
         // Get current user ID
         const userId = await getCurrentUserId();
         if (!userId) {
+          console.error('❌ User not authenticated');
           alert('You must be logged in to add notes');
           return;
         }
+
+        console.log('📝 Adding note:', {
+          candidate_id: selectedMatchForNote.candidate.id,
+          client_id: selectedMatchForNote.client.id,
+          note_length: noteText.trim().length,
+          user_id: userId
+        });
 
         // Insert note into database
         const { data, error } = await supabase
@@ -379,7 +387,17 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
           .select()
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Database error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          throw error;
+        }
+
+        console.log('✅ Note saved successfully:', data);
 
         // Create local note object
         const newNote: MatchNote = {
@@ -398,9 +416,10 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
         }));
 
         // Note: Do NOT close popup or reset text - the MatchNotesPopup handles its own state
-      } catch (error) {
-        console.error('Failed to save note:', error);
-        alert('Failed to save note. Please try again.');
+      } catch (error: any) {
+        console.error('❌ Failed to save note:', error);
+        const errorMessage = error?.message || 'Unknown error';
+        alert(`Failed to save note:\n${errorMessage}\n\nCheck browser console for details.`);
       }
     }
   };

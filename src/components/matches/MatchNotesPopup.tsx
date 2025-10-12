@@ -371,6 +371,8 @@ export default function MatchNotesPopup({
               fontFamily: 'system-ui, -apple-system, sans-serif',
               marginBottom: '12px',
               transition: 'border-color 0.2s',
+              color: '#1e293b',
+              fontWeight: '500',
             }}
             onFocus={(e) => {
               e.currentTarget.style.borderColor = '#3b82f6';
