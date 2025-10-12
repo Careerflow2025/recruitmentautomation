@@ -109,7 +109,9 @@ export default function EditableColumnHeader({
         gap: '6px',
         height: '100%',
         position: 'relative', // For absolute positioning of resize handle
-        width: '100%'
+        width: '100%',
+        overflow: 'hidden', // Prevent content from spilling into next column
+        boxSizing: 'border-box'
       }}>
         <span
           style={{
@@ -118,7 +120,9 @@ export default function EditableColumnHeader({
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            flexShrink: 1
+            flexShrink: 1,
+            minWidth: 0, // Allow flex item to shrink below content size
+            maxWidth: '100%' // Don't exceed container width
           }}
           onClick={() => canEdit && setIsEditing(true)}
           title={canEdit ? `Click to rename "${columnName}"` : columnName}

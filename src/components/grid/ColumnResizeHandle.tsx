@@ -56,13 +56,14 @@ export default function ColumnResizeHandle({
       style={{
         position: 'absolute',
         top: 0,
-        right: -3, // Center on the 1px border (-3px to 1px = 4px centered on border)
-        width: 4,
+        right: -10, // Position at the column border (account for 8px padding + border)
+        width: 6,
         height: '100%',
         cursor: 'col-resize',
-        zIndex: 20,
-        backgroundColor: isHovering || isResizing ? 'rgba(59, 130, 246, 0.3)' : 'transparent',
+        zIndex: 100,
+        backgroundColor: isHovering || isResizing ? 'rgba(255, 255, 255, 0.8)' : 'transparent',
         transition: 'background-color 0.15s ease',
+        borderRight: isHovering || isResizing ? '2px solid rgba(59, 130, 246, 0.8)' : 'none',
       }}
       title="Drag to resize column"
     />
