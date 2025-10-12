@@ -405,10 +405,27 @@ export default function ClientsDataGrid() {
         width: 120,
         frozen: true,
         editable: false,
+        resizable: false,
         cellClass: (row) => {
           const newItemClass = isNewItem(row.created_at) ? 'rdg-cell-new-item' : '';
           return `font-semibold text-gray-700 ${newItemClass}`;
         },
+        renderHeaderCell: () => (
+          <div style={{
+            width: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            paddingLeft: '8px',
+            paddingRight: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            height: '100%',
+            boxSizing: 'border-box'
+          }}>
+            ID
+          </div>
+        ),
         renderCell: ({ row }) => {
           const isNew = isNewItem(row.created_at);
           const displayId = getDisplayId(row.id);
