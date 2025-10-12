@@ -442,6 +442,9 @@ export default function CandidatesDataGrid() {
             alignItems: 'center',
             height: '100%',
             boxSizing: 'border-box',
+            // TEMP DEBUG: Highly visible styles to confirm code is loading
+            background: 'red !important',
+            border: '5px solid yellow !important',
             color: 'white',
             fontWeight: 600,
             fontSize: '13px',
@@ -668,7 +671,7 @@ export default function CandidatesDataGrid() {
         renderHeaderCell: () => (
           <EditableColumnHeader
             columnKey="role"
-            columnName={columnRenames['role'] || 'Role ⚠️'}
+            columnName={columnRenames['role'] || 'Role'}
             onRename={(newName) => handleRenameColumn('role', newName)}
             onDelete={() => handleHideColumn('role')}
             canEdit={true}
@@ -738,7 +741,7 @@ export default function CandidatesDataGrid() {
         renderHeaderCell: () => (
           <EditableColumnHeader
             columnKey="postcode"
-            columnName={columnRenames['postcode'] || 'Postcode ⚠️'}
+            columnName={columnRenames['postcode'] || 'Postcode'}
             onRename={(newName) => handleRenameColumn('postcode', newName)}
             onDelete={() => handleHideColumn('postcode')}
             canEdit={true}
