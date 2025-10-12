@@ -442,9 +442,7 @@ export default function CandidatesDataGrid() {
             alignItems: 'center',
             height: '100%',
             boxSizing: 'border-box',
-            // TEMP DEBUG: Highly visible styles to confirm code is loading
-            background: 'red !important',
-            border: '5px solid yellow !important',
+            backgroundColor: '#1e293b',
             color: 'white',
             fontWeight: 600,
             fontSize: '13px',
