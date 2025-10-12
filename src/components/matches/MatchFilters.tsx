@@ -36,17 +36,18 @@ export function MatchFilters({
 }: MatchFiltersProps) {
   return (
     <div className="bg-white rounded-xl shadow-md border border-gray-200 mb-4 overflow-hidden">
-      {/* Compact Header */}
+      {/* Dark Header - Matches Table Style */}
       <div
-        className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-all duration-150"
+        className="px-4 py-2.5 cursor-pointer hover:opacity-90 transition-all duration-150"
+        style={{ backgroundColor: '#1e293b' }}
         onClick={onToggleCollapse}
       >
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2 select-none">
+          <h3 className="text-sm font-bold text-white flex items-center gap-2 select-none uppercase tracking-wide">
             <span>🎯</span>
             <span>Filters & Display</span>
           </h3>
-          <span className="text-xs text-gray-500 transition-transform duration-200" style={{ transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
+          <span className="text-xs text-white transition-transform duration-200" style={{ transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
             ▼
           </span>
         </div>
