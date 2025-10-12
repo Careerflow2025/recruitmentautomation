@@ -107,12 +107,13 @@
   background-color: transparent;
   cursor: col-resize;
   z-index: 100;
-  transition: background-color 0.2s;
+  transition: background-color 0.15s;
 }
 
-/* Show blue highlight when hovering over resize area */
+/* Show bright white/yellow highlight when hovering over resize area (visible on dark background) */
 .rdg-header-row .rdg-cell:not(:last-child):hover::before {
-  background-color: rgba(59, 130, 246, 0.4);
+  background-color: rgba(255, 255, 255, 0.6); /* Bright white, semi-transparent */
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8); /* Glow effect */
 }
 
 /* Fill handle (drag to copy) - Excel-like */
