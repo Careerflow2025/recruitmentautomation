@@ -468,6 +468,22 @@
   opacity: 1 !important;
 }
 
+/* Required Empty Field Highlighting - Red background for Role and Postcode when empty */
+.rdg-cell-required-empty {
+  background-color: #fee2e2 !important; /* Light red background */
+  border: 2px solid #dc2626 !important; /* Dark red border */
+  animation: pulse-red 2s ease-in-out infinite;
+}
+
+@keyframes pulse-red {
+  0%, 100% {
+    background-color: #fee2e2;
+  }
+  50% {
+    background-color: #fecaca;
+  }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .rdg {

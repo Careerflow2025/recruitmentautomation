@@ -36,6 +36,12 @@ export default function ClientsDataGrid() {
   const [uploadMessage, setUploadMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // AI Validation state: tracks validation status for role and postcode fields
+  const [fieldValidation, setFieldValidation] = useState<Record<string, {
+    role?: { valid: boolean; message: string };
+    postcode?: { valid: boolean; message: string };
+  }>>({});
+
   // Column preferences
   const {
     columnOrder: savedOrder,
@@ -194,6 +200,58 @@ export default function ClientsDataGrid() {
         }
       }, 1500),
     []
+  );
+
+  // AI Validation function - flexible validation using AI
+  const validateField = useCallback(async (clientId: string, fieldType: 'role' | 'postcode', value: string) => {
+    // Skip validation if field is empty (already handled by red highlighting)
+    if (!value || value.trim() === '') {
+      setFieldValidation(prev => ({
+        ...prev,
+        [clientId]: {
+          ...prev[clientId],
+          [fieldType]: undefined
+        }
+      }));
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/validate-field', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fieldType, value }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setFieldValidation(prev => ({
+          ...prev,
+          [clientId]: {
+            ...prev[clientId],
+            [fieldType]: {
+              valid: data.valid,
+              message: data.message
+            }
+          }
+        }));
+      }
+    } catch (error) {
+      console.error(`Error validating ${fieldType}:`, error);
+      // Don't block user on validation error - silently fail
+    }
+  }, []);
+
+  // Debounced validation - wait for user to stop typing before validating
+  const debouncedValidate = useMemo(
+    () =>
+      debounce((clientId: string, fieldType: 'role' | 'postcode', value: string) => {
+        validateField(clientId, fieldType, value);
+      }, 1000),
+    [validateField]
   );
 
   // Handle saving custom column header rename
@@ -459,24 +517,58 @@ export default function ClientsDataGrid() {
         name: columnRenames['role'] || 'Role',
         width: savedWidths['role'] || 150,
         editable: true,
-        renderCell: ({ row }) => (
-          <div title={normalizeRole(row.role)}>{normalizeRole(row.role)}</div>
-        ),
+        cellClass: (row) => {
+          // ⚠️ REQUIRED FIELD: Red background if empty OR invalid (needed for matching)
+          const isEmpty = !row.role || row.role.trim() === '';
+          const validation = fieldValidation[row.id]?.role;
+          const isInvalid = validation && !validation.valid;
+
+          if (isEmpty || isInvalid) {
+            return 'rdg-cell-required-empty';
+          }
+          return '';
+        },
+        renderCell: ({ row }) => {
+          const isEmpty = !row.role || row.role.trim() === '';
+          const validation = fieldValidation[row.id]?.role;
+
+          let displayText = normalizeRole(row.role) || '⚠️ REQUIRED';
+          let titleText = 'Role is required for matching!';
+
+          if (!isEmpty && validation) {
+            if (validation.valid) {
+              displayText = `✓ ${normalizeRole(row.role)}`;
+              titleText = `Valid role: ${validation.message}`;
+            } else {
+              displayText = `✗ ${normalizeRole(row.role)}`;
+              titleText = `Invalid: ${validation.message}`;
+            }
+          }
+
+          return (
+            <div title={titleText}>
+              {displayText}
+            </div>
+          );
+        },
         renderEditCell: (props) => (
           <input
             autoFocus
             className="rdg-text-editor"
             value={props.row.role}
+            placeholder="Enter role (REQUIRED)"
             onChange={(e) => {
               props.onRowChange({ ...props.row, role: e.target.value });
               debouncedUpdate(props.row.id, 'role', e.target.value);
+              // Trigger AI validation after user stops typing
+              debouncedValidate(props.row.id, 'role', e.target.value);
             }}
           />
         ),
         renderHeaderCell: () => (
           <EditableColumnHeader
             columnKey="role"
-            columnName={columnRenames['role'] || 'Role'}
+            columnName={columnRenames['role'] || 'Role ⚠️'}
             onRename={(newName) => handleRenameColumn('role', newName)}
             onDelete={() => handleHideColumn('role')}
             canEdit={true}
@@ -492,26 +584,59 @@ export default function ClientsDataGrid() {
         name: columnRenames['postcode'] || 'Postcode',
         width: savedWidths['postcode'] || 120,
         editable: true,
-        cellClass: 'font-mono font-bold',
-        renderCell: ({ row }) => (
-          <div title={row.postcode}>{row.postcode}</div>
-        ),
+        cellClass: (row) => {
+          // ⚠️ REQUIRED FIELD: Red background if empty OR invalid (needed for matching)
+          const isEmpty = !row.postcode || row.postcode.trim() === '';
+          const validation = fieldValidation[row.id]?.postcode;
+          const isInvalid = validation && !validation.valid;
+
+          if (isEmpty || isInvalid) {
+            return 'rdg-cell-required-empty font-mono font-bold';
+          }
+          return 'font-mono font-bold';
+        },
+        renderCell: ({ row }) => {
+          const isEmpty = !row.postcode || row.postcode.trim() === '';
+          const validation = fieldValidation[row.id]?.postcode;
+
+          let displayText = row.postcode || '⚠️ REQUIRED';
+          let titleText = 'Postcode is required for matching!';
+
+          if (!isEmpty && validation) {
+            if (validation.valid) {
+              displayText = `✓ ${row.postcode}`;
+              titleText = `Valid postcode: ${validation.message}`;
+            } else {
+              displayText = `✗ ${row.postcode}`;
+              titleText = `Invalid: ${validation.message}`;
+            }
+          }
+
+          return (
+            <div title={titleText}>
+              {displayText}
+            </div>
+          );
+        },
         renderEditCell: (props) => (
           <input
             autoFocus
             className="rdg-text-editor font-mono"
             value={props.row.postcode}
+            placeholder="Enter postcode (REQUIRED)"
             onChange={(e) => {
               const upper = e.target.value.toUpperCase();
               props.onRowChange({ ...props.row, postcode: upper });
               debouncedUpdate(props.row.id, 'postcode', upper);
+              // Trigger AI validation after user stops typing
+              debouncedValidate(props.row.id, 'postcode', upper);
             }}
           />
         ),
         renderHeaderCell: () => (
           <EditableColumnHeader
             columnKey="postcode"
-            columnName={columnRenames['postcode'] || 'Postcode'}
+            columnName={columnRenames['postcode'] || 'Postcode ⚠️'}
             onRename={(newName) => handleRenameColumn('postcode', newName)}
             onDelete={() => handleHideColumn('postcode')}
             canEdit={true}
