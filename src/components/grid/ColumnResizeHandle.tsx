@@ -56,16 +56,27 @@ export default function ColumnResizeHandle({
       style={{
         position: 'absolute',
         top: 0,
-        right: -13, // Position at the column border (.rdg-cell has 12px right padding, +1px to center on border)
-        width: 8,
-        height: '100%',
+        right: '-4px', // Position exactly on column border (half of width outside)
+        width: '8px', // Wider clickable area
+        height: '100%', // Full height of header cell
         cursor: 'col-resize',
         zIndex: 1000,
-        backgroundColor: isHovering || isResizing ? 'rgba(255, 255, 255, 0.9)' : 'transparent',
-        transition: 'background-color 0.15s ease',
-        boxShadow: isHovering || isResizing ? '0 0 8px rgba(59, 130, 246, 0.6)' : 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
       title="Drag to resize column"
-    />
+    >
+      <div 
+        style={{
+          width: '2px', // Visual indicator is a thin line
+          height: '70%', // Slightly shorter than full height
+          backgroundColor: isHovering || isResizing ? '#3b82f6' : 'rgba(255, 255, 255, 0.3)',
+          transition: 'background-color 0.15s ease',
+          boxShadow: isHovering || isResizing ? '0 0 8px rgba(59, 130, 246, 0.8)' : 'none',
+          borderRadius: '1px',
+        }}
+      />
+    </div>
   );
 }

@@ -368,19 +368,21 @@ export default function ClientsDataGrid() {
         frozen: true,
         resizable: false,
         headerCellClass: 'rdg-checkbox-label',
-        renderHeaderCell: () => (
-          <input
-            type="checkbox"
-            className="rdg-checkbox-input"
-            checked={selectedRows.size === clients.length && clients.length > 0}
-            onChange={(e) => {
-              if (e.target.checked) {
-                setSelectedRows(new Set(clients.map((c) => c.id)));
-              } else {
-                setSelectedRows(new Set());
-              }
-            }}
-          />
+        renderHeaderCell: (p) => (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <input
+              type="checkbox"
+              className="rdg-checkbox-input"
+              checked={selectedRows.size === clients.length && clients.length > 0}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setSelectedRows(new Set(clients.map((c) => c.id)));
+                } else {
+                  setSelectedRows(new Set());
+                }
+              }}
+            />
+          </div>
         ),
         renderCell: ({ row }) => (
           <input
@@ -412,22 +414,14 @@ export default function ClientsDataGrid() {
         },
         renderHeaderCell: () => (
           <div style={{
-            width: '100%',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            paddingLeft: '8px',
-            paddingRight: '8px',
             display: 'flex',
             alignItems: 'center',
             height: '100%',
-            boxSizing: 'border-box',
-            backgroundColor: '#1e293b',
-            color: 'white',
-            fontWeight: 600,
-            fontSize: '13px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
+            width: '100%',
+            paddingLeft: '8px',
+            paddingRight: '8px',
+            overflow: 'hidden',
+            boxSizing: 'border-box'
           }}>
             ID
           </div>
