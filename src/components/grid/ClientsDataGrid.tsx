@@ -434,6 +434,8 @@ export default function ClientsDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['surgery'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('surgery', value)}
+            currentWidth={savedWidths['surgery'] || 200}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
         renderCell: ({ row }) => (
@@ -467,6 +469,8 @@ export default function ClientsDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['client_name'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('client_name', value)}
+            currentWidth={savedWidths['client_name'] || 150}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
         renderCell: ({ row }) => (
@@ -500,6 +504,8 @@ export default function ClientsDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['client_phone'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('client_phone', value)}
+            currentWidth={savedWidths['client_phone'] || 140}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
         renderCell: ({ row }) => (
@@ -534,6 +540,8 @@ export default function ClientsDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['client_email'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('client_email', value)}
+            currentWidth={savedWidths['client_email'] || 200}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
         renderCell: ({ row }) => (
@@ -616,6 +624,8 @@ export default function ClientsDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['role'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('role', value)}
+            currentWidth={savedWidths['role'] || 150}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
       },
@@ -684,6 +694,8 @@ export default function ClientsDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['postcode'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('postcode', value)}
+            currentWidth={savedWidths['postcode'] || 120}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
       },
@@ -717,6 +729,8 @@ export default function ClientsDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['budget'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('budget', value)}
+            currentWidth={savedWidths['budget'] || 120}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
       },
@@ -750,6 +764,8 @@ export default function ClientsDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['requirement'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('requirement', value)}
+            currentWidth={savedWidths['requirement'] || 150}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
       },
@@ -783,6 +799,8 @@ export default function ClientsDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['system'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('system', value)}
+            currentWidth={savedWidths['system'] || 120}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
       },
@@ -802,6 +820,8 @@ export default function ClientsDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['notes'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('notes', value)}
+            currentWidth={savedWidths['notes'] || 200}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
         renderCell: ({ row }) => {
@@ -834,7 +854,7 @@ export default function ClientsDataGrid() {
         },
       },
     ],
-    [clients, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths, textFilters, handleTextFilterChange, latestNotes, isNewItem, getDisplayId, fieldValidation, debouncedValidate]
+    [clients, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths, textFilters, handleTextFilterChange, latestNotes, isNewItem, getDisplayId, fieldValidation, debouncedValidate, handleColumnResizeByKey]
   );
 
   // Handle renaming custom column
@@ -869,6 +889,8 @@ export default function ClientsDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters[col.column_name] || ''}
             onTextFilterChange={(value) => handleTextFilterChange(col.column_name, value)}
+            currentWidth={savedWidths[col.column_name] || 150}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
         renderCell: ({ row }) => (
@@ -1028,6 +1050,16 @@ export default function ClientsDataGrid() {
 
     updateColumnWidths(newWidths);
   }, [orderedColumns, savedWidths, updateColumnWidths]);
+
+  // Handle column resize by key (for custom resize handle)
+  const handleColumnResizeByKey = useCallback((columnKey: string, width: number) => {
+    const newWidths = {
+      ...savedWidths,
+      [columnKey]: width,
+    };
+
+    updateColumnWidths(newWidths);
+  }, [savedWidths, updateColumnWidths]);
 
   // Handle delete
   const handleDelete = useCallback(
