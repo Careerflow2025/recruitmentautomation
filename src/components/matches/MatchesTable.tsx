@@ -375,7 +375,27 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
           user_id: userId
         });
 
-        // Insert note into database
+        // IMPORTANT: Ensure match_statuses row exists first (required for foreign key)
+        // Always upsert to ensure the row exists in database
+        console.log('📊 Ensuring match_statuses row exists...');
+        const { error: statusError } = await supabase
+          .from('match_statuses')
+          .upsert({
+            candidate_id: selectedMatchForNote.candidate.id,
+            client_id: selectedMatchForNote.client.id,
+            status: currentData.status || null,
+            user_id: userId
+          }, {
+            onConflict: 'candidate_id,client_id'
+          });
+
+        if (statusError) {
+          console.error('❌ Failed to create/update match_statuses row:', statusError);
+          throw statusError;
+        }
+        console.log('✅ match_statuses row ensured');
+
+        // Now insert note into database
         const { data, error } = await supabase
           .from('match_notes')
           .insert({
@@ -406,12 +426,12 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
           timestamp: data.created_at
         };
 
-        // Update local state
+        // Update local state (ensure status exists in local state too)
         setMatchStatuses(prev => ({
           ...prev,
           [key]: {
-            ...currentData,
-            notes: [...currentData.notes, newNote]
+            status: currentData.status || null,
+            notes: [...(currentData.notes || []), newNote]
           }
         }));
 
