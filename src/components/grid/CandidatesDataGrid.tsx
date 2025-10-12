@@ -632,7 +632,7 @@ export default function CandidatesDataGrid() {
             onRename={(newName) => handleRenameColumn('role', newName)}
             onDelete={() => handleHideColumn('role')}
             canEdit={true}
-            canDelete={true}
+            canDelete={false}
             showTextFilter={true}
             textFilterValue={textFilters['role'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('role', value)}
@@ -700,7 +700,7 @@ export default function CandidatesDataGrid() {
             onRename={(newName) => handleRenameColumn('postcode', newName)}
             onDelete={() => handleHideColumn('postcode')}
             canEdit={true}
-            canDelete={true}
+            canDelete={false}
             showTextFilter={true}
             textFilterValue={textFilters['postcode'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('postcode', value)}
