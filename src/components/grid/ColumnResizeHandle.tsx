@@ -3,13 +3,13 @@
 import { useRef, useState, useEffect } from 'react';
 
 interface ColumnResizeHandleProps {
-  columnIndex: number;
-  onResize: (columnIndex: number, newWidth: number) => void;
+  columnKey: string;
+  onResize: (columnKey: string, newWidth: number) => void;
   currentWidth: number;
 }
 
 export default function ColumnResizeHandle({
-  columnIndex,
+  columnKey,
   onResize,
   currentWidth,
 }: ColumnResizeHandleProps) {
@@ -24,7 +24,7 @@ export default function ColumnResizeHandle({
     const handleMouseMove = (e: MouseEvent) => {
       const delta = e.clientX - startXRef.current;
       const newWidth = Math.max(80, startWidthRef.current + delta); // Min width 80px
-      onResize(columnIndex, newWidth);
+      onResize(columnKey, newWidth);
     };
 
     const handleMouseUp = () => {
@@ -38,7 +38,7 @@ export default function ColumnResizeHandle({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, columnIndex, onResize]);
+  }, [isResizing, columnKey, onResize]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();

@@ -454,6 +454,8 @@ export default function CandidatesDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['first_name'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('first_name', value)}
+            currentWidth={savedWidths['first_name'] || 150}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
         renderCell: ({ row }) => (
@@ -487,6 +489,8 @@ export default function CandidatesDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['last_name'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('last_name', value)}
+            currentWidth={savedWidths['last_name'] || 150}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
         renderCell: ({ row }) => (
@@ -520,6 +524,8 @@ export default function CandidatesDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['email'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('email', value)}
+            currentWidth={savedWidths['email'] || 200}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
         renderCell: ({ row }) => (
@@ -554,6 +560,8 @@ export default function CandidatesDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['phone'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('phone', value)}
+            currentWidth={savedWidths['phone'] || 140}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
         renderCell: ({ row }) => (
@@ -636,6 +644,8 @@ export default function CandidatesDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['role'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('role', value)}
+            currentWidth={savedWidths['role'] || 150}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
       },
@@ -704,6 +714,8 @@ export default function CandidatesDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['postcode'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('postcode', value)}
+            currentWidth={savedWidths['postcode'] || 120}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
       },
@@ -737,6 +749,8 @@ export default function CandidatesDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['salary'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('salary', value)}
+            currentWidth={savedWidths['salary'] || 120}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
       },
@@ -770,6 +784,8 @@ export default function CandidatesDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['days'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('days', value)}
+            currentWidth={savedWidths['days'] || 150}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
       },
@@ -803,6 +819,8 @@ export default function CandidatesDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['experience'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('experience', value)}
+            currentWidth={savedWidths['experience'] || 150}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
       },
@@ -822,6 +840,8 @@ export default function CandidatesDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters['notes'] || ''}
             onTextFilterChange={(value) => handleTextFilterChange('notes', value)}
+            currentWidth={savedWidths['notes'] || 200}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
         renderCell: ({ row }) => {
@@ -866,7 +886,7 @@ export default function CandidatesDataGrid() {
         ),
       },
     ],
-    [candidates, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths, textFilters, handleTextFilterChange, latestNotes, isNewItem, getDisplayId, fieldValidation, debouncedValidate]
+    [candidates, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths, textFilters, handleTextFilterChange, latestNotes, isNewItem, getDisplayId, fieldValidation, debouncedValidate, handleColumnResizeByKey]
   );
 
   // Handle renaming custom column
@@ -901,6 +921,8 @@ export default function CandidatesDataGrid() {
             showTextFilter={true}
             textFilterValue={textFilters[col.column_name] || ''}
             onTextFilterChange={(value) => handleTextFilterChange(col.column_name, value)}
+            currentWidth={savedWidths[col.column_name] || 150}
+            onColumnResize={handleColumnResizeByKey}
           />
         ),
         renderCell: ({ row }) => (
@@ -999,6 +1021,16 @@ export default function CandidatesDataGrid() {
 
     updateColumnWidths(newWidths);
   }, [orderedColumns, savedWidths, updateColumnWidths]);
+
+  // Handle column resize by key (for custom resize handle)
+  const handleColumnResizeByKey = useCallback((columnKey: string, width: number) => {
+    const newWidths = {
+      ...savedWidths,
+      [columnKey]: width,
+    };
+
+    updateColumnWidths(newWidths);
+  }, [savedWidths, updateColumnWidths]);
 
   // Apply filters to data
   const filteredCandidates = useMemo(() => {

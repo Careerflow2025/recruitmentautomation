@@ -17,9 +17,8 @@ interface EditableColumnHeaderProps {
   textFilterValue?: string;
   onTextFilterChange?: (value: string) => void;
   // Resize props
-  columnIndex?: number;
   currentWidth?: number;
-  onResize?: (columnIndex: number, newWidth: number) => void;
+  onColumnResize?: (columnKey: string, newWidth: number) => void;
 }
 
 export default function EditableColumnHeader({
@@ -33,9 +32,8 @@ export default function EditableColumnHeader({
   showTextFilter = true,
   textFilterValue = '',
   onTextFilterChange,
-  columnIndex,
   currentWidth,
-  onResize,
+  onColumnResize,
 }: EditableColumnHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(columnName);
@@ -181,11 +179,11 @@ export default function EditableColumnHeader({
         )}
 
         {/* Custom resize handle positioned exactly on column border */}
-        {typeof columnIndex === 'number' && currentWidth && onResize && (
+        {currentWidth && onColumnResize && (
           <ColumnResizeHandle
-            columnIndex={columnIndex}
+            columnKey={columnKey}
             currentWidth={currentWidth}
-            onResize={onResize}
+            onResize={onColumnResize}
           />
         )}
       </div>
