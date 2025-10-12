@@ -441,7 +441,12 @@ export default function CandidatesDataGrid() {
             display: 'flex',
             alignItems: 'center',
             height: '100%',
-            boxSizing: 'border-box'
+            boxSizing: 'border-box',
+            color: 'white',
+            fontWeight: 600,
+            fontSize: '13px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
           }}>
             ID
           </div>
