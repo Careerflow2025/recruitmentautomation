@@ -368,6 +368,16 @@ export default function CandidatesDataGrid() {
     return fullId;
   }, []);
 
+  // Handle column resize by key (for custom resize handle) - MUST be defined before standardColumns
+  const handleColumnResizeByKey = useCallback((columnKey: string, width: number) => {
+    const newWidths = {
+      ...savedWidths,
+      [columnKey]: width,
+    };
+
+    updateColumnWidths(newWidths);
+  }, [savedWidths, updateColumnWidths]);
+
   // Standard columns definition with filters
   const standardColumns: Column<Candidate>[] = useMemo(
     () => [
@@ -1021,16 +1031,6 @@ export default function CandidatesDataGrid() {
 
     updateColumnWidths(newWidths);
   }, [orderedColumns, savedWidths, updateColumnWidths]);
-
-  // Handle column resize by key (for custom resize handle)
-  const handleColumnResizeByKey = useCallback((columnKey: string, width: number) => {
-    const newWidths = {
-      ...savedWidths,
-      [columnKey]: width,
-    };
-
-    updateColumnWidths(newWidths);
-  }, [savedWidths, updateColumnWidths]);
 
   // Apply filters to data
   const filteredCandidates = useMemo(() => {

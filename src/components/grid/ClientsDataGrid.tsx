@@ -348,6 +348,16 @@ export default function ClientsDataGrid() {
     return fullId;
   }, []);
 
+  // Handle column resize by key (for custom resize handle) - MUST be defined before standardColumns
+  const handleColumnResizeByKey = useCallback((columnKey: string, width: number) => {
+    const newWidths = {
+      ...savedWidths,
+      [columnKey]: width,
+    };
+
+    updateColumnWidths(newWidths);
+  }, [savedWidths, updateColumnWidths]);
+
   // Standard columns definition
   const standardColumns: Column<ClientWithUser>[] = useMemo(
     () => [
@@ -1050,16 +1060,6 @@ export default function ClientsDataGrid() {
 
     updateColumnWidths(newWidths);
   }, [orderedColumns, savedWidths, updateColumnWidths]);
-
-  // Handle column resize by key (for custom resize handle)
-  const handleColumnResizeByKey = useCallback((columnKey: string, width: number) => {
-    const newWidths = {
-      ...savedWidths,
-      [columnKey]: width,
-    };
-
-    updateColumnWidths(newWidths);
-  }, [savedWidths, updateColumnWidths]);
 
   // Handle delete
   const handleDelete = useCallback(
