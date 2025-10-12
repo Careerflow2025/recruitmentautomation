@@ -105,10 +105,9 @@ export default function EditableColumnHeader({
         alignItems: 'center',
         justifyContent: 'flex-start',
         paddingLeft: '8px',
-        paddingRight: currentWidth && onColumnResize ? '20px' : '8px', // Extra padding when resize handle present
+        paddingRight: currentWidth && onColumnResize ? '16px' : '8px', // Extra padding when resize handle present
         gap: '6px',
         height: '100%',
-        position: 'relative', // For absolute positioning of resize handle
         width: '100%',
         overflow: 'hidden', // Prevent content from spilling into next column
         boxSizing: 'border-box'
@@ -116,7 +115,9 @@ export default function EditableColumnHeader({
         <div style={{
           flex: 1,
           minWidth: 0,
-          overflow: 'hidden'
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
         }}>
           <span
             style={{
@@ -135,57 +136,58 @@ export default function EditableColumnHeader({
           </span>
         </div>
 
-        {/* Text filter icon */}
-        {showTextFilter && onTextFilterChange && (
-          <button
-            ref={filterButtonRef}
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowFilterPopup(!showFilterPopup);
-            }}
-            style={{
-              background: textFilterValue ? '#3b82f6' : 'rgba(255, 255, 255, 0.2)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '3px',
-              padding: '2px 6px',
-              cursor: 'pointer',
-              fontSize: '11px',
-              lineHeight: '1',
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            title={textFilterValue ? `Filtering: ${textFilterValue}` : `Filter ${columnName}`}
-          >
-            🔍
-          </button>
-        )}
+        {/* Actions container */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+          {/* Text filter icon */}
+          {showTextFilter && onTextFilterChange && (
+            <button
+              ref={filterButtonRef}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowFilterPopup(!showFilterPopup);
+              }}
+              style={{
+                background: textFilterValue ? '#3b82f6' : 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '3px',
+                padding: '2px 6px',
+                cursor: 'pointer',
+                fontSize: '11px',
+                lineHeight: '1',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title={textFilterValue ? `Filtering: ${textFilterValue}` : `Filter ${columnName}`}
+            >
+              🔍
+            </button>
+          )}
 
-        {canDelete && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDelete();
-            }}
-            style={{
-              background: '#ef4444',
-              color: 'white',
-              border: 'none',
-              borderRadius: '3px',
-              padding: '1px 5px',
-              cursor: 'pointer',
-              fontSize: '11px',
-              fontWeight: 'bold',
-              lineHeight: '1',
-              flexShrink: 0,
-            }}
-            title={`Delete "${columnName}" column`}
-          >
-            ✕
-          </button>
-        )}
+          {canDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete();
+              }}
+              style={{
+                background: '#ef4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '3px',
+                padding: '1px 5px',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                lineHeight: '1',
+              }}
+              title={`Delete "${columnName}" column`}
+            >
+              ✕
+            </button>
+          )}
+        </div>
 
         {/* Custom resize handle positioned exactly on column border */}
         {currentWidth && onColumnResize && (
