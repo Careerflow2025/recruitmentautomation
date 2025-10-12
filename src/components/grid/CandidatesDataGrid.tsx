@@ -349,6 +349,25 @@ export default function CandidatesDataGrid() {
     return Array.from(new Set(values)).sort();
   }, [candidates]);
 
+  // Helper function: Check if item is new (within 48 hours)
+  const isNewItem = useCallback((createdAt: string) => {
+    const now = new Date();
+    const created = new Date(createdAt);
+    const hoursDiff = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
+    return hoursDiff <= 48;
+  }, []);
+
+  // Helper function: Extract display ID (remove user prefix like "U3_")
+  const getDisplayId = useCallback((fullId: string) => {
+    const parts = fullId.split('_');
+    if (parts.length > 1) {
+      // Return everything after first underscore (e.g., "U3_CAN27" -> "CAN27")
+      return parts.slice(1).join('_');
+    }
+    // Fallback to full ID if no underscore found
+    return fullId;
+  }, []);
+
   // Standard columns definition with filters
   const standardColumns: Column<Candidate>[] = useMemo(
     () => [
@@ -1049,25 +1068,6 @@ export default function CandidatesDataGrid() {
 
     return filtered;
   }, [candidates, columnFilters, textFilters, customData]);
-
-  // Helper function: Check if item is new (within 48 hours)
-  const isNewItem = useCallback((createdAt: string) => {
-    const now = new Date();
-    const created = new Date(createdAt);
-    const hoursDiff = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
-    return hoursDiff <= 48;
-  }, []);
-
-  // Helper function: Extract display ID (remove user prefix like "U3_")
-  const getDisplayId = useCallback((fullId: string) => {
-    const parts = fullId.split('_');
-    if (parts.length > 1) {
-      // Return everything after first underscore (e.g., "U3_CAN27" -> "CAN27")
-      return parts.slice(1).join('_');
-    }
-    // Fallback to full ID if no underscore found
-    return fullId;
-  }, []);
 
   // Apply sorting - ALWAYS sort by created_at DESC when no user sorting is applied
   const sortedCandidates = useMemo(() => {
