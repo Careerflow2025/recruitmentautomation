@@ -572,15 +572,15 @@ export default function ClientsDataGrid() {
           const isEmpty = !row.role || row.role.trim() === '';
           const validation = fieldValidation[row.id]?.role;
 
-          let displayText = normalizeRole(row.role) || '⚠️ REQUIRED';
+          let displayText = row.role || '⚠️ REQUIRED';
           let titleText = 'Role is required for matching!';
 
           if (!isEmpty && validation) {
             if (validation.valid) {
-              displayText = `✓ ${normalizeRole(row.role)}`;
+              displayText = `✓ ${row.role}`;
               titleText = `Valid role: ${validation.message}`;
             } else {
-              displayText = `✗ ${normalizeRole(row.role)}`;
+              displayText = `✗ ${row.role}`;
               titleText = `Invalid: ${validation.message}`;
             }
           }
