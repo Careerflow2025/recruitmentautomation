@@ -138,8 +138,8 @@ export default function MatchesPage() {
     setGenerateResult(null);
 
     try {
-      // Start the PROFESSIONAL background match generation (SaaS-grade)
-      const response = await fetch('/api/regenerate-pro', {
+      // Start the WORKING background match generation
+      const response = await fetch('/api/regenerate-working', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
