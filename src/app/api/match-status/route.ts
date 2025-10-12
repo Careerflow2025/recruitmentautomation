@@ -56,9 +56,9 @@ export async function GET(request: NextRequest) {
       throw matchError;
     }
 
-    // Check for stored match status
+    // Check for stored match generation status
     const { data: matchStatus, error: statusError } = await supabase
-      .from('match_statuses')
+      .from('match_generation_status')
       .select('*')
       .eq('user_id', user.id)
       .order('completed_at', { ascending: false })
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
 
     if (statusError) {
-      console.warn('Could not fetch match status:', statusError);
+      console.warn('Could not fetch match generation status:', statusError);
     }
 
     // Get candidates and clients count

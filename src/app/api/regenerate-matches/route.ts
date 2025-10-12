@@ -255,7 +255,7 @@ async function processMatchesInBackground(
     // Store completion status
     try {
       const { error: statusError } = await supabase
-        .from('match_statuses')
+        .from('match_generation_status')
         .upsert({
           user_id: userId,
           status: 'completed',
@@ -264,13 +264,14 @@ async function processMatchesInBackground(
           errors: errorCount,
           method_used: 'google_maps',
           completed_at: new Date().toISOString(),
+          percent_complete: 100,
         });
 
       if (statusError) {
-        console.error('❌ Failed to update match status:', statusError);
+        console.error('❌ Failed to update match generation status:', statusError);
       }
     } catch (statusUpdateError) {
-      console.error('❌ Error updating match status:', statusUpdateError);
+      console.error('❌ Error updating match generation status:', statusUpdateError);
     }
 
   } catch (error) {
@@ -288,9 +289,9 @@ async function processMatchesInBackground(
           },
         }
       );
-      
+
       await supabase
-        .from('match_statuses')
+        .from('match_generation_status')
         .upsert({
           user_id: userId,
           status: 'error',
