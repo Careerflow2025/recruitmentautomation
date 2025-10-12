@@ -102,6 +102,32 @@ export default function MultiNotesPopup({
     }
   };
 
+  const handleDeleteNote = async (noteId: string) => {
+    if (!confirm('Are you sure you want to delete this note?')) return;
+
+    try {
+      const apiPath = entityType === 'candidate'
+        ? `/api/notes/candidates/${entityId}/${noteId}`
+        : `/api/notes/clients/${entityId}/${noteId}`;
+
+      const response = await fetch(apiPath, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Remove note from the list
+        setNotes(notes.filter(note => note.id !== noteId));
+      } else {
+        alert(`Failed to delete note: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      alert('Failed to delete note');
+    }
+  };
+
   // Format timestamp to exact date and time
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -355,6 +381,7 @@ export default function MultiNotesPopup({
                     padding: '14px',
                     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
                     transition: 'box-shadow 0.2s, transform 0.2s',
+                    position: 'relative',
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
@@ -365,6 +392,40 @@ export default function MultiNotesPopup({
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
+                  {/* Delete Button */}
+                  <button
+                    onClick={() => handleDeleteNote(note.id)}
+                    style={{
+                      position: 'absolute',
+                      top: '8px',
+                      right: '8px',
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      backgroundColor: '#fee2e2',
+                      color: '#dc2626',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#fecaca';
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#fee2e2';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                    title="Delete this note"
+                  >
+                    ✕
+                  </button>
+
                   <div
                     style={{
                       fontSize: '12px',
@@ -385,6 +446,7 @@ export default function MultiNotesPopup({
                       color: '#1e293b',
                       whiteSpace: 'pre-wrap',
                       wordBreak: 'break-word',
+                      paddingRight: '30px',
                     }}
                   >
                     {note.content}
