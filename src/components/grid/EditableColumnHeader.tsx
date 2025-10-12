@@ -94,7 +94,14 @@ export default function EditableColumnHeader({
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '4px' }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: 'calc(100% - 16px)', // Leave 16px space on right for resize handle
+        gap: '4px',
+        pointerEvents: 'auto' // Ensure clicks work on header content
+      }}>
         <span
           style={{
             flex: 1,
