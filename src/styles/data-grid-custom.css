@@ -83,13 +83,36 @@
 }
 
 /* ====================================
-   COLUMN RESIZE - Custom resize handle positioned on column borders
+   COLUMN RESIZE - Excel-like resize handle at column borders
    ==================================== */
 
-/* Column headers need relative positioning for absolute resize handle */
+/* Disable react-data-grid's built-in resize handle (not working properly) */
+.rdg .rdg-cell-resize-handle {
+  display: none !important;
+}
+
+/* Create custom resize handle exactly on the column border */
 .rdg-header-row .rdg-cell {
   position: relative;
-  overflow: visible; /* Allow resize handle to extend beyond cell */
+}
+
+/* Add visible resize handle on the right border of each header (except last) */
+.rdg-header-row .rdg-cell:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -2px; /* Center on the 1px border */
+  width: 4px;
+  height: 100%;
+  background-color: transparent;
+  cursor: col-resize;
+  z-index: 100;
+  transition: background-color 0.2s;
+}
+
+/* Show blue highlight when hovering over resize area */
+.rdg-header-row .rdg-cell:not(:last-child):hover::before {
+  background-color: rgba(59, 130, 246, 0.4);
 }
 
 /* Fill handle (drag to copy) - Excel-like */
