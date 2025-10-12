@@ -9,7 +9,7 @@ import { NewItemIndicator } from '../ui/NewItemIndicator';
 import { CommuteMapModal } from './CommuteMapModal';
 import { supabase } from '@/lib/supabase/browser';
 import { getCurrentUserId } from '@/lib/auth-helpers';
-import NotesPopup from '../grid/NotesPopup';
+import MatchNotesPopup from './MatchNotesPopup';
 
 interface MatchesTableProps {
   matches: Match[];
@@ -48,7 +48,6 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [matchStatuses, setMatchStatuses] = useState<Record<string, MatchStatusData>>({});
   const [selectedMatchForNote, setSelectedMatchForNote] = useState<Match | null>(null);
-  const [noteText, setNoteText] = useState('');
   const [isResizing, setIsResizing] = useState<string | null>(null);
   const [resizeStart, setResizeStart] = useState({ mouseX: 0, mouseY: 0, x: 0, y: 0, width: 0, height: 0 });
   const openModalsRef = useRef(openModals);
@@ -353,30 +352,10 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
 
   const handleNoteClick = (match: Match) => {
     setSelectedMatchForNote(match);
-    setNoteText('');
   };
 
-  const getAllMatchNotes = () => {
-    if (!selectedMatchForNote) return '';
-    const key = getMatchKey(selectedMatchForNote);
-    const notes = matchStatuses[key]?.notes || [];
-
-    if (notes.length === 0) return '';
-
-    return notes.map(note => {
-      const timestamp = new Date(note.timestamp).toLocaleString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      return `[${timestamp}]\n${note.text}`;
-    }).join('\n\n---\n\n');
-  };
-
-  const handleSaveNote = async (newContent: string) => {
-    if (selectedMatchForNote && newContent.trim()) {
+  const handleAddNote = async (noteText: string) => {
+    if (selectedMatchForNote && noteText.trim()) {
       const key = getMatchKey(selectedMatchForNote);
       const currentData = matchStatuses[key] || { status: null, notes: [] };
 
@@ -394,7 +373,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
           .insert({
             candidate_id: selectedMatchForNote.candidate.id,
             client_id: selectedMatchForNote.client.id,
-            note_text: newContent.trim(),
+            note_text: noteText.trim(),
             user_id: userId
           })
           .select()
@@ -418,9 +397,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
           }
         }));
 
-        // Close the popup
-        setSelectedMatchForNote(null);
-        setNoteText('');
+        // Note: Do NOT close popup or reset text - the MatchNotesPopup handles its own state
       } catch (error) {
         console.error('Failed to save note:', error);
         alert('Failed to save note. Please try again.');
@@ -1246,11 +1223,12 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
 
       {/* Match Notes Popup */}
       {selectedMatchForNote && (
-        <NotesPopup
-          content={getAllMatchNotes()}
+        <MatchNotesPopup
+          notes={matchStatuses[getMatchKey(selectedMatchForNote)]?.notes || []}
           title={`Match Notes - CAN ${selectedMatchForNote.candidate.id} ↔ CL ${selectedMatchForNote.client.id}`}
           onClose={() => setSelectedMatchForNote(null)}
-          onSave={handleSaveNote}
+          onAddNote={handleAddNote}
+          onDeleteNote={handleDeleteNote}
         />
       )}
     </div>
