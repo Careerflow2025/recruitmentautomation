@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import ColumnTextFilterPopup from './ColumnTextFilterPopup';
+import ColumnResizeHandle from './ColumnResizeHandle';
 
 interface EditableColumnHeaderProps {
   columnKey: string;
@@ -15,6 +16,10 @@ interface EditableColumnHeaderProps {
   showTextFilter?: boolean;
   textFilterValue?: string;
   onTextFilterChange?: (value: string) => void;
+  // Resize props
+  columnIndex?: number;
+  currentWidth?: number;
+  onResize?: (columnIndex: number, newWidth: number) => void;
 }
 
 export default function EditableColumnHeader({
@@ -28,6 +33,9 @@ export default function EditableColumnHeader({
   showTextFilter = true,
   textFilterValue = '',
   onTextFilterChange,
+  columnIndex,
+  currentWidth,
+  onResize,
 }: EditableColumnHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(columnName);
@@ -97,19 +105,22 @@ export default function EditableColumnHeader({
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        width: 'calc(100% - 16px)', // Leave 16px space on right for resize handle
-        gap: '4px',
-        pointerEvents: 'auto' // Ensure clicks work on header content
+        justifyContent: 'flex-start',
+        paddingLeft: '8px',
+        paddingRight: '8px',
+        gap: '6px',
+        height: '100%',
+        position: 'relative', // For absolute positioning of resize handle
+        width: '100%'
       }}>
         <span
           style={{
-            flex: 1,
             cursor: canEdit ? 'pointer' : 'default',
             userSelect: 'none',
-            minWidth: 0,
             overflow: 'hidden',
-            textOverflow: 'ellipsis'
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            flexShrink: 1
           }}
           onClick={() => canEdit && setIsEditing(true)}
           title={canEdit ? `Click to rename "${columnName}"` : columnName}
@@ -167,6 +178,15 @@ export default function EditableColumnHeader({
           >
             ✕
           </button>
+        )}
+
+        {/* Custom resize handle positioned exactly on column border */}
+        {typeof columnIndex === 'number' && currentWidth && onResize && (
+          <ColumnResizeHandle
+            columnIndex={columnIndex}
+            currentWidth={currentWidth}
+            onResize={onResize}
+          />
         )}
       </div>
 

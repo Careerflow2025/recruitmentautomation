@@ -83,10 +83,14 @@
 }
 
 /* ====================================
-   COLUMN RESIZE - Let react-data-grid handle it natively
+   COLUMN RESIZE - Custom resize handle positioned on column borders
    ==================================== */
 
-/* NO custom CSS - react-data-grid handles resize perfectly on its own */
+/* Column headers need relative positioning for absolute resize handle */
+.rdg-header-row .rdg-cell {
+  position: relative;
+  overflow: visible; /* Allow resize handle to extend beyond cell */
+}
 
 /* Fill handle (drag to copy) - Excel-like */
 .rdg-cell-drag-handle {
