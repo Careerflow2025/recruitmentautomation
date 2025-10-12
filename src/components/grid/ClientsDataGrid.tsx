@@ -929,34 +929,6 @@ export default function ClientsDataGrid() {
     return ordered;
   }, [allColumns, savedOrder]);
 
-  // Auto-resize columns to fit screen width
-  const autoResizedColumns = useMemo(() => {
-    if (orderedColumns.length === 0) return orderedColumns;
-
-    // Calculate total width of all columns
-    const totalWidth = orderedColumns.reduce((sum, col) => sum + (col.width || 150), 0);
-
-    // Get available viewport width (subtract some padding for scrollbars, etc.)
-    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth - 100 : 1400;
-
-    // If total width exceeds viewport, proportionally resize all columns
-    if (totalWidth > viewportWidth) {
-      const scaleFactor = viewportWidth / totalWidth;
-      const MIN_WIDTH = 80; // Minimum column width for usability
-
-      return orderedColumns.map(col => {
-        const originalWidth = col.width || 150;
-        const scaledWidth = Math.max(MIN_WIDTH, Math.floor(originalWidth * scaleFactor));
-
-        return {
-          ...col,
-          width: scaledWidth
-        };
-      });
-    }
-
-    return orderedColumns;
-  }, [orderedColumns]);
 
   // Apply filters to data
   const filteredClients = useMemo(() => {
@@ -1026,7 +998,7 @@ export default function ClientsDataGrid() {
 
   // Handle column reordering
   const handleColumnsReorder = useCallback((sourceKey: string, targetKey: string) => {
-    const newOrder = [...autoResizedColumns];
+    const newOrder = [...orderedColumns];
     const sourceIndex = newOrder.findIndex(col => col.key === sourceKey);
     const targetIndex = newOrder.findIndex(col => col.key === targetKey);
 
@@ -1042,11 +1014,11 @@ export default function ClientsDataGrid() {
     newOrder.splice(targetIndex, 0, removed);
 
     updateColumnOrder(newOrder.map(col => col.key as string));
-  }, [autoResizedColumns, updateColumnOrder]);
+  }, [orderedColumns, updateColumnOrder]);
 
-  // Handle column resize - SAVE WIDTHS
+  // Handle column resize - Excel-like drag behavior
   const handleColumnResize = useCallback((idx: number, width: number) => {
-    const column = autoResizedColumns[idx];
+    const column = orderedColumns[idx];
     if (!column) return;
 
     const newWidths = {
@@ -1055,7 +1027,7 @@ export default function ClientsDataGrid() {
     };
 
     updateColumnWidths(newWidths);
-  }, [autoResizedColumns, savedWidths, updateColumnWidths]);
+  }, [orderedColumns, savedWidths, updateColumnWidths]);
 
   // Handle delete
   const handleDelete = useCallback(
@@ -1245,7 +1217,7 @@ export default function ClientsDataGrid() {
       {/* Grid */}
       <div className="flex-1">
         <DataGrid
-          columns={autoResizedColumns}
+          columns={orderedColumns}
           rows={sortedClients}
           rowKeyGetter={(row) => row.id}
           sortColumns={sortColumns}
