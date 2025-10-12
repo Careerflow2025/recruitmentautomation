@@ -382,6 +382,7 @@ export default function ClientsDataGrid() {
         },
         renderCell: ({ row }) => {
           const isNew = isNewItem(row.created_at);
+          const displayId = getDisplayId(row.id);
           return (
             <div
               style={{
@@ -393,7 +394,7 @@ export default function ClientsDataGrid() {
               title={isNew ? 'Added within last 48 hours' : ''}
             >
               {isNew && <span style={{ fontSize: '16px' }}>🟨</span>}
-              {row.id}
+              {displayId}
             </div>
           );
         },
@@ -814,7 +815,7 @@ export default function ClientsDataGrid() {
         },
       },
     ],
-    [clients, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths, textFilters, handleTextFilterChange, latestNotes]
+    [clients, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths, textFilters, handleTextFilterChange, latestNotes, isNewItem, getDisplayId, fieldValidation, debouncedValidate]
   );
 
   // Handle renaming custom column
@@ -984,6 +985,17 @@ export default function ClientsDataGrid() {
     const created = new Date(createdAt);
     const hoursDiff = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
     return hoursDiff <= 48;
+  }, []);
+
+  // Helper function: Extract display ID (remove user prefix like "U3_")
+  const getDisplayId = useCallback((fullId: string) => {
+    const parts = fullId.split('_');
+    if (parts.length > 1) {
+      // Return everything after first underscore (e.g., "U3_CL11" -> "CL11")
+      return parts.slice(1).join('_');
+    }
+    // Fallback to full ID if no underscore found
+    return fullId;
   }, []);
 
   // Apply sorting - ALWAYS sort by created_at DESC when no user sorting is applied
