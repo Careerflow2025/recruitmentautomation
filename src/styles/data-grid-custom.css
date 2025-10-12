@@ -96,25 +96,7 @@
   position: relative;
 }
 
-/* Add visible resize handle on the right border of each header (except last) */
-.rdg-header-row .rdg-cell:not(:last-child)::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: -2px; /* Center on the 1px border */
-  width: 4px;
-  height: 100%;
-  background-color: transparent;
-  cursor: col-resize;
-  z-index: 100;
-  transition: background-color 0.15s;
-}
-
-/* Show bright white/yellow highlight when hovering over resize area (visible on dark background) */
-.rdg-header-row .rdg-cell:not(:last-child):hover::before {
-  background-color: rgba(255, 255, 255, 0.6); /* Bright white, semi-transparent */
-  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8); /* Glow effect */
-}
+/* React-based resize handle (see ColumnResizeHandle.tsx) - CSS ::before removed to avoid conflicts */
 
 /* Fill handle (drag to copy) - Excel-like */
 .rdg-cell-drag-handle {

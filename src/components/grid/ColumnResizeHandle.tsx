@@ -56,14 +56,14 @@ export default function ColumnResizeHandle({
       style={{
         position: 'absolute',
         top: 0,
-        right: -10, // Position at the column border (account for 8px padding + border)
-        width: 6,
+        right: -13, // Position at the column border (.rdg-cell has 12px right padding, +1px to center on border)
+        width: 8,
         height: '100%',
         cursor: 'col-resize',
-        zIndex: 100,
-        backgroundColor: isHovering || isResizing ? 'rgba(255, 255, 255, 0.8)' : 'transparent',
+        zIndex: 1000,
+        backgroundColor: isHovering || isResizing ? 'rgba(255, 255, 255, 0.9)' : 'transparent',
         transition: 'background-color 0.15s ease',
-        borderRight: isHovering || isResizing ? '2px solid rgba(59, 130, 246, 0.8)' : 'none',
+        boxShadow: isHovering || isResizing ? '0 0 8px rgba(59, 130, 246, 0.6)' : 'none',
       }}
       title="Drag to resize column"
     />

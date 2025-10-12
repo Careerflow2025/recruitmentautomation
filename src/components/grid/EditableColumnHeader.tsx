@@ -105,7 +105,7 @@ export default function EditableColumnHeader({
         alignItems: 'center',
         justifyContent: 'flex-start',
         paddingLeft: '8px',
-        paddingRight: '8px',
+        paddingRight: currentWidth && onColumnResize ? '20px' : '8px', // Extra padding when resize handle present
         gap: '6px',
         height: '100%',
         position: 'relative', // For absolute positioning of resize handle
@@ -113,22 +113,27 @@ export default function EditableColumnHeader({
         overflow: 'hidden', // Prevent content from spilling into next column
         boxSizing: 'border-box'
       }}>
-        <span
-          style={{
-            cursor: canEdit ? 'pointer' : 'default',
-            userSelect: 'none',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            flexShrink: 1,
-            minWidth: 0, // Allow flex item to shrink below content size
-            maxWidth: '100%' // Don't exceed container width
-          }}
-          onClick={() => canEdit && setIsEditing(true)}
-          title={canEdit ? `Click to rename "${columnName}"` : columnName}
-        >
-          {columnName}
-        </span>
+        <div style={{
+          flex: 1,
+          minWidth: 0,
+          overflow: 'hidden'
+        }}>
+          <span
+            style={{
+              cursor: canEdit ? 'pointer' : 'default',
+              userSelect: 'none',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              display: 'block', // Make span respect parent width
+              width: '100%'
+            }}
+            onClick={() => canEdit && setIsEditing(true)}
+            title={canEdit ? `Click to rename "${columnName}"` : columnName}
+          >
+            {columnName}
+          </span>
+        </div>
 
         {/* Text filter icon */}
         {showTextFilter && onTextFilterChange && (
