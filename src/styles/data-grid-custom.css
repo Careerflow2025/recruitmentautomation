@@ -73,6 +73,21 @@
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.12);
 }
 
+/* FIX: Frozen column positioning - prevent double offset on second frozen column (ID column) */
+/* React-data-grid is positioning the second frozen column at 100px instead of 50px */
+/* Use negative margin to shift it back to the correct position and constrain width */
+.rdg .rdg-cell[aria-colindex="2"].rdg-cell-frozen {
+  margin-left: -50px !important;
+  max-width: 120px !important;
+  min-width: 120px !important;
+}
+
+.rdg .rdg-header-row .rdg-cell[aria-colindex="2"].rdg-cell-frozen {
+  margin-left: -50px !important;
+  max-width: 120px !important;
+  min-width: 120px !important;
+}
+
 /* Editable cell indicator */
 .rdg-cell[aria-selected="true"] {
   outline: 2px solid #3b82f6;
