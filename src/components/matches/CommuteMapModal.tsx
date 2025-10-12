@@ -458,142 +458,95 @@ export function CommuteMapModal({
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-2xl w-[95vw] h-[95vh] overflow-hidden flex flex-col">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-4 text-white flex-shrink-0">
+          {/* Clean Modern Header */}
+          <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <span>🗺️</span>
-                  <span>Route Visualization</span>
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <span className="text-blue-600">🗺️</span>
+                  <span>Route Comparison</span>
                 </h2>
-                <div className="bg-white bg-opacity-20 px-3 py-1 rounded-lg text-sm font-semibold">
-                  {commuteDisplay}
-                </div>
               </div>
               <button
                 onClick={onClose}
-                className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200"
+                className="text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-lg p-1.5 transition-all"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
           </div>
 
-          {/* Journey Info - Collapsible */}
-          <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200">
-            {/* Collapsible Header */}
-            <div
-              className="px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 cursor-pointer hover:from-slate-500 hover:to-slate-600 transition-all duration-200 flex items-center justify-between"
-              onClick={() => setRouteDetailsCollapsed(!routeDetailsCollapsed)}
-            >
-              <h3 className="text-white font-bold flex items-center gap-2 select-none">
-                <span className="text-xl">📊</span>
-                <span>Route Details & Configuration</span>
-              </h3>
-              <span className="text-white text-sm transition-transform duration-200" style={{ transform: routeDetailsCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
-                ▼
-              </span>
+          {/* Compact Route Info Card */}
+          <div className="flex-shrink-0 bg-white px-4 py-3 border-b border-gray-200">
+            <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
+              {/* Candidate Info */}
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <span className="text-2xl flex-shrink-0">📍</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{candidateName}</p>
+                  <p className="text-xs text-gray-600">{originPostcode}</p>
+                </div>
+              </div>
+
+              {/* Driving Route */}
+              <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                <span className="text-lg">🚗</span>
+                <div>
+                  {routeInfo ? (
+                    <>
+                      <p className="text-sm font-bold text-blue-900">{routeInfo.duration}</p>
+                      <p className="text-xs text-gray-600">{routeInfo.distance}</p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-400">Loading...</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Public Transport Route */}
+              <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg border border-green-200">
+                <span className="text-lg">🚆</span>
+                <div>
+                  {transitRouteInfo ? (
+                    <>
+                      <p className="text-sm font-bold text-green-900">{transitRouteInfo.duration}</p>
+                      <p className="text-xs text-gray-600">{transitRouteInfo.distance}</p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-400">Loading...</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Client Info */}
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="min-w-0 text-right">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{clientName}</p>
+                  <p className="text-xs text-gray-600">{destinationPostcode}</p>
+                </div>
+                <span className="text-2xl flex-shrink-0">🏥</span>
+              </div>
             </div>
 
-            {/* Collapsible Content */}
-            {!routeDetailsCollapsed && (
-              <div className="px-6 py-4">
-                {/* Time Difference Notice */}
-                <div className="mb-3 bg-slate-50 border-2 border-slate-300 rounded-xl p-3 shadow-sm">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xl">ℹ️</span>
-                    <p className="text-sm font-bold text-slate-900">Google Maps API Configuration</p>
-                  </div>
-                  <p className="text-xs text-slate-700 leading-relaxed">
-                    Both the database matching system and live map use Google Maps APIs with identical parameters:
-                    driving mode, traffic_model: 'best_guess', departure_time: 'now', no route restrictions, imperial units.
-                    Small differences are due to the timing of API calls and real-time traffic changes.
-                  </p>
-                </div>
+            {/* Route Legend */}
+            <div className="flex items-center justify-center gap-4 mt-3 pt-2 border-t border-gray-100">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-1 bg-blue-600 rounded"></div>
+                <span className="text-xs text-gray-600">Driving</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-1 bg-green-600 rounded"></div>
+                <span className="text-xs text-gray-600">Public Transport</span>
+              </div>
+            </div>
 
-                {usingApproximate && (
-                  <div className="mb-3 bg-yellow-50 border-2 border-yellow-300 rounded-xl p-3 flex items-center gap-2 shadow-sm">
-                    <span className="text-xl">⚠️</span>
-                    <div>
-                      <p className="text-sm font-bold text-yellow-900">Using Approximate Areas</p>
-                      <p className="text-xs text-yellow-700">
-                        Exact postcodes not found. Showing route between general areas for estimation.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                  {/* Origin */}
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border-2 border-green-300 shadow-md hover:shadow-lg transition-all duration-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-2xl">📍</span>
-                      <span className="text-xs font-bold text-green-700 uppercase tracking-wide">Origin</span>
-                    </div>
-                    <p className="font-bold text-gray-900 text-sm">{candidateName}</p>
-                    <p className="text-sm text-gray-700 font-semibold mt-1">{originPostcode}</p>
-                  </div>
-
-                  {/* Commute Time (Database) */}
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border-2 border-blue-300 shadow-md hover:shadow-lg transition-all duration-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-2xl">💾</span>
-                      <span className="text-xs font-bold text-blue-700 uppercase tracking-wide">Database</span>
-                    </div>
-                    <p className="font-bold text-2xl text-blue-900">{commuteMinutes}m</p>
-                    <p className="text-xs text-gray-600 mt-1">Used for matching</p>
-                  </div>
-
-                  {/* Live Driving Route Info */}
-                  <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-4 border-2 border-emerald-300 shadow-md hover:shadow-lg transition-all duration-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-2xl">🚗</span>
-                      <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Live Driving</span>
-                    </div>
-                    {routeInfo ? (
-                      <>
-                        <p className="font-bold text-lg text-emerald-900">{routeInfo.duration}</p>
-                        <p className="text-xs text-gray-600 mt-1">{routeInfo.distance}</p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="font-bold text-lg text-gray-400">Loading...</p>
-                        <p className="text-xs text-gray-400">Please wait</p>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Live Transit Route Info */}
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border-2 border-purple-300 shadow-md hover:shadow-lg transition-all duration-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-2xl">🚆</span>
-                      <span className="text-xs font-bold text-purple-700 uppercase tracking-wide">Public Transit</span>
-                    </div>
-                    {transitRouteInfo ? (
-                      <>
-                        <p className="font-bold text-lg text-purple-900">{transitRouteInfo.duration}</p>
-                        <p className="text-xs text-gray-600 mt-1">{transitRouteInfo.distance}</p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="font-bold text-lg text-gray-400">Loading...</p>
-                        <p className="text-xs text-gray-400">Please wait</p>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Destination */}
-                  <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-xl p-4 border-2 border-red-300 shadow-md hover:shadow-lg transition-all duration-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-2xl">🏥</span>
-                      <span className="text-xs font-bold text-red-700 uppercase tracking-wide">Destination</span>
-                    </div>
-                    <p className="font-bold text-gray-900 text-sm">{clientName}</p>
-                    <p className="text-sm text-gray-700 font-semibold mt-1">{destinationPostcode}</p>
-                  </div>
-                </div>
+            {/* Approximate Location Warning (if needed) */}
+            {usingApproximate && (
+              <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                <span className="text-sm">⚠️</span>
+                <p className="text-xs text-yellow-800">Using approximate areas for route calculation</p>
               </div>
             )}
           </div>
