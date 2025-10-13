@@ -63,8 +63,16 @@ export async function POST(request: NextRequest) {
     if (candidatesResult.error) throw candidatesResult.error;
     if (clientsResult.error) throw clientsResult.error;
 
-    const candidates = candidatesResult.data || [];
-    const clients = clientsResult.data || [];
+    // FILTER: Only include candidates/clients with BOTH valid postcode AND valid role
+    // AI validation ensures these fields are properly populated before matching
+    const candidates = (candidatesResult.data || []).filter(c =>
+      c.postcode && c.postcode.trim() !== '' &&
+      c.role && c.role.trim() !== ''
+    );
+    const clients = (clientsResult.data || []).filter(c =>
+      c.postcode && c.postcode.trim() !== '' &&
+      c.role && c.role.trim() !== ''
+    );
 
     if (candidates.length === 0) {
       return NextResponse.json({ 
