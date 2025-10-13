@@ -133,8 +133,12 @@ async function processBatch(
           continue;
         }
 
-        // Calculate minutes
-        const minutes = Math.round(element.duration.value / 60);
+        // Calculate minutes - USE LIVE TRAFFIC TIME (duration_in_traffic)
+        // When departure_time is set, Google Maps returns both:
+        // - duration: static time without traffic
+        // - duration_in_traffic: LIVE time with current traffic (this matches the map!)
+        const durationData = element.duration_in_traffic || element.duration;
+        const minutes = Math.round(durationData.value / 60);
 
         // RULE 2: Exclude matches over 80 minutes
         if (minutes > 80) {
@@ -156,7 +160,7 @@ async function processBatch(
             display: formatCommuteTime(minutes),
             band: getCommuteBand(minutes),
             distance_text: element.distance.text,
-            duration_text: element.duration.text,
+            duration_text: durationData.text,
           },
         });
       }
