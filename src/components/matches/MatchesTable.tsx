@@ -567,7 +567,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
           <thead>
             <tr style={{ backgroundColor: '#1e293b' }}>
               {/* Match Info Section - COMMUTE PRIORITY: MUST BE WIDE ENOUGH FOR "🟢🟢🟢 15m" */}
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r w-[200px] lg:w-[240px] xl:w-[210px]" style={{ borderColor: '#334155' }}>
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r w-[160px] lg:w-[190px] xl:w-[165px]" style={{ borderColor: '#334155' }}>
                 <span className="hidden xl:inline">Commute</span>
                 <span className="xl:hidden">Com</span>
               </th>
