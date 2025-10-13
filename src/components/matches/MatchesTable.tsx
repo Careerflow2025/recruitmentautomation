@@ -563,73 +563,71 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse table-fixed">
           <thead>
             <tr style={{ backgroundColor: '#1e293b' }}>
-              {/* Match Info Section */}
-              <th className="px-1 lg:px-2 xl:px-3 py-2 lg:py-3 text-left text-[9px] lg:text-[10px] xl:text-xs font-bold text-white uppercase tracking-tight lg:tracking-wide border-r" style={{ borderColor: '#334155' }}>
+              {/* Match Info Section - Compact on laptop */}
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r w-[60px] lg:w-[70px] xl:w-auto" style={{ borderColor: '#334155' }}>
                 <span className="hidden xl:inline">Commute</span>
                 <span className="xl:hidden">Com</span>
               </th>
-              <th className="px-1 lg:px-2 xl:px-3 py-2 lg:py-3 text-left text-[9px] lg:text-[10px] xl:text-xs font-bold text-white uppercase tracking-tight lg:tracking-wide border-r-4 border-white">
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r-4 border-white w-[50px] lg:w-[60px] xl:w-auto">
                 <span className="hidden xl:inline">Role Match</span>
-                <span className="xl:hidden">Role</span>
+                <span className="xl:hidden">Rol</span>
               </th>
 
-              {/* Alternating Candidate/Client Columns */}
-              <th className="px-1 lg:px-1.5 xl:px-2 py-2 lg:py-3 text-left text-[8px] lg:text-[9px] xl:text-[10px] font-bold text-white uppercase tracking-tight border-r" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
+              {/* Alternating Candidate/Client Columns - Ultra compact */}
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[40px] lg:w-[45px] xl:w-auto" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
                 CAN
               </th>
-              <th className="px-1 lg:px-1.5 xl:px-2 py-2 lg:py-3 text-left text-[8px] lg:text-[9px] xl:text-[10px] font-bold text-white uppercase tracking-tight border-r" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[35px] lg:w-[40px] xl:w-auto" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
                 CL
               </th>
 
-              <th className="px-1 lg:px-1.5 xl:px-2 py-2 lg:py-3 text-left text-[8px] lg:text-[9px] xl:text-xs font-bold text-white uppercase tracking-tight border-r" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
-                <span className="hidden xl:inline">CAN Post</span>
-                <span className="xl:hidden">C-PC</span>
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r w-[50px] lg:w-[55px] xl:w-auto" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
+                <span className="hidden xl:inline">C-Post</span>
+                <span className="xl:hidden">CPC</span>
               </th>
-              <th className="px-1 lg:px-1.5 xl:px-2 py-2 lg:py-3 text-left text-[8px] lg:text-[9px] xl:text-xs font-bold text-white uppercase tracking-tight border-r" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
-                <span className="hidden xl:inline">CL Post</span>
-                <span className="xl:hidden">L-PC</span>
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r w-[50px] lg:w-[55px] xl:w-auto" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+                <span className="hidden xl:inline">L-Post</span>
+                <span className="xl:hidden">LPC</span>
               </th>
 
               {visibleColumns.salary_budget && (
                 <>
-                  <th className="px-1 lg:px-1.5 xl:px-2 py-2 lg:py-3 text-left text-[8px] lg:text-[9px] xl:text-[10px] font-bold text-white uppercase tracking-tight border-r" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
-                    <span className="hidden xl:inline">Salary</span>
-                    <span className="xl:hidden">£C</span>
+                  <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[40px] lg:w-[45px] xl:w-auto" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
+                    £C
                   </th>
-                  <th className="px-1 lg:px-1.5 xl:px-2 py-2 lg:py-3 text-left text-[8px] lg:text-[9px] xl:text-[10px] font-bold text-white uppercase tracking-tight border-r" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
-                    <span className="hidden xl:inline">Budget</span>
-                    <span className="xl:hidden">£L</span>
+                  <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[40px] lg:w-[45px] xl:w-auto" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+                    £L
                   </th>
                 </>
               )}
 
-              <th className="px-1 lg:px-1.5 xl:px-2 py-2 lg:py-3 text-left text-[8px] lg:text-[9px] xl:text-[10px] font-bold text-white uppercase tracking-tight border-r" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
-                <span className="hidden lg:inline">CAN Role</span>
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[55px] lg:w-[65px] xl:w-auto" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
+                <span className="hidden lg:inline">C-Rol</span>
                 <span className="lg:hidden">CR</span>
               </th>
-              <th className="px-1 lg:px-1.5 xl:px-2 py-2 lg:py-3 text-left text-[8px] lg:text-[9px] xl:text-[10px] font-bold text-white uppercase tracking-tight border-r" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
-                <span className="hidden lg:inline">CL Role</span>
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[55px] lg:w-[65px] xl:w-auto" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+                <span className="hidden lg:inline">L-Rol</span>
                 <span className="lg:hidden">LR</span>
               </th>
 
               {visibleColumns.availability_requirement && (
                 <>
-                  <th className="px-1 lg:px-1.5 xl:px-2 py-2 lg:py-3 text-left text-[8px] lg:text-[9px] xl:text-[10px] font-bold text-white uppercase tracking-tight border-r" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
-                    <span className="hidden xl:inline">Avail</span>
+                  <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[45px] lg:w-[50px] xl:w-auto" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
+                    <span className="hidden xl:inline">Ava</span>
                     <span className="xl:hidden">Av</span>
                   </th>
-                  <th className="px-1 lg:px-1.5 xl:px-2 py-2 lg:py-3 text-left text-[8px] lg:text-[9px] xl:text-[10px] font-bold text-white uppercase tracking-tight border-r" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+                  <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[45px] lg:w-[50px] xl:w-auto" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
                     <span className="hidden xl:inline">Req</span>
                     <span className="xl:hidden">Rq</span>
                   </th>
                 </>
               )}
 
-              <th className="px-2 lg:px-3 xl:px-4 py-2 lg:py-3 text-center text-[9px] lg:text-[10px] xl:text-xs font-bold text-white uppercase tracking-tight sticky right-0 z-10 min-w-[120px] lg:min-w-[130px] xl:min-w-[140px]" style={{ backgroundColor: '#1e293b' }}>
-                Status
+              <th className="px-1 lg:px-2 xl:px-3 py-1 lg:py-2 text-center text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter sticky right-0 z-10 w-[100px] lg:w-[110px] xl:w-[140px]" style={{ backgroundColor: '#1e293b' }}>
+                Stat
               </th>
             </tr>
           </thead>
@@ -642,14 +640,14 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                 }`}
                 style={getRowStyle(match)}
               >
-                {/* Match Info */}
-                <td className="px-1 lg:px-2 xl:px-3 py-1.5 lg:py-2 whitespace-nowrap border-r border-gray-200">
+                {/* Match Info - Ultra compact */}
+                <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap border-r border-gray-200 overflow-hidden">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleCommuteClick(match);
                     }}
-                    className="w-full text-left hover:scale-105 transition-transform cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                    className="w-full text-left hover:scale-105 transition-transform cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 rounded text-[7px] lg:text-[8px] xl:text-xs"
                     title="Click to view commute route on map"
                   >
                     <CommuteBadge
@@ -659,22 +657,22 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                     />
                   </button>
                 </td>
-                <td className="px-1 lg:px-2 xl:px-3 py-1.5 lg:py-2 whitespace-nowrap border-r-4 border-gray-300">
+                <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap border-r-4 border-gray-300 overflow-hidden">
                   <RoleMatchBadge
                     isMatch={match.role_match}
                     display={match.role_match_display}
                   />
                 </td>
 
-                {/* Alternating Candidate/Client Columns */}
+                {/* Alternating Candidate/Client Columns - Ultra compact */}
                 {/* CAN ID */}
-                <td className="px-1 lg:px-1.5 xl:px-2 py-1.5 lg:py-2 whitespace-nowrap text-[10px] lg:text-xs font-bold text-gray-900 border-r border-gray-200">
+                <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-bold text-gray-900 border-r border-gray-200 overflow-hidden">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleCandidateClick(match.candidate);
                     }}
-                    className="w-full text-left hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-400 rounded p-0.5 lg:p-1 transition-colors"
+                    className="w-full text-left hover:underline cursor-pointer focus:outline-none rounded p-0 transition-colors"
                     title="Click to view candidate details"
                   >
                     <NewItemIndicator
@@ -684,13 +682,13 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                   </button>
                 </td>
                 {/* CL ID */}
-                <td className="px-1 lg:px-1.5 xl:px-2 py-1.5 lg:py-2 whitespace-nowrap text-[10px] lg:text-xs font-bold text-gray-900 border-r border-gray-200">
+                <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-bold text-gray-900 border-r border-gray-200 overflow-hidden">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleClientClick(match.client);
                     }}
-                    className="w-full text-left hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-400 rounded p-0.5 lg:p-1 transition-colors"
+                    className="w-full text-left hover:underline cursor-pointer focus:outline-none rounded p-0 transition-colors"
                     title="Click to view client details"
                   >
                     <NewItemIndicator
@@ -701,59 +699,59 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                 </td>
 
                 {/* CAN Postcode */}
-                <td className={`px-1 lg:px-1.5 xl:px-2 py-1.5 lg:py-2 whitespace-nowrap font-mono text-[10px] lg:text-xs xl:text-sm font-bold text-gray-900 border-r border-gray-200 ${match.commute_minutes <= 80 ? 'border-2 border-green-500' : ''}`}>
+                <td className={`px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap font-mono text-[8px] lg:text-[9px] xl:text-sm font-bold text-gray-900 border-r border-gray-200 overflow-hidden ${match.commute_minutes <= 80 ? 'border-2 border-green-500' : ''}`}>
                   {match.candidate.postcode}
                 </td>
                 {/* CL Postcode */}
-                <td className={`px-1 lg:px-1.5 xl:px-2 py-1.5 lg:py-2 whitespace-nowrap font-mono text-[10px] lg:text-xs xl:text-sm font-bold text-gray-900 border-r border-gray-200 ${match.commute_minutes <= 80 ? 'border-2 border-green-500' : ''}`}>
+                <td className={`px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap font-mono text-[8px] lg:text-[9px] xl:text-sm font-bold text-gray-900 border-r border-gray-200 overflow-hidden ${match.commute_minutes <= 80 ? 'border-2 border-green-500' : ''}`}>
                   {match.client.postcode}
                 </td>
 
                 {visibleColumns.salary_budget && (
                   <>
                     {/* CAN Salary */}
-                    <td className="px-1 lg:px-1.5 xl:px-2 py-1.5 lg:py-2 whitespace-nowrap text-[10px] lg:text-xs font-semibold text-gray-900 border-r border-gray-200">
+                    <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-semibold text-gray-900 border-r border-gray-200 overflow-hidden">
                       {match.candidate.salary}
                     </td>
                     {/* CL Budget */}
-                    <td className="px-1 lg:px-1.5 xl:px-2 py-1.5 lg:py-2 whitespace-nowrap text-[10px] lg:text-xs font-semibold text-gray-900 border-r border-gray-200">
+                    <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-semibold text-gray-900 border-r border-gray-200 overflow-hidden">
                       {match.client.budget}
                     </td>
                   </>
                 )}
 
                 {/* CAN Role */}
-                <td className={`px-1 lg:px-1.5 xl:px-2 py-1.5 lg:py-2 whitespace-nowrap text-[10px] lg:text-xs font-medium text-gray-800 border-r border-gray-200 ${match.role_match ? 'border-2 border-green-500' : ''}`}>
+                <td className={`px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-medium text-gray-800 border-r border-gray-200 overflow-hidden ${match.role_match ? 'border-2 border-green-500' : ''}`}>
                   {match.candidate.role}
                 </td>
                 {/* CL Role */}
-                <td className={`px-1 lg:px-1.5 xl:px-2 py-1.5 lg:py-2 whitespace-nowrap text-[10px] lg:text-xs font-medium text-gray-800 border-r border-gray-200 ${match.role_match ? 'border-2 border-green-500' : ''}`}>
+                <td className={`px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-medium text-gray-800 border-r border-gray-200 overflow-hidden ${match.role_match ? 'border-2 border-green-500' : ''}`}>
                   {match.client.role}
                 </td>
 
                 {visibleColumns.availability_requirement && (
                   <>
                     {/* CAN Availability */}
-                    <td className={`px-1 lg:px-1.5 xl:px-2 py-1.5 lg:py-2 whitespace-nowrap text-[10px] lg:text-xs text-gray-700 border-r border-gray-200 ${match.candidate.days === match.client.requirement ? 'border-2 border-green-500' : ''}`}>
+                    <td className={`px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs text-gray-700 border-r border-gray-200 overflow-hidden ${match.candidate.days === match.client.requirement ? 'border-2 border-green-500' : ''}`}>
                       {match.candidate.days}
                     </td>
                     {/* CL Requirement */}
-                    <td className={`px-1 lg:px-1.5 xl:px-2 py-1.5 lg:py-2 whitespace-nowrap text-[10px] lg:text-xs text-gray-700 border-r border-gray-200 ${match.candidate.days === match.client.requirement ? 'border-2 border-green-500' : ''}`}>
+                    <td className={`px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs text-gray-700 border-r border-gray-200 overflow-hidden ${match.candidate.days === match.client.requirement ? 'border-2 border-green-500' : ''}`}>
                       {match.client.requirement}
                     </td>
                   </>
                 )}
 
-                {/* Status */}
-                <td className="px-2 lg:px-3 xl:px-4 py-1.5 lg:py-2 whitespace-nowrap text-center sticky right-0 z-10 bg-inherit min-w-[120px] lg:min-w-[130px] xl:min-w-[140px]">
-                  <div className="flex items-center justify-center gap-0.5 lg:gap-1">
+                {/* Status - Ultra compact buttons */}
+                <td className="px-1 lg:px-2 xl:px-3 py-1 lg:py-1.5 whitespace-nowrap text-center sticky right-0 z-10 bg-inherit">
+                  <div className="flex items-center justify-center gap-0.5">
                     {/* Placed - Green Check */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleStatusClick(match, 'placed');
                       }}
-                      className={`w-6 h-6 lg:w-7 lg:h-7 xl:w-8 xl:h-8 flex items-center justify-center rounded-full border-2 transition-all font-bold text-xs lg:text-sm ${
+                      className={`w-5 h-5 lg:w-6 lg:h-6 xl:w-8 xl:h-8 flex items-center justify-center rounded-full border transition-all font-bold text-[10px] lg:text-xs xl:text-sm ${
                         matchStatuses[getMatchKey(match)]?.status === 'placed'
                           ? 'bg-green-500 border-green-600 text-white shadow-lg scale-110'
                           : 'bg-white border-gray-400 text-gray-500 hover:border-green-500 hover:text-green-600 hover:bg-green-50'
@@ -769,7 +767,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                         e.stopPropagation();
                         handleStatusClick(match, 'in-progress');
                       }}
-                      className={`w-6 h-6 lg:w-7 lg:h-7 xl:w-8 xl:h-8 flex items-center justify-center rounded-full border-2 transition-all font-bold text-xs lg:text-sm ${
+                      className={`w-5 h-5 lg:w-6 lg:h-6 xl:w-8 xl:h-8 flex items-center justify-center rounded-full border transition-all font-bold text-[10px] lg:text-xs xl:text-sm ${
                         matchStatuses[getMatchKey(match)]?.status === 'in-progress'
                           ? 'bg-orange-500 border-orange-600 text-white shadow-lg scale-110'
                           : 'bg-white border-gray-400 text-gray-500 hover:border-orange-500 hover:text-orange-600 hover:bg-orange-50'
@@ -785,7 +783,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                         e.stopPropagation();
                         handleStatusClick(match, 'rejected');
                       }}
-                      className={`w-6 h-6 lg:w-7 lg:h-7 xl:w-8 xl:h-8 flex items-center justify-center rounded-full border-2 transition-all font-bold text-xs lg:text-sm ${
+                      className={`w-5 h-5 lg:w-6 lg:h-6 xl:w-8 xl:h-8 flex items-center justify-center rounded-full border transition-all font-bold text-[10px] lg:text-xs xl:text-sm ${
                         matchStatuses[getMatchKey(match)]?.status === 'rejected'
                           ? 'bg-red-500 border-red-600 text-white shadow-lg scale-110'
                           : 'bg-white border-gray-400 text-gray-500 hover:border-red-500 hover:text-red-600 hover:bg-red-50'
@@ -801,7 +799,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                         e.stopPropagation();
                         handleNoteClick(match);
                       }}
-                      className={`w-6 h-6 lg:w-7 lg:h-7 xl:w-8 xl:h-8 flex items-center justify-center rounded-full border-2 transition-all font-bold text-xs lg:text-sm ${
+                      className={`w-5 h-5 lg:w-6 lg:h-6 xl:w-8 xl:h-8 flex items-center justify-center rounded-full border transition-all font-bold text-[10px] lg:text-xs xl:text-sm ${
                         matchStatuses[getMatchKey(match)]?.notes?.length > 0
                           ? 'bg-blue-500 border-blue-600 text-white shadow-lg scale-110'
                           : 'bg-white border-gray-400 text-gray-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50'
