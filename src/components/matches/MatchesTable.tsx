@@ -291,6 +291,17 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
     setEditData(prev => ({ ...prev, [field]: value }));
   };
 
+  // Helper function to strip user prefix from IDs (e.g., "U3_CAN27" -> "CAN27")
+  const getDisplayId = (fullId: string) => {
+    const parts = fullId.split('_');
+    if (parts.length > 1) {
+      // Return everything after first underscore
+      return parts.slice(1).join('_');
+    }
+    // Fallback to full ID if no underscore found
+    return fullId;
+  };
+
   const getMatchKey = (match: Match) => {
     return `${match.candidate.id}-${match.client.id}`;
   };
@@ -657,7 +668,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                     title="Click to view candidate details"
                   >
                     <NewItemIndicator
-                      id={match.candidate.id}
+                      id={getDisplayId(match.candidate.id)}
                       addedAt={match.candidate.added_at}
                     />
                   </button>
@@ -673,7 +684,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                     title="Click to view client details"
                   >
                     <NewItemIndicator
-                      id={match.client.id}
+                      id={getDisplayId(match.client.id)}
                       addedAt={match.client.added_at}
                     />
                   </button>
