@@ -502,18 +502,21 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
 
     if (statusData.status === 'placed') {
       return {
-        backgroundColor: '#bbf7d0', // green-200 - matches green icon
-        borderLeft: '4px solid #10b981' // green-500
+        backgroundColor: '#22c55e', // green-500 - EXACT match to icon
+        borderLeft: '4px solid #15803d', // darker green border
+        color: '#ffffff' // white text for readability
       };
     } else if (statusData.status === 'in-progress') {
       return {
-        backgroundColor: '#fed7aa', // orange-200 - matches orange icon
-        borderLeft: '4px solid #f59e0b' // orange-500
+        backgroundColor: '#f97316', // orange-500 - EXACT match to icon
+        borderLeft: '4px solid #c2410c', // darker orange border
+        color: '#ffffff' // white text for readability
       };
     } else if (statusData.status === 'rejected') {
       return {
-        backgroundColor: '#fecaca', // red-200 - matches red icon
-        borderLeft: '4px solid #ef4444' // red-500
+        backgroundColor: '#ef4444', // red-500 - EXACT match to icon
+        borderLeft: '4px solid #b91c1c', // darker red border
+        color: '#ffffff' // white text for readability
       };
     }
 
