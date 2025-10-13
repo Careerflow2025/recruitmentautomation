@@ -700,14 +700,14 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
 
                 {/* CAN Postcode */}
                 <td
-                  className={`px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap font-mono text-[8px] lg:text-[9px] xl:text-sm font-bold text-gray-900 border-r border-gray-200 overflow-hidden ${match.commute_minutes <= 80 ? 'border-2 border-green-500' : ''}`}
+                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap font-mono text-[8px] lg:text-[9px] xl:text-sm font-bold text-gray-900 border-r border-gray-200 overflow-hidden"
                   title={`Candidate Postcode: ${match.candidate.postcode}`}
                 >
                   {match.candidate.postcode}
                 </td>
                 {/* CL Postcode */}
                 <td
-                  className={`px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap font-mono text-[8px] lg:text-[9px] xl:text-sm font-bold text-gray-900 border-r border-gray-200 overflow-hidden ${match.commute_minutes <= 80 ? 'border-2 border-green-500' : ''}`}
+                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap font-mono text-[8px] lg:text-[9px] xl:text-sm font-bold text-gray-900 border-r border-gray-200 overflow-hidden"
                   title={`Client Postcode: ${match.client.postcode}`}
                 >
                   {match.client.postcode}
@@ -734,14 +734,14 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
 
                 {/* CAN Role */}
                 <td
-                  className={`px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-medium text-gray-800 border-r border-gray-200 overflow-hidden ${match.role_match ? 'border-2 border-green-500' : ''}`}
+                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-medium text-gray-800 border-r border-gray-200 overflow-hidden"
                   title={`Candidate Role: ${match.candidate.role}`}
                 >
                   {match.candidate.role}
                 </td>
                 {/* CL Role */}
                 <td
-                  className={`px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-medium text-gray-800 border-r border-gray-200 overflow-hidden ${match.role_match ? 'border-2 border-green-500' : ''}`}
+                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-medium text-gray-800 border-r border-gray-200 overflow-hidden"
                   title={`Client Role: ${match.client.role}`}
                 >
                   {match.client.role}
@@ -751,14 +751,14 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                   <>
                     {/* CAN Availability */}
                     <td
-                      className={`px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs text-gray-700 border-r border-gray-200 overflow-hidden ${match.candidate.days === match.client.requirement ? 'border-2 border-green-500' : ''}`}
+                      className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs text-gray-700 border-r border-gray-200 overflow-hidden"
                       title={`Candidate Availability: ${match.candidate.days}`}
                     >
                       {match.candidate.days}
                     </td>
                     {/* CL Requirement */}
                     <td
-                      className={`px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs text-gray-700 border-r border-gray-200 overflow-hidden ${match.candidate.days === match.client.requirement ? 'border-2 border-green-500' : ''}`}
+                      className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs text-gray-700 border-r border-gray-200 overflow-hidden"
                       title={`Client Requirement: ${match.client.requirement}`}
                     >
                       {match.client.requirement}
