@@ -566,12 +566,12 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
         <table className="w-full border-collapse table-fixed">
           <thead>
             <tr style={{ backgroundColor: '#1e293b' }}>
-              {/* Match Info Section - COMMUTE PRIORITY: MUST SHOW ALL CONTENT INCLUDING MINUTES! */}
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r w-[120px] lg:w-[140px] xl:w-auto" style={{ borderColor: '#334155' }}>
+              {/* Match Info Section - COMMUTE PRIORITY: Content must stay within column boundaries */}
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r w-[140px] lg:w-[160px] xl:w-auto" style={{ borderColor: '#334155' }}>
                 <span className="hidden xl:inline">Commute</span>
                 <span className="xl:hidden">Com</span>
               </th>
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r-4 border-white w-[35px] lg:w-[45px] xl:w-auto">
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r-4 border-white w-[32px] lg:w-[40px] xl:w-auto">
                 <span className="hidden xl:inline">Role Match</span>
                 <span className="xl:hidden">Rol</span>
               </th>
@@ -640,8 +640,8 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                 }`}
                 style={getRowStyle(match)}
               >
-                {/* Match Info - COMMUTE MUST SHOW ALL CONTENT */}
-                <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap border-r border-gray-200">
+                {/* Match Info - COMMUTE: Wide enough to contain all content without overlap */}
+                <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap border-r border-gray-200 overflow-hidden">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
