@@ -322,6 +322,8 @@ export async function rateLimitedGoogleMapsRequest(
         destinations: destinations.join('|'),
         mode: 'driving',
         units: 'imperial',
+        departure_time: 'now', // LIVE traffic: Calculate with current traffic conditions
+        traffic_model: 'best_guess', // Use real-time traffic data for most accurate estimates
         key: apiKey,
       });
 
