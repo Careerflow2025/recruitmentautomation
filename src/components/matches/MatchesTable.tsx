@@ -653,7 +653,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                       e.stopPropagation();
                       handleCandidateClick(match.candidate);
                     }}
-                    className="w-full text-left hover:text-blue-600 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1 bg-blue-50 hover:bg-blue-100 transition-colors"
+                    className="w-full text-left hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-400 rounded p-1 transition-colors"
                     title="Click to view candidate details"
                   >
                     <NewItemIndicator
@@ -669,7 +669,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                       e.stopPropagation();
                       handleClientClick(match.client);
                     }}
-                    className="w-full text-left hover:text-orange-600 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500 rounded p-1 bg-orange-50 hover:bg-orange-100 transition-colors"
+                    className="w-full text-left hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-400 rounded p-1 transition-colors"
                     title="Click to view client details"
                   >
                     <NewItemIndicator
@@ -691,11 +691,11 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                 {visibleColumns.salary_budget && (
                   <>
                     {/* CAN Salary */}
-                    <td className="px-2 py-2 whitespace-nowrap text-xs font-semibold text-green-700 border-r border-gray-200">
+                    <td className="px-2 py-2 whitespace-nowrap text-xs font-semibold text-gray-900 border-r border-gray-200">
                       {match.candidate.salary}
                     </td>
                     {/* CL Budget */}
-                    <td className="px-2 py-2 whitespace-nowrap text-xs font-semibold text-green-700 border-r border-gray-200">
+                    <td className="px-2 py-2 whitespace-nowrap text-xs font-semibold text-gray-900 border-r border-gray-200">
                       {match.client.budget}
                     </td>
                   </>
