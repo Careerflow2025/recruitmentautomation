@@ -566,21 +566,21 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
         <table className="w-full border-collapse table-fixed">
           <thead>
             <tr style={{ backgroundColor: '#1e293b' }}>
-              {/* Match Info Section - Compact on laptop */}
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r w-[60px] lg:w-[70px] xl:w-auto" style={{ borderColor: '#334155' }}>
+              {/* Match Info Section - COMMUTE PRIORITY: Wider to show full content */}
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r w-[90px] lg:w-[100px] xl:w-auto" style={{ borderColor: '#334155' }}>
                 <span className="hidden xl:inline">Commute</span>
                 <span className="xl:hidden">Com</span>
               </th>
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r-4 border-white w-[50px] lg:w-[60px] xl:w-auto">
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r-4 border-white w-[40px] lg:w-[50px] xl:w-auto">
                 <span className="hidden xl:inline">Role Match</span>
                 <span className="xl:hidden">Rol</span>
               </th>
 
               {/* Alternating Candidate/Client Columns - Ultra compact */}
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[40px] lg:w-[45px] xl:w-auto" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[35px] lg:w-[40px] xl:w-auto" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
                 CAN
               </th>
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[35px] lg:w-[40px] xl:w-auto" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[30px] lg:w-[35px] xl:w-auto" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
                 CL
               </th>
 
@@ -604,11 +604,11 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                 </>
               )}
 
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[55px] lg:w-[65px] xl:w-auto" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[50px] lg:w-[60px] xl:w-auto" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
                 <span className="hidden lg:inline">C-Rol</span>
                 <span className="lg:hidden">CR</span>
               </th>
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[55px] lg:w-[65px] xl:w-auto" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[50px] lg:w-[60px] xl:w-auto" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
                 <span className="hidden lg:inline">L-Rol</span>
                 <span className="lg:hidden">LR</span>
               </th>
