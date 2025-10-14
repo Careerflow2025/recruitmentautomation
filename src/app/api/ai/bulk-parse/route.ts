@@ -222,21 +222,42 @@ function parseCandidates(text: string): any[] {
       }
     }
 
-    // Collect any extra info as notes (skip ID-related lines since we ignore IDs)
-    // Be VERY PERMISSIVE - capture anything that looks like human-readable text
-    const isDataLine = phoneMatch || postcodeMatch || roleMatch ||
-                       expMatch || salaryMatch || daysMatch || emailMatch ||
-                       (nameMatch && i === 0); // Don't capture names as notes
+    // ✅ AGGRESSIVE NOTES CAPTURE
+    // Capture ANYTHING that doesn't match a recognized data pattern
+    // Examples: "available asap, not driving", "fluent english", "good experience"
 
-    // Capture notes AGGRESSIVELY - anything that's not a recognized data field
-    // Examples: "Looking permanent, ASAP", "Not driving", "Available immediately"
-    const isHeaderOrJunk = line.match(/^(CAN\d+|Number|Postcode|Role|Experience|Pay|Status|Candidate|Phone|Email|Days|Salary)$/i);
+    const hasRecognizedData = phoneMatch || postcodeMatch || roleMatch ||
+                               expMatch || salaryMatch || daysMatch || emailMatch ||
+                               (nameMatch && i === 0);
 
-    if (!isDataLine && !isHeaderOrJunk && line.length > 3 && !userProvidedId) {
+    const isObviousHeader = line.match(/^(CAN\d+|Number|Postcode|Role|Experience|Pay|Status|Candidate|Phone|Email|Days|Salary)$/i);
+    const isJustNumbers = /^\d+$/.test(line.trim());
+
+    // If line contains SOME recognized data but ALSO extra text, extract the extra text as notes
+    // Example: "Tue Thu available asap, not driving" → "available asap, not driving" goes to notes
+    if (hasRecognizedData && line.length > 20) {
+      // Remove recognized patterns and see if there's leftover text
+      let remainingText = line;
+
+      if (phoneMatch) remainingText = remainingText.replace(phoneMatch[0], '');
+      if (postcodeMatch) remainingText = remainingText.replace(postcodeMatch[0], '');
+      if (roleMatch) remainingText = remainingText.replace(roleMatch[0], '');
+      if (salaryMatch) remainingText = remainingText.replace(salaryMatch[0], '');
+      if (daysMatch) daysMatch.forEach(day => remainingText = remainingText.replace(day, ''));
+      if (emailMatch) remainingText = remainingText.replace(emailMatch[0], '');
+
+      remainingText = remainingText.replace(/[,\s]+/g, ' ').trim();
+
+      if (remainingText.length > 5) {
+        currentNotes.push(remainingText);
+        console.log(`  ✅ Captured MIXED LINE note: "${remainingText}"`);
+      }
+    }
+
+    // Also capture lines that are PURELY notes (no recognized data at all)
+    if (!hasRecognizedData && !isObviousHeader && !isJustNumbers && !userProvidedId && line.length > 2) {
       currentNotes.push(line);
-      console.log(`  ✅ Captured as NOTE: "${line}"`);
-    } else {
-      console.log(`  ℹ️ Skipped (isDataLine: ${!!isDataLine}, isHeader: ${!!isHeaderOrJunk}, userId: ${!!userProvidedId})`);
+      console.log(`  ✅ Captured PURE note: "${line}"`);
     }
   }
 
@@ -256,7 +277,23 @@ function parseCandidates(text: string): any[] {
   }
 
   console.log(`✅ Parsed ${candidates.length} candidates total`);
-  return candidates.filter(c => c.phone || c.postcode || c.role); // Must have at least one key field
+
+  // ⚠️ CRITICAL: Role is REQUIRED by database
+  // Filter out candidates without role AND postcode (minimum required fields)
+  const validCandidates = candidates.filter(c => {
+    if (!c.role) {
+      console.log(`⚠️ SKIPPING candidate (no role): ${c.first_name || 'Unknown'} - ${c.postcode || 'No postcode'}`);
+      return false;
+    }
+    if (!c.postcode) {
+      console.log(`⚠️ SKIPPING candidate (no postcode): ${c.first_name || 'Unknown'} - ${c.role}`);
+      return false;
+    }
+    return true;
+  });
+
+  console.log(`✅ ${validCandidates.length} valid candidates (with role + postcode), ${candidates.length - validCandidates.length} skipped`);
+  return validCandidates;
 }
 
 /**
@@ -448,10 +485,16 @@ export async function POST(request: Request) {
     if (parsed.length === 0) {
       return NextResponse.json({
         success: false,
-        message: `Could not extract any ${type} from the text. Please check the format.`,
+        message: type === 'candidates'
+          ? `Could not extract any valid candidates. Candidates MUST have both a ROLE (e.g., "Dental Nurse", "Dentist") and a POSTCODE. Please add role information to your data.`
+          : `Could not extract any valid clients. Clients MUST have both a ROLE and a POSTCODE.`,
         added: 0,
         failed: 0,
-        errors: ['No valid data found'],
+        errors: [
+          type === 'candidates'
+            ? 'No valid candidates found - missing ROLE or POSTCODE. Each candidate needs a dental role like "Dental Nurse", "Dentist", "Receptionist", etc.'
+            : 'No valid clients found - missing ROLE or POSTCODE'
+        ],
         items: []
       });
     }
@@ -518,9 +561,11 @@ export async function POST(request: Request) {
     if (numericIds.length > 0) {
       const maxId = Math.max(...numericIds);
       nextIdNumber = maxId + 1;
-      console.log(`✅ STEP 4: Maximum ID found: ${prefix}${maxId} → Next ID: ${prefix}${nextIdNumber}`);
+      console.log(`✅ STEP 4: ⭐ MAX ID FOUND: ${prefix}${maxId} → Next ID will be: ${prefix}${nextIdNumber}`);
+      console.log(`   📊 Summary: ${numericIds.length} existing ${type}, highest is ${prefix}${maxId}, continuing from ${prefix}${nextIdNumber}`);
     } else {
-      console.log(`✅ STEP 4: No existing IDs → Starting from: ${prefix}1`);
+      console.log(`✅ STEP 4: No existing IDs found → Starting from: ${prefix}1`);
+      console.log(`   ⚠️ This means either: (1) first time adding ${type}, OR (2) database query returned empty`);
     }
 
     // 🔢 STEP 5: Pre-assign ALL IDs sequentially
