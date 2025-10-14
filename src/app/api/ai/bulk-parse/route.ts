@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { normalizeRole, CANONICAL_ROLES } from '@/lib/utils/roleNormalizer';
 
 /**
  * BULK PARSER API - Intelligently parse messy text data into candidates/clients
@@ -14,10 +15,43 @@ import { createClient } from '@/lib/supabase/server';
  * - Auto-detects format
  * - Extracts all relevant fields
  * - Puts unclear/extra info in notes
- * - Validates postcodes and roles
- * - Generates IDs automatically
+ * - Validates UK postcodes (strict format check)
+ * - Validates and normalizes roles (using canonical role list)
+ * - ALWAYS generates IDs automatically (ignores user-provided IDs)
  * - Processes in chunks to avoid API limits
  */
+
+/**
+ * Validate UK postcode format
+ * Accepts formats like: SW1A 1AA, SW1A1AA, CR0 1PB, E1 6AN, etc.
+ */
+function isValidUKPostcode(postcode: string): boolean {
+  if (!postcode || typeof postcode !== 'string') return false;
+
+  // UK postcode regex - comprehensive pattern
+  // Matches: A9 9AA, A99 9AA, AA9 9AA, AA99 9AA, A9A 9AA, AA9A 9AA
+  const postcodeRegex = /^[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}$/i;
+
+  const cleaned = postcode.trim().toUpperCase();
+  return postcodeRegex.test(cleaned);
+}
+
+/**
+ * Validate and normalize role
+ * Returns normalized canonical role or null if invalid
+ */
+function validateAndNormalizeRole(role: string): string | null {
+  if (!role || typeof role !== 'string') return null;
+
+  const normalized = normalizeRole(role);
+
+  // Check if it's a valid canonical role
+  if (CANONICAL_ROLES.includes(normalized as any)) {
+    return normalized;
+  }
+
+  return null;
+}
 
 interface ParseResult {
   success: boolean;
@@ -53,6 +87,7 @@ function getHighestId(items: any[], prefix: string): string {
 
 /**
  * Smart parser for candidates
+ * IMPORTANT: Ignores user-provided IDs - system auto-generates them
  */
 function parseCandidates(text: string): any[] {
   const candidates: any[] = [];
@@ -60,31 +95,38 @@ function parseCandidates(text: string): any[] {
 
   let currentCandidate: any = {};
   let currentNotes: string[] = [];
+  let validationWarnings: string[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Check if this is a new candidate (has ID number or phone at start)
-    const hasId = /^(CAN)?\s*\d{6}/.test(line);
+    // Check if this is a new candidate (phone or name indicators)
+    // ❌ DO NOT use ID as delimiter - IDs are auto-generated
     const hasPhone = /^[07]\d{9,10}/.test(line);
+    const hasName = /^[A-Z][a-z]+\s+[A-Z][a-z]+/.test(line);
 
-    if (hasId || hasPhone || (i === 0)) {
+    if (hasPhone || hasName || (i === 0)) {
       // Save previous candidate if exists
       if (Object.keys(currentCandidate).length > 0) {
+        // Add validation warnings to notes
+        if (validationWarnings.length > 0) {
+          currentNotes.unshift(...validationWarnings);
+        }
         if (currentNotes.length > 0) {
           currentCandidate.notes = currentNotes.join('\n');
         }
         candidates.push(currentCandidate);
         currentCandidate = {};
         currentNotes = [];
+        validationWarnings = [];
       }
     }
 
-    // Extract ID (CAN number or raw number)
-    const idMatch = line.match(/CAN\s*(\d{3,6})/i) || line.match(/^(\d{6})/);
-    if (idMatch && !currentCandidate.id) {
-      const numPart = idMatch[1].padStart(3, '0').substring(0, 3);
-      currentCandidate.id = `CAN${numPart}`;
+    // ❌ DO NOT EXTRACT ID - System auto-generates sequential IDs
+    // If user provides ID like "CAN123", we completely ignore it
+    const userProvidedId = line.match(/CAN\s*(\d{3,6})/i) || line.match(/^\d{3,6}/);
+    if (userProvidedId) {
+      validationWarnings.push(`⚠️ Ignored user-provided ID - system auto-generates IDs`);
     }
 
     // Extract phone (UK format)
@@ -93,18 +135,31 @@ function parseCandidates(text: string): any[] {
       currentCandidate.phone = phoneMatch[0].replace(/\s/g, '');
     }
 
-    // Extract postcode (UK format)
-    const postcodeMatch = line.match(/\b([A-Z]{1,2}\d{1,2})\s*(\d[A-Z]{2})?\b/i);
+    // Extract and VALIDATE postcode (UK format)
+    const postcodeMatch = line.match(/\b([A-Z]{1,2}\d{1,2}[A-Z]?)\s*(\d[A-Z]{2})\b/i);
     if (postcodeMatch && !currentCandidate.postcode) {
-      currentCandidate.postcode = postcodeMatch[2]
-        ? `${postcodeMatch[1]} ${postcodeMatch[2]}`.toUpperCase()
-        : postcodeMatch[1].toUpperCase();
+      const extractedPostcode = `${postcodeMatch[1]} ${postcodeMatch[2]}`.toUpperCase();
+
+      // ✅ VALIDATE postcode format
+      if (isValidUKPostcode(extractedPostcode)) {
+        currentCandidate.postcode = extractedPostcode;
+      } else {
+        validationWarnings.push(`⚠️ Invalid UK postcode format: "${extractedPostcode}"`);
+      }
     }
 
-    // Extract role
+    // Extract and VALIDATE + NORMALIZE role
     const roleMatch = line.match(/\b(Dental\s+Nurse|Trainee\s+Dental\s+Nurse|Dentist|Receptionist|Hygienist|Dental\s+Hygienist|Therapist|Dental\s+Therapist|Treatment\s+Coordinator|Practice\s+Manager|TCO|TC|PM|DN|TDN|DH|TH|RCP|RCPN)\b/i);
     if (roleMatch && !currentCandidate.role) {
-      currentCandidate.role = roleMatch[0];
+      const extractedRole = roleMatch[0];
+
+      // ✅ VALIDATE and NORMALIZE role
+      const normalizedRole = validateAndNormalizeRole(extractedRole);
+      if (normalizedRole) {
+        currentCandidate.role = normalizedRole; // Use normalized canonical role
+      } else {
+        validationWarnings.push(`⚠️ Invalid role: "${extractedRole}" - not a recognized dental role`);
+      }
     }
 
     // Extract experience (years)
@@ -136,7 +191,7 @@ function parseCandidates(text: string): any[] {
     // Extract name (if at start of line before role/phone)
     if (i === 0 || !currentCandidate.first_name) {
       const nameMatch = line.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
-      if (nameMatch && !phoneMatch && !idMatch) {
+      if (nameMatch && !phoneMatch && !userProvidedId) {
         const fullName = nameMatch[1].trim().split(' ');
         currentCandidate.first_name = fullName[0];
         if (fullName.length > 1) {
@@ -145,8 +200,8 @@ function parseCandidates(text: string): any[] {
       }
     }
 
-    // Collect any extra info as notes
-    const isDataLine = idMatch || phoneMatch || postcodeMatch || roleMatch ||
+    // Collect any extra info as notes (skip ID-related lines since we ignore IDs)
+    const isDataLine = userProvidedId || phoneMatch || postcodeMatch || roleMatch ||
                        expMatch || salaryMatch || daysMatch || emailMatch;
 
     if (!isDataLine && line.length > 3 && !line.match(/^(CAN|Number|Postcode|Role|Experience|Pay|Status)/i)) {
@@ -156,6 +211,10 @@ function parseCandidates(text: string): any[] {
 
   // Save last candidate
   if (Object.keys(currentCandidate).length > 0) {
+    // Add validation warnings to notes
+    if (validationWarnings.length > 0) {
+      currentNotes.unshift(...validationWarnings);
+    }
     if (currentNotes.length > 0) {
       currentCandidate.notes = currentNotes.join('\n');
     }
@@ -167,6 +226,7 @@ function parseCandidates(text: string): any[] {
 
 /**
  * Smart parser for clients
+ * IMPORTANT: Ignores user-provided IDs - system auto-generates them
  */
 function parseClients(text: string): any[] {
   const clients: any[] = [];
@@ -174,23 +234,29 @@ function parseClients(text: string): any[] {
 
   let currentClient: any = {};
   let currentNotes: string[] = [];
+  let validationWarnings: string[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Check if this is a new client (has surgery name or ID at start)
+    // Check if this is a new client (has surgery name)
+    // ❌ DO NOT use ID as delimiter - IDs are auto-generated
     const hasSurgeryName = /^[A-Z][a-z]+.*\s+(Dental|Surgery|Clinic|Practice)/i.test(line);
-    const hasId = /^(CL)?\s*\d{3,6}/.test(line);
 
-    if (hasSurgeryName || hasId || (i === 0 && !currentClient.surgery)) {
+    if (hasSurgeryName || (i === 0 && !currentClient.surgery)) {
       // Save previous client if exists
       if (Object.keys(currentClient).length > 0) {
+        // Add validation warnings to notes
+        if (validationWarnings.length > 0) {
+          currentNotes.unshift(...validationWarnings);
+        }
         if (currentNotes.length > 0) {
           currentClient.notes = currentNotes.join('\n');
         }
         clients.push(currentClient);
         currentClient = {};
         currentNotes = [];
+        validationWarnings = [];
       }
 
       // Extract surgery name from first line
@@ -202,25 +268,38 @@ function parseClients(text: string): any[] {
       }
     }
 
-    // Extract ID
-    const idMatch = line.match(/CL\s*(\d{3,6})/i) || line.match(/^(\d{3,6})/);
-    if (idMatch && !currentClient.id) {
-      const numPart = idMatch[1].padStart(3, '0').substring(0, 3);
-      currentClient.id = `CL${numPart}`;
+    // ❌ DO NOT EXTRACT ID - System auto-generates sequential IDs
+    // If user provides ID like "CL123", we completely ignore it
+    const userProvidedId = line.match(/CL\s*(\d{3,6})/i) || line.match(/^\d{3,6}/);
+    if (userProvidedId) {
+      validationWarnings.push(`⚠️ Ignored user-provided ID - system auto-generates IDs`);
     }
 
-    // Extract postcode
-    const postcodeMatch = line.match(/\b([A-Z]{1,2}\d{1,2})\s*(\d[A-Z]{2})?\b/i);
+    // Extract and VALIDATE postcode (UK format)
+    const postcodeMatch = line.match(/\b([A-Z]{1,2}\d{1,2}[A-Z]?)\s*(\d[A-Z]{2})\b/i);
     if (postcodeMatch && !currentClient.postcode) {
-      currentClient.postcode = postcodeMatch[2]
-        ? `${postcodeMatch[1]} ${postcodeMatch[2]}`.toUpperCase()
-        : postcodeMatch[1].toUpperCase();
+      const extractedPostcode = `${postcodeMatch[1]} ${postcodeMatch[2]}`.toUpperCase();
+
+      // ✅ VALIDATE postcode format
+      if (isValidUKPostcode(extractedPostcode)) {
+        currentClient.postcode = extractedPostcode;
+      } else {
+        validationWarnings.push(`⚠️ Invalid UK postcode format: "${extractedPostcode}"`);
+      }
     }
 
-    // Extract role needed
+    // Extract and VALIDATE + NORMALIZE role needed
     const roleMatch = line.match(/\b(Dental\s+Nurse|Trainee\s+Dental\s+Nurse|Dentist|Receptionist|Hygienist|Dental\s+Hygienist|Therapist|Dental\s+Therapist|Treatment\s+Coordinator|Practice\s+Manager|TCO|TC|PM|DN|TDN|DH|TH|RCP|RCPN)\b/i);
     if (roleMatch && !currentClient.role) {
-      currentClient.role = roleMatch[0];
+      const extractedRole = roleMatch[0];
+
+      // ✅ VALIDATE and NORMALIZE role
+      const normalizedRole = validateAndNormalizeRole(extractedRole);
+      if (normalizedRole) {
+        currentClient.role = normalizedRole; // Use normalized canonical role
+      } else {
+        validationWarnings.push(`⚠️ Invalid role: "${extractedRole}" - not a recognized dental role`);
+      }
     }
 
     // Extract budget/pay
@@ -261,8 +340,8 @@ function parseClients(text: string): any[] {
       currentClient.client_name = contactMatch[0];
     }
 
-    // Collect extra info as notes
-    const isDataLine = idMatch || postcodeMatch || roleMatch || budgetMatch ||
+    // Collect extra info as notes (skip ID-related lines since we ignore IDs)
+    const isDataLine = userProvidedId || postcodeMatch || roleMatch || budgetMatch ||
                        daysMatch || emailMatch || phoneMatch || systemMatch;
 
     if (!isDataLine && line.length > 3 && !line.match(/^(CL|Surgery|Postcode|Role|Budget|Status|Days|System)/i)) {
@@ -272,6 +351,10 @@ function parseClients(text: string): any[] {
 
   // Save last client
   if (Object.keys(currentClient).length > 0) {
+    // Add validation warnings to notes
+    if (validationWarnings.length > 0) {
+      currentNotes.unshift(...validationWarnings);
+    }
     if (currentNotes.length > 0) {
       currentClient.notes = currentNotes.join('\n');
     }
