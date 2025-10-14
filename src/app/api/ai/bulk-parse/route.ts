@@ -543,12 +543,19 @@ export async function POST(request: Request) {
     const numericIds = existingItems
       .map(item => {
         const id = item.id || '';
-        if (id.startsWith(prefix)) {
-          const numPart = id.substring(prefix.length);
+
+        // ⚡ CRITICAL FIX: IDs in database have user prefix like "U3_CAN1"
+        // Extract the actual ID part after the underscore
+        const idParts = id.split('_');
+        const actualId = idParts.length > 1 ? idParts[idParts.length - 1] : id;
+
+        if (actualId.startsWith(prefix)) {
+          const numPart = actualId.substring(prefix.length);
           const num = parseInt(numPart, 10);
-          console.log(`  📍 ${id} → ${num}`);
+          console.log(`  📍 ${id} → actualId: ${actualId} → ${num}`);
           return num;
         }
+        console.log(`  ⚠️ ${id} doesn't match prefix ${prefix}`);
         return 0;
       })
       .filter(num => !isNaN(num) && num > 0);
