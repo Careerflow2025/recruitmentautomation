@@ -64,25 +64,26 @@ interface ParseResult {
 
 /**
  * Get the highest ID from existing items
+ * Returns format: CAN1, CAN2, CAN10, CAN100 (NO zero-padding)
  */
 function getHighestId(items: any[], prefix: string): string {
-  if (!items || items.length === 0) return prefix + '001';
+  if (!items || items.length === 0) return prefix + '1'; // ✅ Start from 1, not 001
 
   const numbers = items
     .map(item => {
       const id = item.id || '';
       if (id.startsWith(prefix)) {
         const numPart = id.substring(prefix.length);
-        return parseInt(numPart, 10);
+        return parseInt(numPart, 10); // This handles both CAN1 and CAN100
       }
       return 0;
     })
     .filter(num => !isNaN(num) && num > 0);
 
-  if (numbers.length === 0) return prefix + '001';
+  if (numbers.length === 0) return prefix + '1'; // ✅ Start from 1, not 001
 
   const maxNum = Math.max(...numbers);
-  return prefix + String(maxNum + 1).padStart(3, '0');
+  return prefix + String(maxNum + 1); // ✅ NO padding - CAN1, CAN2, CAN10, CAN100
 }
 
 /**
@@ -201,13 +202,18 @@ function parseCandidates(text: string): any[] {
     }
 
     // Collect any extra info as notes (skip ID-related lines since we ignore IDs)
-    // Be MORE PERMISSIVE - capture anything that's not a recognized data field
-    const isDataLine = userProvidedId || phoneMatch || postcodeMatch || roleMatch ||
-                       expMatch || salaryMatch || daysMatch || emailMatch;
+    // Be VERY PERMISSIVE - capture anything that looks like human-readable text
+    const isDataLine = phoneMatch || postcodeMatch || roleMatch ||
+                       expMatch || salaryMatch || daysMatch || emailMatch ||
+                       (nameMatch && i === 0); // Don't capture names as notes
 
-    // Capture notes more aggressively - only skip obvious header lines
-    if (!isDataLine && line.length > 2 && !line.match(/^(CAN\d|Number|Postcode|Role|Experience|Pay|Status|Candidate)$/i)) {
+    // Capture notes AGGRESSIVELY - anything that's not a recognized data field
+    // Examples: "Looking permanent, ASAP", "Not driving", "Available immediately"
+    const isHeaderOrJunk = line.match(/^(CAN\d+|Number|Postcode|Role|Experience|Pay|Status|Candidate|Phone|Email|Days|Salary)$/i);
+
+    if (!isDataLine && !isHeaderOrJunk && line.length > 3 && !userProvidedId) {
       currentNotes.push(line);
+      console.log(`  📝 Captured note: "${line}"`);
     }
   }
 
@@ -343,13 +349,18 @@ function parseClients(text: string): any[] {
     }
 
     // Collect extra info as notes (skip ID-related lines since we ignore IDs)
-    // Be MORE PERMISSIVE - capture anything that's not a recognized data field
-    const isDataLine = userProvidedId || postcodeMatch || roleMatch || budgetMatch ||
-                       daysMatch || emailMatch || phoneMatch || systemMatch;
+    // Be VERY PERMISSIVE - capture anything that looks like human-readable text
+    const isDataLine = postcodeMatch || roleMatch || budgetMatch ||
+                       daysMatch || emailMatch || phoneMatch || systemMatch ||
+                       contactMatch || hasSurgeryName;
 
-    // Capture notes more aggressively - only skip obvious header lines
-    if (!isDataLine && line.length > 2 && !line.match(/^(CL\d|Surgery|Postcode|Role|Budget|Status|Days|System|Client)$/i)) {
+    // Capture notes AGGRESSIVELY - anything that's not a recognized data field
+    // Examples: "Urgent hire needed", "Prefer experienced", "ASAP start"
+    const isHeaderOrJunk = line.match(/^(CL\d+|Surgery|Postcode|Role|Budget|Status|Days|System|Client|Phone|Email)$/i);
+
+    if (!isDataLine && !isHeaderOrJunk && line.length > 3 && !userProvidedId) {
       currentNotes.push(line);
+      console.log(`  📝 Captured note: "${line}"`);
     }
   }
 
@@ -430,15 +441,16 @@ export async function POST(request: Request) {
 
     // 🔢 PRE-ASSIGN ALL IDs SEQUENTIALLY (before any database inserts)
     // This ensures: If last ID is CAN22, next ones are CAN23, CAN24, CAN25, etc.
+    // Format: CAN1, CAN2, CAN10, CAN100 (NO zero-padding)
     const prefix = type === 'candidates' ? 'CAN' : 'CL';
     const startingId = getHighestId(existingItems, prefix);
     let currentIdNum = parseInt(startingId.substring(prefix.length), 10);
 
-    console.log(`🔢 Starting ID assignment from: ${startingId}`);
+    console.log(`🔢 Starting ID assignment from: ${startingId} (continuing from highest existing ID)`);
 
     for (const item of parsed) {
-      item.id = `${prefix}${String(currentIdNum).padStart(3, '0')}`;
-      console.log(`  ✅ Assigned ID: ${item.id}`);
+      item.id = `${prefix}${String(currentIdNum)}`; // ✅ NO padding - CAN1, CAN2, CAN10, CAN100
+      console.log(`  ✅ Assigned ID: ${item.id} | Name: ${item.first_name || item.surgery || 'Unknown'} | Notes: ${item.notes ? 'YES' : 'NO'}`);
       currentIdNum++;
     }
 
@@ -464,12 +476,20 @@ export async function POST(request: Request) {
       for (const item of chunk) {
         try {
           // ID already pre-assigned above
-
-          const { error } = await userClient.from(tableName).insert({
+          const dataToInsert = {
             ...item,
             user_id: user.id,
             added_at: new Date().toISOString(),
-          });
+          };
+
+          // 📝 Log notes to verify they're being inserted
+          if (dataToInsert.notes) {
+            console.log(`  📝 ${item.id} has notes: "${dataToInsert.notes.substring(0, 50)}..."`);
+          } else {
+            console.log(`  ⚠️ ${item.id} has NO notes`);
+          }
+
+          const { error } = await userClient.from(tableName).insert(dataToInsert);
 
           if (error) {
             totalFailed++;
@@ -477,6 +497,7 @@ export async function POST(request: Request) {
             console.error(`❌ Error adding ${item.id}:`, error.message);
           } else {
             totalAdded++;
+            console.log(`  ✅ Successfully inserted ${item.id} (notes: ${dataToInsert.notes ? 'YES' : 'NO'})`);
           }
         } catch (itemError: any) {
           totalFailed++;
