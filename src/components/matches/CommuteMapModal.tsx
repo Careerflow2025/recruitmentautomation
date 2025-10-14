@@ -203,14 +203,17 @@ export function CommuteMapModal({
               });
             }
 
-            // Extract route information
+            // USE STORED COMMUTE TIME FROM DATABASE (matches the table!)
+            // Don't use the newly calculated route time because traffic changes constantly
+            // The table shows the stored time, so the map must show the SAME stored time
             const route = result.routes[0];
             if (route && route.legs[0]) {
               const info = {
                 distance: route.legs[0].distance?.text || 'N/A',
-                duration: route.legs[0].duration?.text || 'N/A',
+                duration: commuteDisplay, // USE STORED TIME FROM DATABASE - matches table exactly!
               };
-              console.log('Route info:', info);
+              console.log('Using STORED commute time from database:', commuteDisplay);
+              console.log('(Ignoring newly calculated route time to match table display)');
               setRouteInfo(info);
 
               // Add custom info window on the route showing duration
@@ -245,7 +248,7 @@ export function CommuteMapModal({
                               font-size: 16px;
                               font-weight: bold;
                               color: #1f2937;
-                            ">${info.duration}</div>
+                            ">${commuteDisplay}</div>
                             <div style="
                               font-size: 12px;
                               color: #6b7280;
