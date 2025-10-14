@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { rolesMatch } from '@/lib/utils/roleNormalizer';
 
 /**
  * WORKING VERSION: Smart batching WITHOUT Bottleneck
@@ -218,8 +219,9 @@ async function processMatches(
                 continue;
               }
 
-              // Role match
-              const roleMatch = normalizeRole(candidate.role) === normalizeRole(client.role);
+              // 🔄 MULTI-ROLE MATCHING: Check if ANY candidate role matches client role
+              // Supports formats like "Dental Nurse/ANP/PN", "Dental Nurse / ANP / PN", etc.
+              const roleMatch = rolesMatch(candidate.role, client.role);
 
               // Insert
               await supabase.from('matches').insert({
@@ -293,19 +295,9 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function normalizeRole(role: string): string {
-  const cleaned = role.toLowerCase().trim();
-  const synonyms: Record<string, string> = {
-    dt: 'Dentist',
-    dentist: 'Dentist',
-    dn: 'Dental Nurse',
-    'dental nurse': 'Dental Nurse',
-    nurse: 'Dental Nurse',
-    dh: 'Dental Hygienist',
-    hygienist: 'Dental Hygienist',
-  };
-  return synonyms[cleaned] || role;
-}
+// 🔄 MULTI-ROLE MATCHING: Role normalization and matching now handled by imported rolesMatch() function
+// Supports multi-role candidates (e.g., "Dental Nurse/ANP/PN") matching against single client roles
+// The rolesMatch() function handles splitting, normalization, and comparison automatically
 
 function formatTime(minutes: number): string {
   const band = getBand(minutes);

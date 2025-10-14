@@ -28,12 +28,9 @@ export function generateMatches(): Match[] {
       if (!commuteResult) {
         continue;
       }
-      
-      // Normalize roles
-      const candidateRole = normalizeRole(candidate.role);
-      const clientRole = normalizeRole(client.role);
-      
-      // Check if roles match
+
+      // 🔄 MULTI-ROLE MATCHING: Check if ANY candidate role matches client role
+      // Supports formats like "Dental Nurse/ANP/PN", "Dental Nurse / ANP / PN", etc.
       const roleMatch = rolesMatch(candidate.role, client.role);
       
       matches.push({

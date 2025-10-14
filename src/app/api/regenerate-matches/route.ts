@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { calculateAllCommutesSmartBatch } from '@/lib/google-maps-batch';
+import { rolesMatch } from '@/lib/utils/roleNormalizer';
 
 /**
  * API Route: Regenerate Matches with Real Google Maps Data
@@ -223,10 +224,9 @@ async function processMatchesInBackground(
 
         if (!candidate || !client) continue;
 
-        // Normalize roles for matching
-        const candidateRole = normalizeRole(candidate.role);
-        const clientRole = normalizeRole(client.role);
-        const roleMatch = candidateRole === clientRole;
+        // 🔄 MULTI-ROLE MATCHING: Check if ANY candidate role matches client role
+        // Supports formats like "Dental Nurse/ANP/PN", "Dental Nurse / ANP / PN", etc.
+        const roleMatch = rolesMatch(candidate.role, client.role);
 
         // Insert match with current user's ID
         const { error: insertError } = await supabase.from('matches').insert({
@@ -314,52 +314,6 @@ async function processMatchesInBackground(
   }
 }
 
-/**
- * Normalize role names to match specification
- * Based on matching_json_final.json role synonyms
- */
-function normalizeRole(role: string): string {
-  const cleaned = role.toLowerCase().trim();
-
-  // Role synonym mapping
-  const synonyms: Record<string, string> = {
-    // Dentist
-    dt: 'Dentist',
-    dentist: 'Dentist',
-    gdp: 'Dentist',
-    'general dental practitioner': 'Dentist',
-
-    // Dental Nurse
-    dn: 'Dental Nurse',
-    'dental nurse': 'Dental Nurse',
-    nurse: 'Dental Nurse',
-
-    // Dental Hygienist
-    dh: 'Dental Hygienist',
-    hygienist: 'Dental Hygienist',
-    'dental hygienist': 'Dental Hygienist',
-
-    // Dental Therapist
-    th: 'Dental Therapist',
-    therapist: 'Dental Therapist',
-    'dental therapist': 'Dental Therapist',
-
-    // Receptionist
-    rcp: 'Dental Receptionist',
-    receptionist: 'Dental Receptionist',
-    'dental receptionist': 'Dental Receptionist',
-
-    // Practice Manager
-    pm: 'Practice Manager',
-    mgr: 'Practice Manager',
-    manager: 'Practice Manager',
-    'practice manager': 'Practice Manager',
-
-    // Trainee Dental Nurse
-    'trainee dn': 'Trainee Dental Nurse',
-    tdn: 'Trainee Dental Nurse',
-    'trainee dental nurse': 'Trainee Dental Nurse',
-  };
-
-  return synonyms[cleaned] || role;
-}
+// 🔄 MULTI-ROLE MATCHING: Role normalization and matching now handled by imported rolesMatch() function
+// Supports multi-role candidates (e.g., "Dental Nurse/ANP/PN") matching against single client roles
+// The rolesMatch() function handles splitting, normalization, and comparison automatically
