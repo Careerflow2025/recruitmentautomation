@@ -130,6 +130,7 @@ export default function CandidatesDataGrid() {
     insertRow,
     updateRow,
     deleteRow,
+    refresh,
   } = useSupabaseGridSync<Candidate>({
     tableName: 'candidates',
     filters: supabaseFilters,
@@ -1213,6 +1214,11 @@ export default function CandidatesDataGrid() {
           type: 'success',
           text: `✅ ${result.message}${result.validationErrors && result.validationErrors.length > 0 ? ` (${result.validationErrors.length} errors)` : ''}`
         });
+
+        // ✅ AUTO-REFRESH: Reload grid data to show newly uploaded candidates
+        console.log('✅ Upload successful - refreshing grid data...');
+        await refresh();
+
         // Automatically clear message after 5 seconds
         setTimeout(() => setUploadMessage(null), 5000);
       } else {
@@ -1250,7 +1256,7 @@ export default function CandidatesDataGrid() {
         fileInputRef.current.value = '';
       }
     }
-  }, []);
+  }, [refresh]);
 
   // Handle file input change
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

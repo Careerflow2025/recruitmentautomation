@@ -120,6 +120,7 @@ export default function ClientsDataGrid() {
     insertRow,
     updateRow,
     deleteRow,
+    refresh,
   } = useSupabaseGridSync<ClientWithUser>({
     tableName: 'clients',
     filters: supabaseFilters,
@@ -1136,6 +1137,11 @@ export default function ClientsDataGrid() {
           type: 'success',
           text: `✅ ${result.message}${result.validationErrors && result.validationErrors.length > 0 ? ` (${result.validationErrors.length} errors)` : ''}`
         });
+
+        // ✅ AUTO-REFRESH: Reload grid data to show newly uploaded clients
+        console.log('✅ Upload successful - refreshing grid data...');
+        await refresh();
+
         setTimeout(() => setUploadMessage(null), 5000);
       } else {
         setUploadMessage({
@@ -1155,7 +1161,7 @@ export default function ClientsDataGrid() {
         fileInputRef.current.value = '';
       }
     }
-  }, []);
+  }, [refresh]);
 
   // Handle file input change
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
