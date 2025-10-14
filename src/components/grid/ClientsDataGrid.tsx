@@ -15,6 +15,7 @@ import { debounce } from 'lodash';
 import CustomColumnManager from './CustomColumnManager';
 import EditableColumnHeader from './EditableColumnHeader';
 import MultiNotesPopup from './MultiNotesPopup';
+import BulkParseModal from './BulkParseModal';
 
 // Extended Client type with user_id (exists in DB but not in type definition)
 type ClientWithUser = Client & { user_id?: string };
@@ -34,6 +35,7 @@ export default function ClientsDataGrid() {
   const [latestNotes, setLatestNotes] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showBulkParseModal, setShowBulkParseModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // AI Validation state: tracks validation status for role and postcode fields
@@ -1237,6 +1239,13 @@ export default function ClientsDataGrid() {
             onChange={handleFileChange}
             style={{ display: 'none' }}
           />
+          <button
+            onClick={() => setShowBulkParseModal(true)}
+            className="grid-toolbar-button"
+            title="AI-powered bulk parsing - paste any messy data!"
+          >
+            🤖 AI Bulk Parse
+          </button>
           <CustomColumnManager
             tableName="clients"
             onColumnAdded={loadCustomColumns}
@@ -1291,6 +1300,18 @@ export default function ClientsDataGrid() {
           onClose={() => {
             setNotesPopupClientId(null);
             // Reload latest notes after closing popup (in case user added/edited notes)
+            loadLatestNotes();
+          }}
+        />
+      )}
+
+      {/* Bulk Parse Modal */}
+      {showBulkParseModal && (
+        <BulkParseModal
+          type="clients"
+          onClose={() => setShowBulkParseModal(false)}
+          onSuccess={() => {
+            // Grid will auto-refresh via real-time subscription
             loadLatestNotes();
           }}
         />
