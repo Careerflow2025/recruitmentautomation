@@ -201,10 +201,12 @@ function parseCandidates(text: string): any[] {
     }
 
     // Collect any extra info as notes (skip ID-related lines since we ignore IDs)
+    // Be MORE PERMISSIVE - capture anything that's not a recognized data field
     const isDataLine = userProvidedId || phoneMatch || postcodeMatch || roleMatch ||
                        expMatch || salaryMatch || daysMatch || emailMatch;
 
-    if (!isDataLine && line.length > 3 && !line.match(/^(CAN|Number|Postcode|Role|Experience|Pay|Status)/i)) {
+    // Capture notes more aggressively - only skip obvious header lines
+    if (!isDataLine && line.length > 2 && !line.match(/^(CAN\d|Number|Postcode|Role|Experience|Pay|Status|Candidate)$/i)) {
       currentNotes.push(line);
     }
   }
@@ -341,10 +343,12 @@ function parseClients(text: string): any[] {
     }
 
     // Collect extra info as notes (skip ID-related lines since we ignore IDs)
+    // Be MORE PERMISSIVE - capture anything that's not a recognized data field
     const isDataLine = userProvidedId || postcodeMatch || roleMatch || budgetMatch ||
                        daysMatch || emailMatch || phoneMatch || systemMatch;
 
-    if (!isDataLine && line.length > 3 && !line.match(/^(CL|Surgery|Postcode|Role|Budget|Status|Days|System)/i)) {
+    // Capture notes more aggressively - only skip obvious header lines
+    if (!isDataLine && line.length > 2 && !line.match(/^(CL\d|Surgery|Postcode|Role|Budget|Status|Days|System|Client)$/i)) {
       currentNotes.push(line);
     }
   }
@@ -414,7 +418,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // Get existing data to generate IDs
+    // Get existing data to find highest ID
     const tableName = type === 'candidates' ? 'candidates' : 'clients';
     const { data: existing } = await userClient
       .from(tableName)
@@ -423,6 +427,22 @@ export async function POST(request: Request) {
       .order('id', { ascending: false });
 
     const existingItems = existing || [];
+
+    // 🔢 PRE-ASSIGN ALL IDs SEQUENTIALLY (before any database inserts)
+    // This ensures: If last ID is CAN22, next ones are CAN23, CAN24, CAN25, etc.
+    const prefix = type === 'candidates' ? 'CAN' : 'CL';
+    const startingId = getHighestId(existingItems, prefix);
+    let currentIdNum = parseInt(startingId.substring(prefix.length), 10);
+
+    console.log(`🔢 Starting ID assignment from: ${startingId}`);
+
+    for (const item of parsed) {
+      item.id = `${prefix}${String(currentIdNum).padStart(3, '0')}`;
+      console.log(`  ✅ Assigned ID: ${item.id}`);
+      currentIdNum++;
+    }
+
+    console.log(`🔢 All IDs pre-assigned: ${parsed[0]?.id} to ${parsed[parsed.length - 1]?.id}`);
 
     // Process in chunks of 50 to avoid overwhelming the database
     const CHUNK_SIZE = 50;
@@ -443,13 +463,7 @@ export async function POST(request: Request) {
 
       for (const item of chunk) {
         try {
-          // Auto-generate ID if not provided
-          if (!item.id) {
-            const prefix = type === 'candidates' ? 'CAN' : 'CL';
-            const highestId = getHighestId([...existingItems, ...parsed.slice(0, start + totalAdded)], prefix);
-            const numPart = parseInt(highestId.substring(prefix.length), 10);
-            item.id = `${prefix}${String(numPart + 1).padStart(3, '0')}`;
-          }
+          // ID already pre-assigned above
 
           const { error } = await userClient.from(tableName).insert({
             ...item,
