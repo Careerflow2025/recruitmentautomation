@@ -456,40 +456,79 @@ export async function POST(request: Request) {
       });
     }
 
-    // Get existing data to find highest ID
-    // ✅ CRITICAL: Fetch ALL existing IDs to find the true maximum
+    // 🔢 CRITICAL: Fetch ALL existing IDs to find the TRUE maximum
+    // This is the ONLY way to avoid duplicate IDs
     const tableName = type === 'candidates' ? 'candidates' : 'clients';
+    const prefix = type === 'candidates' ? 'CAN' : 'CL';
+
+    console.log(`🔍 STEP 1: Fetching ALL existing ${type} IDs from database...`);
+
     const { data: existing, error: fetchError } = await userClient
       .from(tableName)
       .select('id')
       .eq('user_id', user.id);
 
+    // ⚠️ CRITICAL ERROR CHECKING
     if (fetchError) {
-      console.error(`❌ Error fetching existing IDs:`, fetchError);
+      console.error(`❌ DATABASE ERROR fetching existing IDs:`, fetchError);
+      return NextResponse.json({
+        success: false,
+        message: `Database error: ${fetchError.message}`,
+        added: 0,
+        failed: 0,
+        errors: [fetchError.message]
+      }, { status: 500 });
     }
 
     const existingItems = existing || [];
-    console.log(`📊 Found ${existingItems.length} existing ${type} in database`);
+    console.log(`📊 STEP 2: Found ${existingItems.length} existing ${type} in database`);
+
     if (existingItems.length > 0) {
-      console.log(`📋 Sample existing IDs: ${existingItems.slice(0, 5).map(item => item.id).join(', ')}`);
+      console.log(`📋 ALL existing IDs: ${existingItems.map(item => item.id).join(', ')}`);
+    } else {
+      console.log(`⚠️ WARNING: No existing ${type} found - starting from ${prefix}1`);
     }
 
-    // 🔢 PRE-ASSIGN ALL IDs SEQUENTIALLY (before any database inserts)
-    // This ensures: If last ID is CAN22, next ones are CAN23, CAN24, CAN25, etc.
-    // Format: CAN1, CAN2, CAN10, CAN100 (NO zero-padding)
-    const prefix = type === 'candidates' ? 'CAN' : 'CL';
-    const startingId = getHighestId(existingItems, prefix);
-    let currentIdNum = parseInt(startingId.substring(prefix.length), 10);
+    // 🔢 STEP 3: Extract numeric parts and find MAXIMUM
+    console.log(`🔍 STEP 3: Extracting numeric parts to find maximum...`);
 
-    console.log(`🔢 Highest existing ID: ${prefix}${currentIdNum - 1} → Starting new IDs from: ${startingId}`);
+    const numericIds = existingItems
+      .map(item => {
+        const id = item.id || '';
+        if (id.startsWith(prefix)) {
+          const numPart = id.substring(prefix.length);
+          const num = parseInt(numPart, 10);
+          console.log(`  📍 ${id} → ${num}`);
+          return num;
+        }
+        return 0;
+      })
+      .filter(num => !isNaN(num) && num > 0);
 
-    for (const item of parsed) {
-      item.id = `${prefix}${String(currentIdNum)}`; // ✅ NO padding - CAN1, CAN2, CAN10, CAN100
-      console.log(`  ✅ Assigned ID: ${item.id} | Name: ${item.first_name || item.surgery || 'Unknown'} | Notes: ${item.notes ? 'YES' : 'NO'}`);
-      currentIdNum++;
+    console.log(`📊 Valid numbers extracted: [${numericIds.join(', ')}]`);
+
+    // 🔢 STEP 4: Find maximum and calculate next ID
+    let nextIdNumber = 1; // Default if no existing items
+
+    if (numericIds.length > 0) {
+      const maxId = Math.max(...numericIds);
+      nextIdNumber = maxId + 1;
+      console.log(`✅ STEP 4: Maximum ID found: ${prefix}${maxId} → Next ID: ${prefix}${nextIdNumber}`);
+    } else {
+      console.log(`✅ STEP 4: No existing IDs → Starting from: ${prefix}1`);
     }
 
-    console.log(`🔢 All IDs pre-assigned: ${parsed[0]?.id} to ${parsed[parsed.length - 1]?.id}`);
+    // 🔢 STEP 5: Pre-assign ALL IDs sequentially
+    console.log(`🔢 STEP 5: Pre-assigning IDs to ${parsed.length} new ${type}...`);
+
+    for (let i = 0; i < parsed.length; i++) {
+      const item = parsed[i];
+      item.id = `${prefix}${nextIdNumber}`; // ✅ NO padding - CAN1, CAN2, CAN10, CAN100
+      console.log(`  ✅ Item ${i + 1}: Assigned ID: ${item.id} | Name: ${item.first_name || item.surgery || 'Unknown'} | Notes: ${item.notes ? 'YES' : 'NO'}`);
+      nextIdNumber++; // Increment for next item
+    }
+
+    console.log(`✅ STEP 5 COMPLETE: IDs assigned from ${parsed[0]?.id} to ${parsed[parsed.length - 1]?.id}`);
 
     // Process in chunks of 50 to avoid overwhelming the database
     const CHUNK_SIZE = 50;
