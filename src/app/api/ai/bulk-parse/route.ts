@@ -462,11 +462,16 @@ export async function POST(request: Request) {
     const prefix = type === 'candidates' ? 'CAN' : 'CL';
 
     console.log(`🔍 STEP 1: Fetching ALL existing ${type} IDs from database...`);
+    console.log(`   📋 Table: "${tableName}"`);
+    console.log(`   👤 User ID: "${user.id}"`);
+    console.log(`   🔍 Query: SELECT id FROM ${tableName} WHERE user_id = '${user.id}'`);
 
     const { data: existing, error: fetchError } = await userClient
       .from(tableName)
       .select('id')
       .eq('user_id', user.id);
+
+    console.log(`   📊 Raw database response:`, JSON.stringify({ data: existing, error: fetchError }, null, 2));
 
     // ⚠️ CRITICAL ERROR CHECKING
     if (fetchError) {
@@ -556,12 +561,15 @@ export async function POST(request: Request) {
             added_at: new Date().toISOString(),
           };
 
-          // 📝 Log notes to verify they're being inserted
-          if (dataToInsert.notes) {
-            console.log(`  📝 ${item.id} has notes: "${dataToInsert.notes.substring(0, 50)}..."`);
-          } else {
-            console.log(`  ⚠️ ${item.id} has NO notes`);
-          }
+          // 📝 Log EXACTLY what's being inserted (including notes)
+          console.log(`  📦 ${item.id} - Inserting data:`, JSON.stringify({
+            id: dataToInsert.id,
+            first_name: dataToInsert.first_name,
+            last_name: dataToInsert.last_name,
+            notes: dataToInsert.notes || '(NO NOTES)',
+            has_notes: !!dataToInsert.notes,
+            notes_length: dataToInsert.notes?.length || 0
+          }, null, 2));
 
           const { error } = await userClient.from(tableName).insert(dataToInsert);
 
