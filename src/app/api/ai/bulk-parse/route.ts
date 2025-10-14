@@ -623,6 +623,7 @@ export async function POST(request: Request) {
             notes_length: dataToInsert.notes?.length || 0
           }, null, 2));
 
+          // ✅ STEP 1: Insert the candidate/client record
           const { error } = await userClient.from(tableName).insert(dataToInsert);
 
           if (error) {
@@ -632,6 +633,28 @@ export async function POST(request: Request) {
           } else {
             totalAdded++;
             console.log(`  ✅ Successfully inserted ${item.id} (notes: ${dataToInsert.notes ? 'YES' : 'NO'})`);
+
+            // ✅ STEP 2: If notes exist, ALSO save to separate notes table (for UI display)
+            // The grid displays notes from candidate_notes/client_notes table, NOT from candidates.notes column
+            if (dataToInsert.notes && dataToInsert.notes.trim() !== '') {
+              const notesTableName = type === 'candidates' ? 'candidate_notes' : 'client_notes';
+              const foreignKeyColumn = type === 'candidates' ? 'candidate_id' : 'client_id';
+
+              console.log(`  💾 Also saving notes to ${notesTableName} table for UI display...`);
+
+              const { error: notesError } = await userClient.from(notesTableName).insert({
+                [foreignKeyColumn]: dataToInsert.id,
+                user_id: user.id,
+                content: dataToInsert.notes.trim(),
+              });
+
+              if (notesError) {
+                console.error(`  ⚠️ Failed to save notes to ${notesTableName}:`, notesError.message);
+                // Don't fail the entire item if notes table insert fails - main record is already saved
+              } else {
+                console.log(`  ✅ Notes saved to ${notesTableName} - will appear in UI!`);
+              }
+            }
           }
         } catch (itemError: any) {
           totalFailed++;
