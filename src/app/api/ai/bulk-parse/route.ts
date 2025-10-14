@@ -65,25 +65,41 @@ interface ParseResult {
 /**
  * Get the highest ID from existing items
  * Returns format: CAN1, CAN2, CAN10, CAN100 (NO zero-padding)
+ * ✅ CRITICAL: Must find the TRUE maximum number, not rely on database ordering
  */
 function getHighestId(items: any[], prefix: string): string {
-  if (!items || items.length === 0) return prefix + '1'; // ✅ Start from 1, not 001
+  console.log(`🔍 getHighestId called with ${items.length} items, prefix: ${prefix}`);
 
+  if (!items || items.length === 0) {
+    console.log(`  ℹ️ No existing items, starting from ${prefix}1`);
+    return prefix + '1'; // ✅ Start from 1, not 001
+  }
+
+  // Extract all numeric parts and find the maximum
   const numbers = items
     .map(item => {
       const id = item.id || '';
       if (id.startsWith(prefix)) {
         const numPart = id.substring(prefix.length);
-        return parseInt(numPart, 10); // This handles both CAN1 and CAN100
+        const parsed = parseInt(numPart, 10); // This handles both CAN1 and CAN100
+        console.log(`  📍 Parsed ID: ${id} → number: ${parsed}`);
+        return parsed;
       }
       return 0;
     })
     .filter(num => !isNaN(num) && num > 0);
 
-  if (numbers.length === 0) return prefix + '1'; // ✅ Start from 1, not 001
+  console.log(`  📊 Valid numbers found: [${numbers.join(', ')}]`);
+
+  if (numbers.length === 0) {
+    console.log(`  ℹ️ No valid numbers, starting from ${prefix}1`);
+    return prefix + '1'; // ✅ Start from 1, not 001
+  }
 
   const maxNum = Math.max(...numbers);
-  return prefix + String(maxNum + 1); // ✅ NO padding - CAN1, CAN2, CAN10, CAN100
+  const nextId = prefix + String(maxNum + 1);
+  console.log(`  ✅ Maximum found: ${maxNum} → Next ID will be: ${nextId}`);
+  return nextId; // ✅ NO padding - CAN1, CAN2, CAN10, CAN100
 }
 
 /**
@@ -100,6 +116,7 @@ function parseCandidates(text: string): any[] {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    console.log(`  📄 Line ${i + 1}: "${line}"`);
 
     // Check if this is a new candidate (phone or name indicators)
     // ❌ DO NOT use ID as delimiter - IDs are auto-generated
@@ -115,6 +132,9 @@ function parseCandidates(text: string): any[] {
         }
         if (currentNotes.length > 0) {
           currentCandidate.notes = currentNotes.join('\n');
+          console.log(`  💾 Saving candidate with notes: "${currentCandidate.notes}"`);
+        } else {
+          console.log(`  ⚠️ Saving candidate with NO notes`);
         }
         candidates.push(currentCandidate);
         currentCandidate = {};
@@ -214,7 +234,9 @@ function parseCandidates(text: string): any[] {
 
     if (!isDataLine && !isHeaderOrJunk && line.length > 3 && !userProvidedId) {
       currentNotes.push(line);
-      console.log(`  📝 Captured note: "${line}"`);
+      console.log(`  ✅ Captured as NOTE: "${line}"`);
+    } else {
+      console.log(`  ℹ️ Skipped (isDataLine: ${!!isDataLine}, isHeader: ${!!isHeaderOrJunk}, userId: ${!!userProvidedId})`);
     }
   }
 
@@ -226,10 +248,14 @@ function parseCandidates(text: string): any[] {
     }
     if (currentNotes.length > 0) {
       currentCandidate.notes = currentNotes.join('\n');
+      console.log(`  💾 Saving LAST candidate with notes: "${currentCandidate.notes}"`);
+    } else {
+      console.log(`  ⚠️ Saving LAST candidate with NO notes`);
     }
     candidates.push(currentCandidate);
   }
 
+  console.log(`✅ Parsed ${candidates.length} candidates total`);
   return candidates.filter(c => c.phone || c.postcode || c.role); // Must have at least one key field
 }
 
@@ -431,14 +457,22 @@ export async function POST(request: Request) {
     }
 
     // Get existing data to find highest ID
+    // ✅ CRITICAL: Fetch ALL existing IDs to find the true maximum
     const tableName = type === 'candidates' ? 'candidates' : 'clients';
-    const { data: existing } = await userClient
+    const { data: existing, error: fetchError } = await userClient
       .from(tableName)
       .select('id')
-      .eq('user_id', user.id)
-      .order('id', { ascending: false });
+      .eq('user_id', user.id);
+
+    if (fetchError) {
+      console.error(`❌ Error fetching existing IDs:`, fetchError);
+    }
 
     const existingItems = existing || [];
+    console.log(`📊 Found ${existingItems.length} existing ${type} in database`);
+    if (existingItems.length > 0) {
+      console.log(`📋 Sample existing IDs: ${existingItems.slice(0, 5).map(item => item.id).join(', ')}`);
+    }
 
     // 🔢 PRE-ASSIGN ALL IDs SEQUENTIALLY (before any database inserts)
     // This ensures: If last ID is CAN22, next ones are CAN23, CAN24, CAN25, etc.
@@ -447,7 +481,7 @@ export async function POST(request: Request) {
     const startingId = getHighestId(existingItems, prefix);
     let currentIdNum = parseInt(startingId.substring(prefix.length), 10);
 
-    console.log(`🔢 Starting ID assignment from: ${startingId} (continuing from highest existing ID)`);
+    console.log(`🔢 Highest existing ID: ${prefix}${currentIdNum - 1} → Starting new IDs from: ${startingId}`);
 
     for (const item of parsed) {
       item.id = `${prefix}${String(currentIdNum)}`; // ✅ NO padding - CAN1, CAN2, CAN10, CAN100
