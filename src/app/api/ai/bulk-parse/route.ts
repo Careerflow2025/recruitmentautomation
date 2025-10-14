@@ -169,18 +169,15 @@ function parseCandidates(text: string): any[] {
       }
     }
 
-    // Extract and VALIDATE + NORMALIZE role
-    const roleMatch = line.match(/\b(Dental\s+Nurse|Trainee\s+Dental\s+Nurse|Dentist|Receptionist|Hygienist|Dental\s+Hygienist|Therapist|Dental\s+Therapist|Treatment\s+Coordinator|Practice\s+Manager|TCO|TC|PM|DN|TDN|DH|TH|RCP|RCPN)\b/i);
+    // 🔄 Extract and VALIDATE + NORMALIZE role (supports multi-role like "Dental Nurse/ANP/PN")
+    // Extended pattern to capture multi-role entries with "/" separator
+    const roleMatch = line.match(/\b((?:Dental\s+Nurse|Trainee\s+Dental\s+Nurse|Dentist|Receptionist|Hygienist|Dental\s+Hygienist|Therapist|Dental\s+Therapist|Treatment\s+Coordinator|Practice\s+Manager|TCO|TC|PM|DN|TDN|DH|TH|RCP|RCPN|ANP|PN|Ortho\s+Nurse)(?:\s*\/\s*(?:Dental\s+Nurse|Trainee\s+Dental\s+Nurse|Dentist|Receptionist|Hygienist|Dental\s+Hygienist|Therapist|Dental\s+Therapist|Treatment\s+Coordinator|Practice\s+Manager|TCO|TC|PM|DN|TDN|DH|TH|RCP|RCPN|ANP|PN|Ortho\s+Nurse))*)\b/i);
     if (roleMatch && !currentCandidate.role) {
       const extractedRole = roleMatch[0];
 
-      // ✅ VALIDATE and NORMALIZE role
-      const normalizedRole = validateAndNormalizeRole(extractedRole);
-      if (normalizedRole) {
-        currentCandidate.role = normalizedRole; // Use normalized canonical role
-      } else {
-        validationWarnings.push(`⚠️ Invalid role: "${extractedRole}" - not a recognized dental role`);
-      }
+      // Store the multi-role entry as-is (don't normalize here - matching logic will split and normalize)
+      currentCandidate.role = extractedRole.trim();
+      console.log(`  ✅ Captured role (multi-role supported): "${currentCandidate.role}"`);
     }
 
     // Extract experience (years)
@@ -356,18 +353,15 @@ function parseClients(text: string): any[] {
       }
     }
 
-    // Extract and VALIDATE + NORMALIZE role needed
-    const roleMatch = line.match(/\b(Dental\s+Nurse|Trainee\s+Dental\s+Nurse|Dentist|Receptionist|Hygienist|Dental\s+Hygienist|Therapist|Dental\s+Therapist|Treatment\s+Coordinator|Practice\s+Manager|TCO|TC|PM|DN|TDN|DH|TH|RCP|RCPN)\b/i);
+    // 🔄 Extract and VALIDATE + NORMALIZE role (supports multi-role like "Dental Nurse/ANP/PN")
+    // Extended pattern to capture multi-role entries with "/" separator
+    const roleMatch = line.match(/\b((?:Dental\s+Nurse|Trainee\s+Dental\s+Nurse|Dentist|Receptionist|Hygienist|Dental\s+Hygienist|Therapist|Dental\s+Therapist|Treatment\s+Coordinator|Practice\s+Manager|TCO|TC|PM|DN|TDN|DH|TH|RCP|RCPN|ANP|PN|Ortho\s+Nurse)(?:\s*\/\s*(?:Dental\s+Nurse|Trainee\s+Dental\s+Nurse|Dentist|Receptionist|Hygienist|Dental\s+Hygienist|Therapist|Dental\s+Therapist|Treatment\s+Coordinator|Practice\s+Manager|TCO|TC|PM|DN|TDN|DH|TH|RCP|RCPN|ANP|PN|Ortho\s+Nurse))*)\b/i);
     if (roleMatch && !currentClient.role) {
       const extractedRole = roleMatch[0];
 
-      // ✅ VALIDATE and NORMALIZE role
-      const normalizedRole = validateAndNormalizeRole(extractedRole);
-      if (normalizedRole) {
-        currentClient.role = normalizedRole; // Use normalized canonical role
-      } else {
-        validationWarnings.push(`⚠️ Invalid role: "${extractedRole}" - not a recognized dental role`);
-      }
+      // Store the multi-role entry as-is (don't normalize here - matching logic will split and normalize)
+      currentClient.role = extractedRole.trim();
+      console.log(`  ✅ Captured role (multi-role supported): "${currentClient.role}"`);
     }
 
     // Extract budget/pay
