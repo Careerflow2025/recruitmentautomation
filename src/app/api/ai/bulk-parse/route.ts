@@ -190,8 +190,9 @@ function parseCandidates(text: string): any[] {
     }
 
     // Extract name (if at start of line before role/phone)
+    let nameMatch = null; // Declare outside if block for later use
     if (i === 0 || !currentCandidate.first_name) {
-      const nameMatch = line.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
+      nameMatch = line.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
       if (nameMatch && !phoneMatch && !userProvidedId) {
         const fullName = nameMatch[1].trim().split(' ');
         currentCandidate.first_name = fullName[0];

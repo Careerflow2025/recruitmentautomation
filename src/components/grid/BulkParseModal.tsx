@@ -230,12 +230,14 @@ Or copy-paste emails, tables, or any messy data!`;
                 padding: '12px',
                 border: '2px solid #e5e7eb',
                 borderRadius: '8px',
-                fontSize: '13px',
+                fontSize: '14px',
                 fontFamily: 'monospace',
                 resize: 'vertical',
                 minHeight: '250px',
                 outline: 'none',
                 transition: 'border-color 0.2s',
+                color: '#111827', // ✅ Dark text color so user can see what they type
+                backgroundColor: '#ffffff',
               }}
               onFocus={(e) => {
                 e.currentTarget.style.borderColor = '#3b82f6';
@@ -256,28 +258,28 @@ Or copy-paste emails, tables, or any messy data!`;
                 borderLeft: `4px solid ${result.success ? '#10b981' : '#ef4444'}`,
               }}
             >
-              <div style={{ fontWeight: 'bold', marginBottom: '8px', color: result.success ? '#065f46' : '#991b1b' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px', color: result.success ? '#047857' : '#b91c1c' }}>
                 {result.success ? '✅ Success!' : '❌ Error'}
               </div>
-              <div style={{ fontSize: '14px', color: result.success ? '#065f46' : '#991b1b', marginBottom: '8px' }}>
+              <div style={{ fontSize: '14px', color: result.success ? '#047857' : '#b91c1c', marginBottom: '8px', fontWeight: '600' }}>
                 {result.message}
               </div>
               {result.added > 0 && (
-                <div style={{ fontSize: '13px', color: result.success ? '#047857' : '#7f1d1d' }}>
+                <div style={{ fontSize: '14px', color: result.success ? '#047857' : '#7f1d1d', fontWeight: '600' }}>
                   <strong>{result.added}</strong> {entityLabel.toLowerCase()} added successfully
                 </div>
               )}
               {result.failed > 0 && (
-                <div style={{ fontSize: '13px', color: '#7f1d1d', marginTop: '4px' }}>
+                <div style={{ fontSize: '14px', color: '#991b1b', marginTop: '4px', fontWeight: '600' }}>
                   <strong>{result.failed}</strong> failed
                 </div>
               )}
               {result.errors && result.errors.length > 0 && (
-                <details style={{ marginTop: '12px', fontSize: '12px' }}>
-                  <summary style={{ cursor: 'pointer', fontWeight: '600' }}>View errors</summary>
-                  <ul style={{ marginTop: '8px', paddingLeft: '20px' }}>
+                <details style={{ marginTop: '12px', fontSize: '13px', color: '#991b1b' }}>
+                  <summary style={{ cursor: 'pointer', fontWeight: '600', color: '#991b1b' }}>View errors</summary>
+                  <ul style={{ marginTop: '8px', paddingLeft: '20px', color: '#7f1d1d' }}>
                     {result.errors.map((error, i) => (
-                      <li key={i}>{error}</li>
+                      <li key={i} style={{ marginBottom: '4px', fontWeight: '500' }}>{error}</li>
                     ))}
                   </ul>
                 </details>
