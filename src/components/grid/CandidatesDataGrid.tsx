@@ -1192,22 +1192,26 @@ export default function CandidatesDataGrid() {
         body: formData,
       });
 
-      // ✅ FIX: Check if response is HTML before parsing JSON
-      const contentType = response.headers.get('content-type');
+      // ✅ FIX: Try to parse as JSON regardless of content-type if response is successful
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        // If JSON parsing fails, check if it's HTML
+        const contentType = response.headers.get('content-type');
 
-      if (!contentType || !contentType.includes('application/json')) {
-        // Server returned HTML error page instead of JSON
-        const htmlText = await response.text();
-        console.error('Server returned non-JSON response:', htmlText.substring(0, 500));
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error('Server returned non-JSON response');
 
-        setUploadMessage({
-          type: 'error',
-          text: `❌ Upload failed: Server error (received HTML instead of JSON). Please check if file format is correct (CSV or Excel only).`
-        });
-        return;
+          setUploadMessage({
+            type: 'error',
+            text: `❌ Upload failed: Server error (received invalid response). Please try again or contact support.`
+          });
+          return;
+        }
+
+        throw jsonError;
       }
-
-      const result = await response.json();
 
       if (result.success) {
         setUploadMessage({
