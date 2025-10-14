@@ -278,22 +278,18 @@ function parseCandidates(text: string): any[] {
 
   console.log(`✅ Parsed ${candidates.length} candidates total`);
 
-  // ⚠️ CRITICAL: Role is REQUIRED by database
-  // Filter out candidates without role AND postcode (minimum required fields)
-  const validCandidates = candidates.filter(c => {
+  // ✅ FLEXIBLE PARSING: Accept all candidates, even with missing fields
+  // The grid UI will show red flags for missing/invalid postcode or role
+  candidates.forEach(c => {
     if (!c.role) {
-      console.log(`⚠️ SKIPPING candidate (no role): ${c.first_name || 'Unknown'} - ${c.postcode || 'No postcode'}`);
-      return false;
+      console.log(`⚠️ Candidate missing role (will be flagged in grid): ${c.first_name || 'Unknown'} - ${c.postcode || 'No postcode'}`);
     }
     if (!c.postcode) {
-      console.log(`⚠️ SKIPPING candidate (no postcode): ${c.first_name || 'Unknown'} - ${c.role}`);
-      return false;
+      console.log(`⚠️ Candidate missing postcode (will be flagged in grid): ${c.first_name || 'Unknown'} - ${c.role || 'No role'}`);
     }
-    return true;
   });
 
-  console.log(`✅ ${validCandidates.length} valid candidates (with role + postcode), ${candidates.length - validCandidates.length} skipped`);
-  return validCandidates;
+  return candidates; // Return ALL candidates, let the UI handle flagging
 }
 
 /**
@@ -440,7 +436,18 @@ function parseClients(text: string): any[] {
     clients.push(currentClient);
   }
 
-  return clients.filter(c => c.surgery || c.postcode || c.role); // Must have at least one key field
+  // ✅ FLEXIBLE PARSING: Accept all clients, even with missing fields
+  // The grid UI will show red flags for missing/invalid postcode or role
+  clients.forEach(c => {
+    if (!c.role) {
+      console.log(`⚠️ Client missing role (will be flagged in grid): ${c.surgery || 'Unknown'} - ${c.postcode || 'No postcode'}`);
+    }
+    if (!c.postcode) {
+      console.log(`⚠️ Client missing postcode (will be flagged in grid): ${c.surgery || 'Unknown'} - ${c.role || 'No role'}`);
+    }
+  });
+
+  return clients; // Return ALL clients, let the UI handle flagging
 }
 
 export async function POST(request: Request) {
@@ -486,14 +493,14 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: false,
         message: type === 'candidates'
-          ? `Could not extract any valid candidates. Candidates MUST have both a ROLE (e.g., "Dental Nurse", "Dentist") and a POSTCODE. Please add role information to your data.`
-          : `Could not extract any valid clients. Clients MUST have both a ROLE and a POSTCODE.`,
+          ? `Could not extract any ${type} from the text. Please make sure your data contains identifiable information like names, phone numbers, or postcodes.`
+          : `Could not extract any ${type} from the text. Please make sure your data contains identifiable information like surgery names, phone numbers, or postcodes.`,
         added: 0,
         failed: 0,
         errors: [
           type === 'candidates'
-            ? 'No valid candidates found - missing ROLE or POSTCODE. Each candidate needs a dental role like "Dental Nurse", "Dentist", "Receptionist", etc.'
-            : 'No valid clients found - missing ROLE or POSTCODE'
+            ? 'No candidates detected in the text. Try including names, phone numbers, postcodes, or roles to help the AI parse your data.'
+            : 'No clients detected in the text. Try including surgery names, phone numbers, postcodes, or roles to help the AI parse your data.'
         ],
         items: []
       });

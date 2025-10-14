@@ -125,16 +125,24 @@ export async function POST(request: NextRequest) {
 
         console.log(`✨ Parsed result:`, mapped);
 
-        // Validate that we at least have a postcode (required for matching)
+        // ✅ FLEXIBLE UPLOAD: Accept everything, flag issues as warnings
+        // The grid UI will show red flags for missing/invalid postcode or role
+        const warnings: string[] = [];
+
         if (!mapped.postcode || mapped.postcode.trim() === '') {
-          errors.push(`Row ${rowNum}: Missing Postcode (required for matching). AI could not detect a valid UK postcode in this row.`);
-          continue;
+          warnings.push('missing Postcode (will be flagged in grid)');
         }
 
-        // Use generic role if not provided
-        const role = mapped.role && mapped.role.trim() !== ''
-          ? mapped.role.trim()
-          : 'General';
+        if (!mapped.role || mapped.role.trim() === '') {
+          warnings.push('missing Role (will be flagged in grid)');
+        }
+
+        // Log warnings but don't block upload
+        if (warnings.length > 0) {
+          console.log(`⚠️ Row ${rowNum}: ${warnings.join(', ')}`);
+        }
+
+        const role = mapped.role?.trim() || ''; // Allow empty role
 
         // Create client object from AI/regex-mapped data
         // AI parser returns client-specific fields, regex parser uses generic fields
@@ -144,8 +152,8 @@ export async function POST(request: NextRequest) {
           client_name: (mapped as any).client_name || mapped.last_name || null,
           client_phone: (mapped as any).client_phone || mapped.phone || null,
           client_email: (mapped as any).client_email || mapped.email || null,
-          role: role,
-          postcode: mapped.postcode.toUpperCase(),
+          role: role || '', // Allow empty - will be flagged in UI
+          postcode: mapped.postcode ? mapped.postcode.toUpperCase() : '', // Allow empty - will be flagged in UI
           budget: (mapped as any).budget || mapped.salary || null,
           requirement: (mapped as any).requirement || mapped.days || null,
           system: (mapped as any).system || mapped.experience || null,
@@ -191,16 +199,25 @@ export async function POST(request: NextRequest) {
       console.log(`✅ Successfully inserted ${clients.length} clients`);
     }
 
-    return NextResponse.json({
-      success: true,
-      message: `Successfully uploaded ${clients.length} clients`,
+    // Always return success with stats (flexible upload - no blocking validation)
+    const response: any = {
+      success: clients.length > 0,
+      message: clients.length > 0
+        ? `Successfully uploaded ${clients.length} client(s). ${clients.length < jsonData.length ? 'Check grid for any rows with missing Postcode/Role - they will be highlighted in red.' : ''}`
+        : 'No clients found in file. Please check that your file contains data rows.',
       stats: {
         total_rows: jsonData.length,
         successful: clients.length,
         errors: errors.length
-      },
-      validationErrors: errors.length > 0 ? errors : undefined
-    });
+      }
+    };
+
+    // Only show errors for actual parsing failures (not validation warnings)
+    if (errors.length > 0) {
+      response.validationErrors = errors;
+    }
+
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('Client upload error:', error);

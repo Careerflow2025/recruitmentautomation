@@ -615,7 +615,7 @@ export default function CandidatesDataGrid() {
         width: savedWidths['role'] || 150,
         editable: true,
         cellClass: (row) => {
-          // ⚠️ REQUIRED FIELD: Red background if empty OR invalid (needed for matching)
+          // ⚠️ FLAGGED FIELD: Red background if empty OR invalid (recommended for matching)
           const isEmpty = !row.role || row.role.trim() === '';
           const validation = fieldValidation[row.id]?.role;
           const isInvalid = validation && !validation.valid;
@@ -629,8 +629,8 @@ export default function CandidatesDataGrid() {
           const isEmpty = !row.role || row.role.trim() === '';
           const validation = fieldValidation[row.id]?.role;
 
-          let displayText = row.role || '⚠️ REQUIRED';
-          let titleText = 'Role is required for matching!';
+          let displayText = row.role || '⚠️ MISSING';
+          let titleText = 'Role recommended for matching. Missing roles will be flagged.';
 
           if (!isEmpty && validation) {
             if (validation.valid) {
@@ -653,7 +653,7 @@ export default function CandidatesDataGrid() {
             autoFocus
             className="rdg-text-editor"
             value={props.row.role}
-            placeholder="Enter role (REQUIRED)"
+            placeholder="Enter role (recommended)"
             onChange={(e) => {
               props.onRowChange({ ...props.row, role: e.target.value });
               debouncedUpdate(props.row.id, 'role', e.target.value);
@@ -684,7 +684,7 @@ export default function CandidatesDataGrid() {
         width: savedWidths['postcode'] || 120,
         editable: true,
         cellClass: (row) => {
-          // ⚠️ REQUIRED FIELD: Red background if empty OR invalid (needed for matching)
+          // ⚠️ FLAGGED FIELD: Red background if empty OR invalid (recommended for matching)
           const isEmpty = !row.postcode || row.postcode.trim() === '';
           const validation = fieldValidation[row.id]?.postcode;
           const isInvalid = validation && !validation.valid;
@@ -698,8 +698,8 @@ export default function CandidatesDataGrid() {
           const isEmpty = !row.postcode || row.postcode.trim() === '';
           const validation = fieldValidation[row.id]?.postcode;
 
-          let displayText = row.postcode || '⚠️ REQUIRED';
-          let titleText = 'Postcode is required for matching!';
+          let displayText = row.postcode || '⚠️ MISSING';
+          let titleText = 'Postcode recommended for matching. Missing postcodes will be flagged.';
 
           if (!isEmpty && validation) {
             if (validation.valid) {
@@ -722,7 +722,7 @@ export default function CandidatesDataGrid() {
             autoFocus
             className="rdg-text-editor font-mono"
             value={props.row.postcode}
-            placeholder="Enter postcode (REQUIRED)"
+            placeholder="Enter postcode (recommended)"
             onChange={(e) => {
               const upper = e.target.value.toUpperCase();
               props.onRowChange({ ...props.row, postcode: upper });
@@ -1191,6 +1191,21 @@ export default function CandidatesDataGrid() {
         body: formData,
       });
 
+      // ✅ FIX: Check if response is HTML before parsing JSON
+      const contentType = response.headers.get('content-type');
+
+      if (!contentType || !contentType.includes('application/json')) {
+        // Server returned HTML error page instead of JSON
+        const htmlText = await response.text();
+        console.error('Server returned non-JSON response:', htmlText.substring(0, 500));
+
+        setUploadMessage({
+          type: 'error',
+          text: `❌ Upload failed: Server error (received HTML instead of JSON). Please check if file format is correct (CSV or Excel only).`
+        });
+        return;
+      }
+
       const result = await response.json();
 
       if (result.success) {
@@ -1201,9 +1216,25 @@ export default function CandidatesDataGrid() {
         // Automatically clear message after 5 seconds
         setTimeout(() => setUploadMessage(null), 5000);
       } else {
+        // Show detailed error with validation errors if available
+        let errorText = `❌ ${result.error || 'Upload failed'}`;
+
+        if (result.validationErrors && result.validationErrors.length > 0) {
+          errorText += `\n\nErrors found in ${result.validationErrors.length} row(s):\n`;
+          errorText += result.validationErrors.slice(0, 5).join('\n');
+          if (result.validationErrors.length > 5) {
+            errorText += `\n... and ${result.validationErrors.length - 5} more`;
+          }
+        }
+
+        // Add helpful tip if provided
+        if (result.helpText) {
+          errorText += `\n\n${result.helpText}`;
+        }
+
         setUploadMessage({
           type: 'error',
-          text: `❌ ${result.error || 'Upload failed'}`
+          text: errorText
         });
       }
     } catch (error) {
@@ -1343,7 +1374,10 @@ export default function CandidatesDataGrid() {
             borderLeft: `4px solid ${uploadMessage.type === 'success' ? '#10b981' : '#ef4444'}`,
             color: uploadMessage.type === 'success' ? '#065f46' : '#991b1b',
             fontWeight: '600',
-            fontSize: '14px'
+            fontSize: '14px',
+            whiteSpace: 'pre-wrap', // ✅ Preserve line breaks
+            maxHeight: '300px',
+            overflowY: 'auto'
           }}
         >
           {uploadMessage.text}
