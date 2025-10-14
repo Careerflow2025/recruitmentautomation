@@ -71,12 +71,22 @@ DATABASE SCHEMA FOR CANDIDATES:
 - last_name: Last name (string)
 - email: Email address (string)
 - phone: UK phone number (format: 07700900001 or +44...)
-- role: Job role - normalize to: "Dentist", "Dental Nurse", "Dental Receptionist", "Dental Hygienist", "Treatment Coordinator", "Practice Manager", "Trainee Dental Nurse"
+- role: Job role (KEEP AS-IS from Excel - do NOT normalize, preserve abbreviations)
 - postcode: UK postcode (REQUIRED - format: SW1A 1AA, CR0 8JD, etc.)
 - salary: Salary (format: £15-£17, £80k, etc.)
 - days: Availability/working days (format: Mon-Fri, 2-3 days, etc.)
 - experience: Experience details (string)
 - notes: Any additional notes (string)
+
+🏥 UK HEALTHCARE ROLE ABBREVIATIONS (Accept ALL of these):
+DENTAL: DN, TDN, DH, DT, RCP, RCPN, PM, TCO, TC, Ortho Nurse
+NURSING: PN, ANP, NP, FNP, HCA, RGN, RN, EN, SN, CN, SCN, CNS, RMN, RSCN
+ALLIED: ODP, OT, Physio, SLT, Paramedic, EMT
+TECHNICAL: Phlebotomist, ECG Tech, MRI Tech, CT Tech, Lab Tech, MLT, Radiographer, Sonographer
+PHARMACY: Pharmacist, Pharmacy Tech
+ADMIN: Ward Clerk, Medical Secretary, Healthcare Admin
+SUPPORT: Care Assistant, Support Worker, Therapy Assistant
+FULL NAMES: Practice Nurse, Advanced Nurse Practitioner, Healthcare Assistant, Dental Nurse, Trainee Dental Nurse, Dental Hygienist, Dental Therapist, Dental Receptionist, Practice Manager, Treatment Coordinator, Occupational Therapist, Physiotherapist, Speech and Language Therapist, etc.
 
 EXTRACTION RULES:
 1. IDENTIFY what each value represents (ignore column names if they're wrong)
@@ -84,10 +94,12 @@ EXTRACTION RULES:
 3. Detect phone numbers (starts with 07, +44, or 02)
 4. Detect email addresses (contains @)
 5. Detect salary (contains £ or numbers with "k" or ranges like 15-17)
-6. Detect role keywords (dentist, nurse, receptionist, hygienist, etc.)
+6. ROLE: Keep EXACT abbreviation from Excel (PN, ANP, HCA, DN, etc.) - DO NOT expand or normalize
 7. Detect days/availability patterns (Mon-Fri, days/week, etc.)
 8. Names are usually short single words or two words
 9. Put unrecognized data in notes field
+
+⚠️ CRITICAL: For role field, preserve EXACT TEXT from Excel including abbreviations
 
 OUTPUT FORMAT:
 Return ONLY valid JSON object. No markdown, no explanations, no extra text.
@@ -140,12 +152,22 @@ DATABASE SCHEMA FOR CLIENTS:
 - client_name: Contact person name (string)
 - client_phone: Contact phone number (UK format)
 - client_email: Contact email address (string)
-- role: Role needed - normalize to: "Dentist", "Dental Nurse", "Dental Receptionist", "Dental Hygienist", "Treatment Coordinator", "Practice Manager", "Trainee Dental Nurse"
+- role: Role needed (KEEP AS-IS from Excel - do NOT normalize, preserve abbreviations)
 - postcode: UK postcode (REQUIRED - format: SW1A 1AA, CR0 8JD, etc.)
 - budget: Pay rate/budget (format: £500/day, £15-17, etc.)
 - requirement: Requirements (string)
 - system: Software system used (e.g., R4, SOE, Dentally, etc.)
 - notes: Any additional notes (string)
+
+🏥 UK HEALTHCARE ROLE ABBREVIATIONS (Accept ALL of these):
+DENTAL: DN, TDN, DH, DT, RCP, RCPN, PM, TCO, TC, Ortho Nurse
+NURSING: PN, ANP, NP, FNP, HCA, RGN, RN, EN, SN, CN, SCN, CNS, RMN, RSCN
+ALLIED: ODP, OT, Physio, SLT, Paramedic, EMT
+TECHNICAL: Phlebotomist, ECG Tech, MRI Tech, CT Tech, Lab Tech, MLT, Radiographer, Sonographer
+PHARMACY: Pharmacist, Pharmacy Tech
+ADMIN: Ward Clerk, Medical Secretary, Healthcare Admin
+SUPPORT: Care Assistant, Support Worker, Therapy Assistant
+FULL NAMES: Practice Nurse, Advanced Nurse Practitioner, Healthcare Assistant, Dental Nurse, Trainee Dental Nurse, Dental Hygienist, Dental Therapist, Dental Receptionist, Practice Manager, Treatment Coordinator, Occupational Therapist, Physiotherapist, Speech and Language Therapist, etc.
 
 EXTRACTION RULES:
 1. IDENTIFY what each value represents (ignore column names if they're wrong)
@@ -154,9 +176,11 @@ EXTRACTION RULES:
 4. Detect contact phone (starts with 07, +44, or 02)
 5. Detect contact email (contains @)
 6. Detect budget/pay (contains £ or "day" or ranges)
-7. Detect role keywords (dentist, nurse, receptionist, etc.)
+7. ROLE: Keep EXACT abbreviation from Excel (PN, ANP, HCA, DN, etc.) - DO NOT expand or normalize
 8. Detect system names (R4, SOE, Dentally, etc.)
 9. Put unrecognized data in notes field
+
+⚠️ CRITICAL: For role field, preserve EXACT TEXT from Excel including abbreviations
 
 OUTPUT FORMAT:
 Return ONLY valid JSON object. No markdown, no explanations, no extra text.
