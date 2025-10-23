@@ -373,7 +373,6 @@ async function processMatches(
         // Delay between batches (1 second)
         await sleep(1000);
       }
-    }
 
     // Final update
     await supabase.from('match_generation_status').upsert({
