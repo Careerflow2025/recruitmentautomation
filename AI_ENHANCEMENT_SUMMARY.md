@@ -1,6 +1,6 @@
 # AI Enhancement Summary
 
-> **⚠️ IMPORTANT:** Use the file `create_system_prompts_table.sql` - it creates the table AND inserts the prompt!
+> **⚠️ IMPORTANT:** Use the file `update_ai_prompt_only.sql` - it's a simple UPDATE that works with your existing database!
 
 ## ✅ What Was Completed
 
@@ -99,38 +99,44 @@ Created comprehensive system prompt that teaches the AI about:
 
 ## 📋 What You Need to Do Next
 
-### Step 1: Create System Prompts Table and Insert AI Prompt
+### Step 1: Update AI System Prompt
 
-Run the SQL migration file:
+Run the simple UPDATE SQL file:
 
-**Option A: Using Supabase SQL Editor** (RECOMMENDED)
+**Using Supabase SQL Editor** (RECOMMENDED)
 1. Go to your Supabase project: https://app.supabase.com
 2. Click **SQL Editor** in the left sidebar
-3. Open the file: `create_system_prompts_table.sql`
+3. Open the file: `update_ai_prompt_only.sql`
 4. Copy ALL the SQL content
 5. Paste into SQL Editor
 6. Click **Run** (or press Ctrl+Enter)
-7. You should see success messages: ✅ System prompts table created successfully!
+7. You should see: ✅ Successfully updated AI system prompt!
 
-**Option B: Using psql Command Line**
+**Alternative: Using psql Command Line**
 ```bash
-psql -h [your-supabase-host] -U postgres -d postgres -f create_system_prompts_table.sql
+psql -h [your-supabase-host] -U postgres -d postgres -f update_ai_prompt_only.sql
 ```
 
-**Option C: Using Supabase CLI**
-```bash
-supabase db push
-```
+This simple UPDATE works with your EXISTING database structure - no table creation needed!
 
 ### Step 2: Verify the Update
 
 After running the SQL:
 1. Go to your Supabase project
 2. Navigate to **Table Editor**
-3. Open the `system_prompts` table
+3. Open the `ai_system_prompts` table
 4. Find the row with `prompt_name = 'dental_matcher_default'`
-5. Verify the `prompt_text` contains the new comprehensive prompt
+5. Verify the `prompt_content` contains the new comprehensive prompt
 6. Check `updated_at` timestamp is recent
+
+**Or verify with SQL:**
+```sql
+SELECT prompt_name, description, updated_at, LENGTH(prompt_content) as prompt_length
+FROM ai_system_prompts
+WHERE prompt_name = 'dental_matcher_default';
+```
+
+The `prompt_length` should be around 11,000+ characters (the new enhanced prompt).
 
 ### Step 3: Test the AI
 
@@ -250,8 +256,19 @@ All actions maintain multi-tenant isolation:
 ## 📝 Files Changed
 
 1. **src/app/api/ai/ask/route.ts** - Added 5 new action handlers (952 lines added)
-2. **create_system_prompts_table.sql** - Complete migration script (creates table + inserts prompt)
+2. **update_ai_prompt_only.sql** - Simple UPDATE for existing ai_system_prompts table
 3. **AI_ENHANCEMENT_SUMMARY.md** - This documentation file
+
+## 🗄️ Existing Database Structure
+
+Your database already has:
+- ✅ **Table**: `ai_system_prompts` (with versioning and audit logging)
+- ✅ **Function**: `get_active_system_prompt(p_prompt_name TEXT DEFAULT 'dental_matcher_default')`
+- ✅ **Update Function**: `update_system_prompt()` with automatic versioning
+- ✅ **Audit Table**: `ai_system_prompt_audit` tracking all changes
+- ✅ **RLS Policies**: Proper row-level security enabled
+
+The new SQL file simply UPDATES the `prompt_content` column - no schema changes needed!
 
 ## 🚀 Next Steps (Optional Enhancements)
 
