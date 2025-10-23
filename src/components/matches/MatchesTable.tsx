@@ -367,6 +367,14 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
     const firstName = candidate.first_name?.trim();
     const lastName = candidate.last_name?.trim();
 
+    console.log('🔍 Candidate data:', {
+      id: candidate.id,
+      first_name: candidate.first_name,
+      last_name: candidate.last_name,
+      hasFirstName: !!firstName,
+      hasLastName: !!lastName
+    });
+
     if (firstName && lastName) {
       return `${firstName} ${lastName}`;
     } else if (firstName) {
@@ -375,6 +383,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
       return lastName;
     } else {
       // Fallback to ID if no name available
+      console.warn(`⚠️ No name found for candidate ${candidate.id}, using ID`);
       return getDisplayId(candidate.id);
     }
   };
@@ -683,7 +692,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
               {/* Match Info Section - COMMUTE: Fixed width to fit content, non-resizable */}
               <th
                 className="px-1 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
-                style={{ borderColor: '#334155', width: '110px' }}
+                style={{ borderColor: '#334155', width: '85px' }}
               >
                 <span>Commute</span>
               </th>
