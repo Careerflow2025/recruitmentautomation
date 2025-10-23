@@ -5,11 +5,21 @@ import { rolesMatch } from '@/lib/utils/roleNormalizer';
 
 /**
  * WORKING VERSION: Smart batching WITHOUT Bottleneck
- * This version works immediately and shows progress
+ * 🆕 INCREMENTAL MATCHING: Only processes new candidate-client pairs
+ *
+ * Query Parameters:
+ * - force=true : Full regeneration (deletes all existing matches)
+ * - force=false (default) : Incremental (skips existing matches)
  */
 export async function POST(request: NextRequest) {
   try {
+    // Check for force parameter
+    const url = new URL(request.url);
+    const forceParam = url.searchParams.get('force');
+    const forceFullRegeneration = forceParam === 'true';
+
     console.log('🚀 [WORKING] Starting match regeneration...');
+    console.log(`🔧 Mode: ${forceFullRegeneration ? 'FULL REGENERATION' : 'INCREMENTAL (skip existing)'}`);
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -83,14 +93,17 @@ export async function POST(request: NextRequest) {
     });
 
     // Start background processing
-    processMatches(user.id, candidates, clients, apiKey).catch(error => {
+    processMatches(user.id, candidates, clients, apiKey, forceFullRegeneration).catch(error => {
       console.error('❌ Background error:', error);
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Match generation started',
+      message: forceFullRegeneration
+        ? 'Full match regeneration started (all existing matches will be replaced)'
+        : 'Incremental match generation started (only new pairs will be processed)',
       processing: true,
+      mode: forceFullRegeneration ? 'full' : 'incremental',
       stats: {
         candidates: candidates.length,
         clients: clients.length,
@@ -111,9 +124,11 @@ async function processMatches(
   userId: string,
   candidates: any[],
   clients: any[],
-  apiKey: string
+  apiKey: string,
+  forceFullRegeneration: boolean = false
 ) {
   console.log(`🔄 [BACKGROUND] Starting for user ${userId}`);
+  console.log(`🔧 Mode: ${forceFullRegeneration ? 'FULL REGENERATION' : 'INCREMENTAL (skip existing)'}`);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -127,45 +142,132 @@ async function processMatches(
   );
 
   try {
-    // Clear existing
-    console.log('🗑️  Clearing...');
-    await supabase.from('matches').delete().eq('user_id', userId);
-    console.log('✅ Cleared!');
+    // 🆕 INCREMENTAL MATCHING: Fetch existing matches to skip them
+    let existingPairs = new Set<string>();
+    let bannedPairs = new Set<string>();
+
+    if (forceFullRegeneration) {
+      // Full regeneration mode: delete all NON-BANNED matches (keep banned ones)
+      console.log('🗑️  FULL REGENERATION: Clearing all non-banned matches...');
+      await supabase.from('matches')
+        .delete()
+        .eq('user_id', userId)
+        .or('banned.is.null,banned.eq.false');
+      console.log('✅ Cleared all non-banned matches!');
+    } else {
+      // Incremental mode: fetch existing matches and skip them
+      console.log('🔍 INCREMENTAL: Fetching existing matches to skip...');
+      const { data: existingMatches, error: fetchError } = await supabase
+        .from('matches')
+        .select('candidate_id, client_id')
+        .eq('user_id', userId)
+        .or('banned.is.null,banned.eq.false');
+
+      if (fetchError) {
+        console.error('❌ Error fetching existing matches:', fetchError);
+        throw fetchError;
+      }
+
+      // Build Set of existing pairs for fast lookup
+      existingPairs = new Set(
+        (existingMatches || []).map(m => `${m.candidate_id}:${m.client_id}`)
+      );
+
+      console.log(`✅ Found ${existingPairs.size} existing matches - will skip these pairs`);
+    }
+
+    // 🚫 ALWAYS fetch banned pairs (never regenerate banned matches)
+    console.log('🚫 Fetching banned pairs to skip...');
+    const { data: bannedMatches, error: bannedError } = await supabase
+      .from('matches')
+      .select('candidate_id, client_id')
+      .eq('user_id', userId)
+      .eq('banned', true);
+
+    if (bannedError) {
+      console.error('❌ Error fetching banned matches:', bannedError);
+      throw bannedError;
+    }
+
+    // Build Set of banned pairs for fast lookup
+    bannedPairs = new Set(
+      (bannedMatches || []).map(m => `${m.candidate_id}:${m.client_id}`)
+    );
+
+    console.log(`🚫 Found ${bannedPairs.size} banned pairs - will never create these`);
 
     const totalPairs = candidates.length * clients.length;
     let processed = 0;
     let successCount = 0;
     let errorCount = 0;
     let excludedCount = 0;
+    let skippedCount = existingPairs.size; // 🆕 Pre-existing matches count
 
-    // Create batches: 10×10 = 100 elements per batch
+    // 🆕 OPTIMIZATION: Filter out existing AND banned pairs BEFORE creating batches
+    // This saves Google Maps API calls!
+    const pairsToProcess: Array<{candidate: any, client: any}> = [];
+
+    for (const candidate of candidates) {
+      for (const client of clients) {
+        const pairKey = `${candidate.id}:${client.id}`;
+
+        // Skip if banned (ALWAYS skip banned pairs)
+        if (bannedPairs.has(pairKey)) {
+          continue;
+        }
+
+        // Skip if already exists (only in incremental mode)
+        if (!forceFullRegeneration && existingPairs.has(pairKey)) {
+          continue;
+        }
+
+        pairsToProcess.push({ candidate, client });
+      }
+    }
+
+    console.log(`🎯 Pairs to process: ${pairsToProcess.length}`);
+    console.log(`   ⏭️  Skipping ${skippedCount} existing pairs`);
+    console.log(`   🚫 Skipping ${bannedPairs.size} banned pairs`);
+
+    if (pairsToProcess.length === 0) {
+      console.log('✅ All pairs already processed or banned - nothing to process!');
+      await supabase.from('match_generation_status').upsert({
+        user_id: userId,
+        status: 'completed',
+        matches_found: 0,
+        excluded_over_80min: 0,
+        errors: 0,
+        skipped_existing: skippedCount,
+        percent_complete: 100,
+        completed_at: new Date().toISOString(),
+        method_used: 'google_maps_working',
+        mode_used: forceFullRegeneration ? 'full' : 'incremental',
+      });
+      return;
+    }
+
+    // Create batches from pairs to process (not all candidates × clients)
     const batchSize = 10;
-    const candidateBatches: any[][] = [];
-    const clientBatches: any[][] = [];
+    const pairBatches: Array<Array<{candidate: any, client: any}>> = [];
 
-    for (let i = 0; i < candidates.length; i += batchSize) {
-      candidateBatches.push(candidates.slice(i, i + batchSize));
+    for (let i = 0; i < pairsToProcess.length; i += batchSize) {
+      pairBatches.push(pairsToProcess.slice(i, i + batchSize));
     }
 
-    for (let i = 0; i < clients.length; i += batchSize) {
-      clientBatches.push(clients.slice(i, i + batchSize));
-    }
-
-    const totalBatches = candidateBatches.length * clientBatches.length;
+    const totalBatches = pairBatches.length;
     let currentBatch = 0;
 
-    console.log(`📦 Created ${totalBatches} batches`);
+    console.log(`📦 Created ${totalBatches} batches from ${pairsToProcess.length} pairs`);
 
     // Process each batch
-    for (const candidateBatch of candidateBatches) {
-      for (const clientBatch of clientBatches) {
+    for (const pairBatch of pairBatches) {
         currentBatch++;
         console.log(`📦 Batch ${currentBatch}/${totalBatches}`);
 
         try {
-          // Call Google Maps API
-          const origins = candidateBatch.map(c => c.postcode).join('|');
-          const destinations = clientBatch.map(c => c.postcode).join('|');
+          // Extract unique origins and destinations from this batch
+          const origins = Array.from(new Set(pairBatch.map(p => p.candidate.postcode))).join('|');
+          const destinations = Array.from(new Set(pairBatch.map(p => p.client.postcode))).join('|');
 
           const params = new URLSearchParams({
             origins,
@@ -177,7 +279,7 @@ async function processMatches(
 
           const url = `https://maps.googleapis.com/maps/api/distancematrix/json?${params}`;
 
-          console.log(`🌐 Calling Google Maps: ${candidateBatch.length} × ${clientBatch.length}...`);
+          console.log(`🌐 Calling Google Maps for ${pairBatch.length} pairs...`);
 
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 15000);
@@ -197,13 +299,20 @@ async function processMatches(
 
           console.log(`✅ API returned ${data.rows?.length || 0} rows`);
 
-          // Parse results
-          for (let i = 0; i < candidateBatch.length; i++) {
-            for (let j = 0; j < clientBatch.length; j++) {
-              const candidate = candidateBatch[i];
-              const client = clientBatch[j];
+          // Build lookup map for API results
+          const originPostcodes = Array.from(new Set(pairBatch.map(p => p.candidate.postcode)));
+          const destPostcodes = Array.from(new Set(pairBatch.map(p => p.client.postcode)));
 
-              const element = data.rows?.[i]?.elements?.[j];
+          // Parse results for each pair in the batch
+          for (const pair of pairBatch) {
+              const candidate = pair.candidate;
+              const client = pair.client;
+
+              // Find indices in the API response
+              const originIndex = originPostcodes.indexOf(candidate.postcode);
+              const destIndex = destPostcodes.indexOf(client.postcode);
+
+              const element = data.rows?.[originIndex]?.elements?.[destIndex];
 
               if (!element || element.status !== 'OK') {
                 errorCount++;
@@ -237,18 +346,18 @@ async function processMatches(
 
               successCount++;
               processed++;
-            }
           }
 
         } catch (batchError: any) {
           console.error(`❌ Batch ${currentBatch} failed:`, batchError.message);
-          // Mark all in batch as errors
-          errorCount += candidateBatch.length * clientBatch.length;
-          processed += candidateBatch.length * clientBatch.length;
+          // Mark all pairs in batch as errors
+          errorCount += pairBatch.length;
+          processed += pairBatch.length;
         }
 
         // Update progress
-        const percentage = Math.round((processed / totalPairs) * 100);
+        const totalToProcess = pairsToProcess.length + skippedCount;
+        const percentage = Math.round(((processed + skippedCount) / totalPairs) * 100);
         console.log(`📊 Progress: ${percentage}% (${processed}/${totalPairs})`);
 
         await supabase.from('match_generation_status').upsert({
@@ -257,6 +366,7 @@ async function processMatches(
           matches_found: successCount,
           excluded_over_80min: excludedCount,
           errors: errorCount,
+          skipped_existing: skippedCount, // 🆕 Track skipped pairs
           percent_complete: percentage,
         });
 
@@ -272,12 +382,23 @@ async function processMatches(
       matches_found: successCount,
       excluded_over_80min: excludedCount,
       errors: errorCount,
+      skipped_existing: skippedCount, // 🆕 Track skipped pairs
       percent_complete: 100,
       completed_at: new Date().toISOString(),
       method_used: 'google_maps_working',
+      mode_used: forceFullRegeneration ? 'full' : 'incremental', // 🆕 Track mode
     });
 
-    console.log(`✅ Complete! Success: ${successCount}, Excluded: ${excludedCount}, Errors: ${errorCount}`);
+    console.log('');
+    console.log(`✅ ${forceFullRegeneration ? 'FULL REGENERATION' : 'INCREMENTAL MATCHING'} COMPLETE!`);
+    console.log(`   📊 Total pairs: ${totalPairs}`);
+    console.log(`   ✅ New matches created: ${successCount}`);
+    console.log(`   ⊗ Excluded (>80 min): ${excludedCount}`);
+    console.log(`   ⏭️  Skipped (already exist): ${skippedCount}`);
+    console.log(`   🚫 Banned pairs (never created): ${bannedPairs.size}`);
+    console.log(`   ❌ Errors: ${errorCount}`);
+    const totalSaved = skippedCount + bannedPairs.size;
+    console.log(`   💾 API calls saved: ${totalSaved > 0 ? Math.round((totalSaved / totalPairs) * 100) : 0}%`);
 
   } catch (error: any) {
     console.error('❌ Processing failed:', error);

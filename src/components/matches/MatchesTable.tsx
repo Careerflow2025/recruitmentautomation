@@ -54,10 +54,70 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
   const [editingModalId, setEditingModalId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Candidate | Client>>({});
 
+  // Column widths state for resizable columns
+  const [columnWidths, setColumnWidths] = useState({
+    candidate: 100,
+    client: 100,
+    can_postcode: 80,
+    cl_postcode: 80,
+    can_salary: 70,
+    cl_budget: 70,
+    can_role: 90,
+    cl_role: 90,
+    can_availability: 70,
+    cl_requirement: 70,
+    status: 140,
+  });
+  const [resizingColumn, setResizingColumn] = useState<string | null>(null);
+  const [resizeStartX, setResizeStartX] = useState(0);
+  const [resizeStartWidth, setResizeStartWidth] = useState(0);
+
   // Keep ref in sync with state
   useEffect(() => {
     openModalsRef.current = openModals;
   }, [openModals]);
+
+  // Column resize handlers
+  const handleColumnResizeStart = (e: React.MouseEvent, columnKey: string) => {
+    e.preventDefault();
+    setResizingColumn(columnKey);
+    setResizeStartX(e.clientX);
+    setResizeStartWidth(columnWidths[columnKey as keyof typeof columnWidths]);
+  };
+
+  useEffect(() => {
+    const handleColumnResizeMove = (e: MouseEvent) => {
+      if (!resizingColumn) return;
+
+      const deltaX = e.clientX - resizeStartX;
+      const newWidth = Math.max(50, resizeStartWidth + deltaX); // Minimum 50px
+
+      setColumnWidths(prev => ({
+        ...prev,
+        [resizingColumn]: newWidth
+      }));
+    };
+
+    const handleColumnResizeEnd = () => {
+      setResizingColumn(null);
+      // Reset cursor
+      document.body.style.cursor = '';
+    };
+
+    if (resizingColumn) {
+      // Set cursor globally during resize
+      document.body.style.cursor = 'col-resize';
+
+      window.addEventListener('mousemove', handleColumnResizeMove);
+      window.addEventListener('mouseup', handleColumnResizeEnd);
+      return () => {
+        window.removeEventListener('mousemove', handleColumnResizeMove);
+        window.removeEventListener('mouseup', handleColumnResizeEnd);
+        // Reset cursor on cleanup
+        document.body.style.cursor = '';
+      };
+    }
+  }, [resizingColumn, resizeStartX, resizeStartWidth]);
 
   // Global mouse move and up handlers for resize
   useEffect(() => {
@@ -302,6 +362,23 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
     return fullId;
   };
 
+  // Helper function to get candidate display name
+  const getCandidateName = (candidate: Candidate) => {
+    const firstName = candidate.first_name?.trim();
+    const lastName = candidate.last_name?.trim();
+
+    if (firstName && lastName) {
+      return `${firstName} ${lastName}`;
+    } else if (firstName) {
+      return firstName;
+    } else if (lastName) {
+      return lastName;
+    } else {
+      // Fallback to ID if no name available
+      return getDisplayId(candidate.id);
+    }
+  };
+
   const getMatchKey = (match: Match) => {
     return `${match.candidate.id}-${match.client.id}`;
   };
@@ -486,6 +563,45 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
     }
   };
 
+  const handleBanMatch = async (match: Match) => {
+    try {
+      const userId = await getCurrentUserId();
+      if (!userId) {
+        alert('You must be logged in to ban matches');
+        return;
+      }
+
+      console.log('🗑️ Banning match:', {
+        candidate_id: match.candidate.id,
+        client_id: match.client.id,
+        user_id: userId
+      });
+
+      // Update match as banned in database
+      const { error } = await supabase
+        .from('matches')
+        .update({ banned: true })
+        .eq('candidate_id', match.candidate.id)
+        .eq('client_id', match.client.id)
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('❌ Failed to ban match:', error);
+        throw error;
+      }
+
+      console.log('✅ Match banned successfully');
+
+      // Notify parent to refresh matches (will filter out banned ones)
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
+    } catch (error: any) {
+      console.error('Failed to ban match:', error);
+      alert(`Failed to ban match: ${error.message}`);
+    }
+  };
+
 
   // Resize handlers for candidate/client modals
   const handleResizeMouseDown = (e: React.MouseEvent, modalId: string, direction: string) => {
@@ -505,7 +621,8 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
   };
 
 
-  const getRowStyle = (match: Match) => {
+  // Get status column style (only for status cell, not entire row)
+  const getStatusCellStyle = (match: Match) => {
     const key = getMatchKey(match);
     const statusData = matchStatuses[key];
 
@@ -515,19 +632,16 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
       return {
         backgroundColor: '#22c55e', // green-500 - EXACT match to icon
         borderLeft: '4px solid #15803d', // darker green border
-        color: '#ffffff' // white text for readability
       };
     } else if (statusData.status === 'in-progress') {
       return {
         backgroundColor: '#f97316', // orange-500 - EXACT match to icon
         borderLeft: '4px solid #c2410c', // darker orange border
-        color: '#ffffff' // white text for readability
       };
     } else if (statusData.status === 'rejected') {
       return {
         backgroundColor: '#ef4444', // red-500 - EXACT match to icon
         borderLeft: '4px solid #b91c1c', // darker red border
-        color: '#ffffff' // white text for readability
       };
     }
 
@@ -563,71 +677,178 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse table-fixed">
+        <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
           <thead>
             <tr style={{ backgroundColor: '#1e293b' }}>
-              {/* Match Info Section - COMMUTE PRIORITY: MUST BE WIDE ENOUGH FOR "🟢🟢🟢 15m" */}
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r w-[160px] lg:w-[190px] xl:w-[165px]" style={{ borderColor: '#334155' }}>
-                <span className="hidden xl:inline">Commute</span>
-                <span className="xl:hidden">Com</span>
-              </th>
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r-4 border-white w-[32px] lg:w-[40px] xl:w-auto">
-                <span className="hidden xl:inline">Role Match</span>
-                <span className="xl:hidden">Rol</span>
+              {/* Match Info Section - COMMUTE: Fixed width, 8% smaller, non-resizable */}
+              <th
+                className="px-1 py-1 lg:py-2 text-left text-[9px] lg:text-[10px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r relative"
+                style={{ borderColor: '#334155', width: '140px' }}
+              >
+                <span>Commute</span>
               </th>
 
-              {/* Alternating Candidate/Client Columns - Ultra compact to save space for commute */}
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[30px] lg:w-[35px] xl:w-auto" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
-                CAN
-              </th>
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[28px] lg:w-[32px] xl:w-auto" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
-                CL
+              {/* Role Match: Fixed width, smaller, non-resizable */}
+              <th
+                className="px-1 py-1 lg:py-2 text-center text-[9px] lg:text-[10px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r-4 border-white relative"
+                style={{ width: '50px' }}
+              >
+                <span>RM</span>
               </th>
 
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r w-[45px] lg:w-[50px] xl:w-auto" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
+              {/* Alternating Candidate/Client Columns - Resizable */}
+              <th
+                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                style={{ backgroundColor: '#334155', borderColor: '#475569', width: `${columnWidths.candidate}px` }}
+              >
+                <span className="hidden xl:inline">Candidate</span>
+                <span className="xl:hidden">CAN</span>
+                {/* Resize Handle */}
+                <div
+                  className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
+                  onMouseDown={(e) => handleColumnResizeStart(e, 'candidate')}
+                  title="Drag to resize"
+                />
+              </th>
+              <th
+                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                style={{ backgroundColor: '#1e293b', borderColor: '#334155', width: `${columnWidths.client}px` }}
+              >
+                <span className="hidden xl:inline">Surgery</span>
+                <span className="xl:hidden">SUR</span>
+                {/* Resize Handle */}
+                <div
+                  className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
+                  onMouseDown={(e) => handleColumnResizeStart(e, 'client')}
+                  title="Drag to resize"
+                />
+              </th>
+
+              <th
+                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r relative"
+                style={{ backgroundColor: '#334155', borderColor: '#475569', width: `${columnWidths.can_postcode}px` }}
+              >
                 <span className="hidden xl:inline">C-Post</span>
                 <span className="xl:hidden">CPC</span>
+                {/* Resize Handle */}
+                <div
+                  className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
+                  onMouseDown={(e) => handleColumnResizeStart(e, 'can_postcode')}
+                  title="Drag to resize"
+                />
               </th>
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r w-[45px] lg:w-[50px] xl:w-auto" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+              <th
+                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter border-r relative"
+                style={{ backgroundColor: '#1e293b', borderColor: '#334155', width: `${columnWidths.cl_postcode}px` }}
+              >
                 <span className="hidden xl:inline">L-Post</span>
                 <span className="xl:hidden">LPC</span>
+                {/* Resize Handle */}
+                <div
+                  className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
+                  onMouseDown={(e) => handleColumnResizeStart(e, 'cl_postcode')}
+                  title="Drag to resize"
+                />
               </th>
 
               {visibleColumns.salary_budget && (
                 <>
-                  <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[40px] lg:w-[45px] xl:w-auto" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
+                  <th
+                    className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                    style={{ backgroundColor: '#334155', borderColor: '#475569', width: `${columnWidths.can_salary}px` }}
+                  >
                     £C
+                    {/* Resize Handle */}
+                    <div
+                      className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
+                      onMouseDown={(e) => handleColumnResizeStart(e, 'can_salary')}
+                      title="Drag to resize"
+                    />
                   </th>
-                  <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[40px] lg:w-[45px] xl:w-auto" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+                  <th
+                    className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                    style={{ backgroundColor: '#1e293b', borderColor: '#334155', width: `${columnWidths.cl_budget}px` }}
+                  >
                     £L
+                    {/* Resize Handle */}
+                    <div
+                      className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
+                      onMouseDown={(e) => handleColumnResizeStart(e, 'cl_budget')}
+                      title="Drag to resize"
+                    />
                   </th>
                 </>
               )}
 
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[45px] lg:w-[55px] xl:w-auto" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
+              <th
+                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                style={{ backgroundColor: '#334155', borderColor: '#475569', width: `${columnWidths.can_role}px` }}
+              >
                 <span className="hidden lg:inline">C-Rol</span>
                 <span className="lg:hidden">CR</span>
+                {/* Resize Handle */}
+                <div
+                  className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
+                  onMouseDown={(e) => handleColumnResizeStart(e, 'can_role')}
+                  title="Drag to resize"
+                />
               </th>
-              <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[45px] lg:w-[55px] xl:w-auto" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+              <th
+                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                style={{ backgroundColor: '#1e293b', borderColor: '#334155', width: `${columnWidths.cl_role}px` }}
+              >
                 <span className="hidden lg:inline">L-Rol</span>
                 <span className="lg:hidden">LR</span>
+                {/* Resize Handle */}
+                <div
+                  className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
+                  onMouseDown={(e) => handleColumnResizeStart(e, 'cl_role')}
+                  title="Drag to resize"
+                />
               </th>
 
               {visibleColumns.availability_requirement && (
                 <>
-                  <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[45px] lg:w-[50px] xl:w-auto" style={{ backgroundColor: '#334155', borderColor: '#475569' }}>
+                  <th
+                    className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                    style={{ backgroundColor: '#334155', borderColor: '#475569', width: `${columnWidths.can_availability}px` }}
+                  >
                     <span className="hidden xl:inline">Ava</span>
                     <span className="xl:hidden">Av</span>
+                    {/* Resize Handle */}
+                    <div
+                      className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
+                      onMouseDown={(e) => handleColumnResizeStart(e, 'can_availability')}
+                      title="Drag to resize"
+                    />
                   </th>
-                  <th className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r w-[45px] lg:w-[50px] xl:w-auto" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+                  <th
+                    className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[7px] lg:text-[8px] xl:text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                    style={{ backgroundColor: '#1e293b', borderColor: '#334155', width: `${columnWidths.cl_requirement}px` }}
+                  >
                     <span className="hidden xl:inline">Req</span>
                     <span className="xl:hidden">Rq</span>
+                    {/* Resize Handle */}
+                    <div
+                      className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
+                      onMouseDown={(e) => handleColumnResizeStart(e, 'cl_requirement')}
+                      title="Drag to resize"
+                    />
                   </th>
                 </>
               )}
 
-              <th className="px-1 lg:px-2 xl:px-3 py-1 lg:py-2 text-center text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter sticky right-0 z-10 w-[100px] lg:w-[110px] xl:w-[140px]" style={{ backgroundColor: '#1e293b' }}>
+              <th
+                className="px-1 lg:px-2 xl:px-3 py-1 lg:py-2 text-center text-[7px] lg:text-[8px] xl:text-xs font-bold text-white uppercase tracking-tighter sticky right-0 z-10 relative"
+                style={{ backgroundColor: '#1e293b', width: `${columnWidths.status}px` }}
+              >
                 Stat
+                {/* Resize Handle */}
+                <div
+                  className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
+                  onMouseDown={(e) => handleColumnResizeStart(e, 'status')}
+                  title="Drag to resize"
+                />
               </th>
             </tr>
           </thead>
@@ -638,7 +859,6 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                 className={`transition-colors hover:bg-blue-50 ${
                   index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                 }`}
-                style={getRowStyle(match)}
               >
                 {/* Match Info - COMMUTE: Wide enough to contain all content without overlap */}
                 <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap border-r border-gray-200 overflow-hidden">
@@ -664,43 +884,50 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                   />
                 </td>
 
-                {/* Alternating Candidate/Client Columns - Ultra compact */}
-                {/* CAN ID */}
-                <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-bold text-gray-900 border-r border-gray-200 overflow-hidden">
+                {/* Alternating Candidate/Client Columns - Resizable */}
+                {/* Candidate Name */}
+                <td
+                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 text-[8px] lg:text-[9px] xl:text-xs font-bold text-gray-900 border-r border-gray-200 overflow-hidden"
+                  style={{ width: `${columnWidths.candidate}px` }}
+                >
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleCandidateClick(match.candidate);
                     }}
-                    className="w-full text-left hover:underline cursor-pointer focus:outline-none rounded p-0 transition-colors"
-                    title="Click to view candidate details"
+                    className="w-full text-left hover:underline cursor-pointer focus:outline-none rounded p-0 transition-colors truncate block"
+                    title={`Candidate: ${getCandidateName(match.candidate)} (ID: ${getDisplayId(match.candidate.id)})\nClick to view full details`}
                   >
-                    <NewItemIndicator
-                      id={getDisplayId(match.candidate.id)}
-                      addedAt={match.candidate.added_at}
-                    />
+                    {match.candidate.added_at && new Date().getTime() - match.candidate.added_at.getTime() <= 48 * 60 * 60 * 1000 && (
+                      <span className="mr-0.5">🟨</span>
+                    )}
+                    <span className="truncate">{getCandidateName(match.candidate)}</span>
                   </button>
                 </td>
-                {/* CL ID */}
-                <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-bold text-gray-900 border-r border-gray-200 overflow-hidden">
+                {/* Surgery Name */}
+                <td
+                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 text-[8px] lg:text-[9px] xl:text-xs font-bold text-gray-900 border-r border-gray-200 overflow-hidden"
+                  style={{ width: `${columnWidths.client}px` }}
+                >
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleClientClick(match.client);
                     }}
-                    className="w-full text-left hover:underline cursor-pointer focus:outline-none rounded p-0 transition-colors"
-                    title="Click to view client details"
+                    className="w-full text-left hover:underline cursor-pointer focus:outline-none rounded p-0 transition-colors truncate block"
+                    title={`Surgery: ${match.client.surgery} (ID: ${getDisplayId(match.client.id)})\nClick to view full details`}
                   >
-                    <NewItemIndicator
-                      id={getDisplayId(match.client.id)}
-                      addedAt={match.client.added_at}
-                    />
+                    {match.client.added_at && new Date().getTime() - match.client.added_at.getTime() <= 48 * 60 * 60 * 1000 && (
+                      <span className="mr-0.5">🟨</span>
+                    )}
+                    <span className="truncate">{match.client.surgery}</span>
                   </button>
                 </td>
 
                 {/* CAN Postcode */}
                 <td
                   className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap font-mono text-[8px] lg:text-[9px] xl:text-sm font-bold text-gray-900 border-r border-gray-200 overflow-hidden"
+                  style={{ width: `${columnWidths.can_postcode}px` }}
                   title={`Candidate Postcode: ${match.candidate.postcode}`}
                 >
                   {match.candidate.postcode}
@@ -708,6 +935,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                 {/* CL Postcode */}
                 <td
                   className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap font-mono text-[8px] lg:text-[9px] xl:text-sm font-bold text-gray-900 border-r border-gray-200 overflow-hidden"
+                  style={{ width: `${columnWidths.cl_postcode}px` }}
                   title={`Client Postcode: ${match.client.postcode}`}
                 >
                   {match.client.postcode}
@@ -718,6 +946,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                     {/* CAN Salary */}
                     <td
                       className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-semibold text-gray-900 border-r border-gray-200 overflow-hidden"
+                      style={{ width: `${columnWidths.can_salary}px` }}
                       title={`Candidate Salary: ${match.candidate.salary}`}
                     >
                       {match.candidate.salary}
@@ -725,6 +954,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                     {/* CL Budget */}
                     <td
                       className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-semibold text-gray-900 border-r border-gray-200 overflow-hidden"
+                      style={{ width: `${columnWidths.cl_budget}px` }}
                       title={`Client Budget: ${match.client.budget}`}
                     >
                       {match.client.budget}
@@ -735,6 +965,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                 {/* CAN Role */}
                 <td
                   className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-medium text-gray-800 border-r border-gray-200 overflow-hidden"
+                  style={{ width: `${columnWidths.can_role}px` }}
                   title={`Candidate Role: ${match.candidate.role}`}
                 >
                   {match.candidate.role}
@@ -742,6 +973,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                 {/* CL Role */}
                 <td
                   className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-medium text-gray-800 border-r border-gray-200 overflow-hidden"
+                  style={{ width: `${columnWidths.cl_role}px` }}
                   title={`Client Role: ${match.client.role}`}
                 >
                   {match.client.role}
@@ -752,6 +984,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                     {/* CAN Availability */}
                     <td
                       className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs text-gray-700 border-r border-gray-200 overflow-hidden"
+                      style={{ width: `${columnWidths.can_availability}px` }}
                       title={`Candidate Availability: ${match.candidate.days}`}
                     >
                       {match.candidate.days}
@@ -759,6 +992,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                     {/* CL Requirement */}
                     <td
                       className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs text-gray-700 border-r border-gray-200 overflow-hidden"
+                      style={{ width: `${columnWidths.cl_requirement}px` }}
                       title={`Client Requirement: ${match.client.requirement}`}
                     >
                       {match.client.requirement}
@@ -767,7 +1001,15 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                 )}
 
                 {/* Status - Ultra compact buttons */}
-                <td className="px-1 lg:px-2 xl:px-3 py-1 lg:py-1.5 whitespace-nowrap text-center sticky right-0 z-10 bg-inherit">
+                <td
+                  className="px-1 lg:px-2 xl:px-3 py-1 lg:py-1.5 whitespace-nowrap text-center sticky right-0 z-10"
+                  style={{
+                    width: `${columnWidths.status}px`,
+                    ...getStatusCellStyle(match),
+                    // Ensure background color if no status selected (inherit from row)
+                    backgroundColor: getStatusCellStyle(match).backgroundColor || (index % 2 === 0 ? '#ffffff' : '#f9fafb')
+                  }}
+                >
                   <div className="flex items-center justify-center gap-0.5">
                     {/* Placed - Green Check */}
                     <button
@@ -831,6 +1073,20 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                       title={`${matchStatuses[getMatchKey(match)]?.notes?.length || 0} note(s) - Click to add/view`}
                     >
                       📝
+                    </button>
+
+                    {/* Ban/Delete - Trash Icon */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Ban this match?\n\nCandidate: ${getCandidateName(match.candidate)}\nSurgery: ${match.client.surgery}\n\nThis will hide the match from the main view. You can restore it from the Bin.`)) {
+                          handleBanMatch(match);
+                        }
+                      }}
+                      className="w-5 h-5 lg:w-6 lg:h-6 xl:w-8 xl:h-8 flex items-center justify-center rounded-full border transition-all font-bold text-[10px] lg:text-xs xl:text-sm bg-white border-gray-400 text-gray-500 hover:border-red-500 hover:text-red-600 hover:bg-red-50"
+                      title="Ban this match (move to bin)"
+                    >
+                      🗑️
                     </button>
                   </div>
                 </td>

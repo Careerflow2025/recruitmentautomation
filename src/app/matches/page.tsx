@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase/browser';
 import { normalizeRole } from '@/lib/utils/roleNormalizer';
 import { MatchesTable } from '@/components/matches/MatchesTable';
 import { MatchFilters } from '@/components/matches/MatchFilters';
+import { BannedMatchesModal } from '@/components/matches/BannedMatchesModal';
 import Link from 'next/link';
 import { Match, Candidate, Client } from '@/types';
 
@@ -25,6 +26,8 @@ export default function MatchesPage() {
     salary_budget: true,
     availability_requirement: true,
   });
+  const [showBinModal, setShowBinModal] = useState(false);
+  const [bannedMatches, setBannedMatches] = useState<Match[]>([]);
 
   const handleColumnVisibilityChange = (column: string, visible: boolean) => {
     setVisibleColumns(prev => ({
@@ -52,10 +55,20 @@ export default function MatchesPage() {
         const user = session.user;
         console.log('🔍 Fetching matches for user:', user.id);
 
+        // Fetch active (non-banned) matches
         const { data: matchesData, error: matchesError} = await supabase
           .from('matches')
           .select('*')
           .eq('user_id', user.id)
+          .or('banned.is.null,banned.eq.false')  // Only non-banned matches
+          .order('commute_minutes', { ascending: true });
+
+        // Also fetch banned matches for bin view
+        const { data: bannedData, error: bannedError } = await supabase
+          .from('matches')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('banned', true)
           .order('commute_minutes', { ascending: true });
 
         if (matchesError) {
@@ -121,6 +134,35 @@ export default function MatchesPage() {
 
         console.log('✅ Transformed matches:', transformedMatches.length);
         setMatches(transformedMatches);
+
+        // Transform banned matches
+        const transformedBanned: Match[] = (bannedData || [])
+          .map(m => {
+            const candidate = candidatesMap.get(m.candidate_id);
+            const client = clientsMap.get(m.client_id);
+
+            if (!candidate || !client) return null;
+
+            return {
+              candidate: {
+                ...candidate,
+                added_at: new Date(candidate.added_at),
+              } as Candidate,
+              client: {
+                ...client,
+                added_at: new Date(client.added_at),
+              } as Client,
+              commute_minutes: m.commute_minutes,
+              commute_display: m.commute_display,
+              commute_band: m.commute_band as any,
+              role_match: m.role_match,
+              role_match_display: m.role_match_display,
+            };
+          })
+          .filter(m => m !== null) as Match[];
+
+        console.log('🗑️ Banned matches:', transformedBanned.length);
+        setBannedMatches(transformedBanned);
       } catch (err: any) {
         console.error('Error fetching matches:', err);
         setError(err.message || 'Failed to load matches');
@@ -133,13 +175,18 @@ export default function MatchesPage() {
     fetchMatches(true);
   }, []);
 
-  const handleGenerateMatches = async () => {
+  const handleGenerateMatches = async (forceFullRegeneration: boolean = false) => {
     setGenerating(true);
     setGenerateResult(null);
 
     try {
       // Start the WORKING background match generation
-      const response = await fetch('/api/regenerate-working', {
+      // Default: incremental (only new pairs), force=true for full regeneration
+      const url = forceFullRegeneration
+        ? '/api/regenerate-working?force=true'
+        : '/api/regenerate-working';
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -421,13 +468,30 @@ export default function MatchesPage() {
 
             {/* Right: Action Buttons */}
             <div className="flex items-center gap-3">
+              {/* 🆕 INCREMENTAL GENERATE BUTTON (default) */}
               <button
-                onClick={handleGenerateMatches}
+                onClick={() => handleGenerateMatches(false)}
                 disabled={generating}
-                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm font-bold shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-500"
+                className="px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg hover:shadow-xl hover:from-green-700 hover:to-emerald-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-green-500"
+                title="Generate matches only for new candidates/clients (skips existing matches)"
+              >
+                <span>{generating ? '⏳' : '➕'}</span>
+                <span>{generating ? 'Generating...' : 'Generate New'}</span>
+              </button>
+
+              {/* 🆕 FULL REGENERATION BUTTON (force) */}
+              <button
+                onClick={() => {
+                  if (confirm('This will delete ALL existing matches and regenerate from scratch. Continue?')) {
+                    handleGenerateMatches(true);
+                  }
+                }}
+                disabled={generating}
+                className="px-5 py-2.5 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg text-sm font-bold shadow-lg hover:shadow-xl hover:from-orange-700 hover:to-red-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-orange-500"
+                title="Delete all existing matches and regenerate everything (slower, uses more API quota)"
               >
                 <span>{generating ? '⏳' : '🔄'}</span>
-                <span>{generating ? 'Generating...' : 'Generate'}</span>
+                <span>{generating ? 'Regenerating...' : 'Full Regen'}</span>
               </button>
               <Link href="/candidates" className="px-5 py-2.5 bg-slate-700 text-white rounded-lg text-sm font-semibold border border-slate-600 hover:bg-slate-600 hover:shadow-lg transition-all flex items-center gap-2">
                 <span>👥</span>
@@ -437,6 +501,21 @@ export default function MatchesPage() {
                 <span>🏥</span>
                 <span>Clients</span>
               </Link>
+
+              {/* Bin Button - View Banned Matches */}
+              <button
+                onClick={() => setShowBinModal(true)}
+                className="px-5 py-2.5 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-lg text-sm font-bold shadow-lg hover:shadow-xl hover:from-gray-700 hover:to-gray-800 transition-all flex items-center gap-2 border border-gray-500 relative"
+                title="View banned matches"
+              >
+                <span>🗑️</span>
+                <span>Bin</span>
+                {bannedMatches.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg">
+                    {bannedMatches.length}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
         </div>
@@ -512,16 +591,30 @@ export default function MatchesPage() {
                 )}
 
                 {!generateResult.processing && generateResult.stats.matches_created !== undefined && (
-                  <div className="font-semibold flex items-center gap-4">
-                    <span className="flex items-center gap-2">
-                      <span className="text-lg">✅</span>
-                      <span>Total matches created: <span className="text-green-700">{generateResult.stats.matches_created}</span></span>
-                    </span>
-                    {generateResult.stats.excluded_over_80min > 0 && (
-                      <span className="flex items-center gap-2 text-red-700">
-                        <span className="text-lg">⊗</span>
-                        <span>Excluded (&gt;80min): {generateResult.stats.excluded_over_80min}</span>
+                  <div className="space-y-2">
+                    <div className="font-semibold flex items-center gap-4 flex-wrap">
+                      <span className="flex items-center gap-2">
+                        <span className="text-lg">✅</span>
+                        <span>New matches created: <span className="text-green-700">{generateResult.stats.matches_created}</span></span>
                       </span>
+                      {generateResult.stats.excluded_over_80min > 0 && (
+                        <span className="flex items-center gap-2 text-red-700">
+                          <span className="text-lg">⊗</span>
+                          <span>Excluded (&gt;80min): {generateResult.stats.excluded_over_80min}</span>
+                        </span>
+                      )}
+                      {generateResult.stats.skipped_existing > 0 && (
+                        <span className="flex items-center gap-2 text-blue-700">
+                          <span className="text-lg">⏭️</span>
+                          <span>Skipped (already exist): {generateResult.stats.skipped_existing}</span>
+                        </span>
+                      )}
+                    </div>
+                    {generateResult.stats.skipped_existing > 0 && (
+                      <div className="text-sm text-green-700 font-semibold flex items-center gap-2">
+                        <span className="text-lg">💾</span>
+                        <span>API Quota Saved: ~{Math.round((generateResult.stats.skipped_existing / (generateResult.stats.skipped_existing + generateResult.stats.matches_created + generateResult.stats.excluded_over_80min)) * 100)}% (incremental matching)</span>
+                      </div>
                     )}
                   </div>
                 )}
@@ -555,6 +648,14 @@ export default function MatchesPage() {
           Showing {filteredMatches.length} of {matches.length} matches
         </div>
       </div>
+
+      {/* Banned Matches Modal */}
+      <BannedMatchesModal
+        isOpen={showBinModal}
+        onClose={() => setShowBinModal(false)}
+        bannedMatches={bannedMatches}
+        onUnban={() => fetchMatches(false)}
+      />
     </div>
   );
 }
