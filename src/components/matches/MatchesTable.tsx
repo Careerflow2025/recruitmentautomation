@@ -896,13 +896,13 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                       e.stopPropagation();
                       handleCandidateClick(match.candidate);
                     }}
-                    className="w-full text-left hover:underline cursor-pointer focus:outline-none rounded p-0 transition-colors truncate block"
-                    title={`Candidate: ${getCandidateName(match.candidate)} (ID: ${getDisplayId(match.candidate.id)})\nClick to view full details`}
+                    className="w-full text-left hover:underline cursor-pointer focus:outline-none rounded p-0 transition-colors truncate block min-h-[16px]"
+                    title={`Candidate: ${getCandidateName(match.candidate) || 'No name - click to add'} (ID: ${getDisplayId(match.candidate.id)})\nClick to view full details`}
                   >
                     {match.candidate.added_at && new Date().getTime() - match.candidate.added_at.getTime() <= 48 * 60 * 60 * 1000 && (
                       <span className="mr-0.5">🟨</span>
                     )}
-                    <span className="truncate">{getCandidateName(match.candidate)}</span>
+                    <span className="truncate">{getCandidateName(match.candidate) || '\u00A0'}</span>
                   </button>
                 </td>
                 {/* Surgery Name */}
