@@ -74,6 +74,72 @@ function asArray<T>(x: T[] | null | undefined): T[] {
 }
 
 /**
+ * Response batching helper for token limit management
+ * Splits long responses into chunks to avoid token overflow
+ */
+function batchResponse(response: string, maxChars: number = 1000): string[] {
+  if (response.length <= maxChars) {
+    return [response];
+  }
+
+  const batches: string[] = [];
+  const paragraphs = response.split('\n\n');
+  let currentBatch = '';
+
+  for (const paragraph of paragraphs) {
+    if ((currentBatch + '\n\n' + paragraph).length > maxChars && currentBatch.length > 0) {
+      batches.push(currentBatch.trim());
+      currentBatch = paragraph;
+    } else {
+      currentBatch += (currentBatch ? '\n\n' : '') + paragraph;
+    }
+  }
+
+  if (currentBatch) {
+    batches.push(currentBatch.trim());
+  }
+
+  return batches;
+}
+
+/**
+ * Estimate token count from text (rough approximation)
+ * ~4 chars = 1 token on average for English text
+ */
+function estimateTokenCount(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+/**
+ * Truncate response if it exceeds token limits
+ * Preserves important information while staying within limits
+ */
+function truncateForTokenLimit(response: string, maxTokens: number = 250): string {
+  const estimatedTokens = estimateTokenCount(response);
+
+  if (estimatedTokens <= maxTokens) {
+    return response;
+  }
+
+  // Calculate max chars based on token limit (4 chars ≈ 1 token)
+  const maxChars = maxTokens * 4;
+
+  // Try to truncate at sentence boundary
+  const truncated = response.substring(0, maxChars);
+  const lastPeriod = truncated.lastIndexOf('.');
+  const lastNewline = truncated.lastIndexOf('\n');
+  const cutPoint = Math.max(lastPeriod, lastNewline);
+
+  if (cutPoint > maxChars * 0.7) {
+    // Use sentence/newline boundary if it's not too far back
+    return truncated.substring(0, cutPoint + 1) + '\n\n[Response truncated due to length. Ask follow-up questions for more details.]';
+  } else {
+    // Hard truncate if no good boundary found
+    return truncated + '...\n\n[Response truncated. Please ask follow-up questions.]';
+  }
+}
+
+/**
  * Centralized database data fetcher with RLS enforcement
  * Uses userClient (with JWT) to ensure RLS policies are applied
  */
@@ -1357,6 +1423,151 @@ Q: ${question}`;
                 }
 
                 actionResults.push(`📊 **Statistics Summary:**\n${JSON.stringify(stats, null, 2)}`);
+                break;
+              }
+
+              case 'list_banned_matches': {
+                // List all banned matches for the user
+                const { data: bannedMatches, error } = await userClient
+                  .from('matches')
+                  .select('candidate_id, client_id, commute_minutes, commute_display, role_match')
+                  .eq('user_id', user.id)
+                  .eq('banned', true)
+                  .order('candidate_id', { ascending: true });
+
+                if (error) {
+                  actionResults.push(`❌ Error listing banned matches: ${error.message}`);
+                } else {
+                  const count = bannedMatches?.length || 0;
+                  if (count === 0) {
+                    actionResults.push(`ℹ️ No banned matches found.`);
+                  } else {
+                    const matchList = bannedMatches!.map(m =>
+                      `${m.candidate_id} ↔ ${m.client_id} (${m.commute_display || m.commute_minutes + 'm'})`
+                    ).join(', ');
+                    actionResults.push(`🚫 Found ${count} banned match${count > 1 ? 'es' : ''}: ${matchList}`);
+                  }
+                }
+                break;
+              }
+
+              case 'export_candidates': {
+                // Export candidates as CSV-formatted text
+                const { format = 'csv' } = action.data;
+                const candidatesToExport = candidates.slice(0, 100); // Limit to 100 for token safety
+
+                if (format === 'csv') {
+                  const headers = ['ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Postcode', 'Salary', 'Days'];
+                  const rows = candidatesToExport.map(c => [
+                    c.id,
+                    c.first_name || '',
+                    c.last_name || '',
+                    c.email || '',
+                    c.phone || '',
+                    c.role || '',
+                    c.postcode || '',
+                    c.salary || '',
+                    c.days || ''
+                  ]);
+
+                  const csvText = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                  actionResults.push(`📄 Exported ${candidatesToExport.length} candidates as CSV:\n\`\`\`csv\n${csvText.substring(0, 500)}...\n\`\`\``);
+                }
+                break;
+              }
+
+              case 'export_clients': {
+                // Export clients as CSV-formatted text
+                const { format = 'csv' } = action.data;
+                const clientsToExport = clients.slice(0, 100); // Limit to 100 for token safety
+
+                if (format === 'csv') {
+                  const headers = ['ID', 'Surgery', 'Role', 'Postcode', 'Budget', 'Days'];
+                  const rows = clientsToExport.map(c => [
+                    c.id,
+                    c.surgery || '',
+                    c.role || '',
+                    c.postcode || '',
+                    c.budget || '',
+                    c.days || ''
+                  ]);
+
+                  const csvText = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                  actionResults.push(`📄 Exported ${clientsToExport.length} clients as CSV:\n\`\`\`csv\n${csvText.substring(0, 500)}...\n\`\`\``);
+                }
+                break;
+              }
+
+              case 'export_matches': {
+                // Export matches as CSV-formatted text
+                const { format = 'csv', include_banned = false } = action.data;
+                const matchesToExport = matches
+                  .filter(m => include_banned || !m.banned)
+                  .slice(0, 100); // Limit to 100 for token safety
+
+                if (format === 'csv') {
+                  const headers = ['Candidate ID', 'Client ID', 'Commute (min)', 'Role Match', 'Status', 'Banned'];
+                  const rows = matchesToExport.map(m => [
+                    m.candidate_id,
+                    m.client_id,
+                    m.commute_minutes,
+                    m.role_match ? 'Yes' : 'No',
+                    matchStatuses.find(s => s.candidate_id === m.candidate_id && s.client_id === m.client_id)?.status || '',
+                    m.banned ? 'Yes' : 'No'
+                  ]);
+
+                  const csvText = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                  actionResults.push(`📄 Exported ${matchesToExport.length} matches as CSV:\n\`\`\`csv\n${csvText.substring(0, 500)}...\n\`\`\``);
+                }
+                break;
+              }
+
+              case 'search_candidates': {
+                // Search candidates by query string
+                const { query } = action.data;
+                const searchTerm = query.toLowerCase();
+
+                const results = candidates.filter(c =>
+                  (c.first_name?.toLowerCase().includes(searchTerm)) ||
+                  (c.last_name?.toLowerCase().includes(searchTerm)) ||
+                  (c.email?.toLowerCase().includes(searchTerm)) ||
+                  (c.phone?.includes(searchTerm)) ||
+                  (c.role?.toLowerCase().includes(searchTerm)) ||
+                  (c.postcode?.toLowerCase().includes(searchTerm)) ||
+                  (c.id?.toLowerCase().includes(searchTerm))
+                ).slice(0, 20); // Limit results
+
+                if (results.length === 0) {
+                  actionResults.push(`🔍 No candidates found matching "${query}"`);
+                } else {
+                  const resultList = results.map(c =>
+                    `${c.id}: ${c.first_name || ''} ${c.last_name || ''} (${c.role || 'N/A'})`
+                  ).join(', ');
+                  actionResults.push(`🔍 Found ${results.length} candidate${results.length > 1 ? 's' : ''}: ${resultList}`);
+                }
+                break;
+              }
+
+              case 'search_clients': {
+                // Search clients by query string
+                const { query } = action.data;
+                const searchTerm = query.toLowerCase();
+
+                const results = clients.filter(c =>
+                  (c.surgery?.toLowerCase().includes(searchTerm)) ||
+                  (c.role?.toLowerCase().includes(searchTerm)) ||
+                  (c.postcode?.toLowerCase().includes(searchTerm)) ||
+                  (c.id?.toLowerCase().includes(searchTerm))
+                ).slice(0, 20); // Limit results
+
+                if (results.length === 0) {
+                  actionResults.push(`🔍 No clients found matching "${query}"`);
+                } else {
+                  const resultList = results.map(c =>
+                    `${c.id}: ${c.surgery || 'N/A'} (${c.role || 'N/A'})`
+                  ).join(', ');
+                  actionResults.push(`🔍 Found ${results.length} client${results.length > 1 ? 's' : ''}: ${resultList}`);
+                }
                 break;
               }
 
