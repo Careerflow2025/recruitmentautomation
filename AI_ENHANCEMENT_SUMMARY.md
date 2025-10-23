@@ -1,5 +1,7 @@
 # AI Enhancement Summary
 
+> **⚠️ IMPORTANT:** Use the file `create_system_prompts_table.sql` - it creates the table AND inserts the prompt!
+
 ## ✅ What Was Completed
 
 ### 1. Added 5 New AI Actions
@@ -97,21 +99,22 @@ Created comprehensive system prompt that teaches the AI about:
 
 ## 📋 What You Need to Do Next
 
-### Step 1: Update the System Prompt in Supabase
+### Step 1: Create System Prompts Table and Insert AI Prompt
 
-Run the SQL file to update the AI's system prompt:
+Run the SQL migration file:
 
-**Option A: Using Supabase SQL Editor**
+**Option A: Using Supabase SQL Editor** (RECOMMENDED)
 1. Go to your Supabase project: https://app.supabase.com
 2. Click **SQL Editor** in the left sidebar
-3. Open the file: `update_ai_system_prompt.sql`
+3. Open the file: `create_system_prompts_table.sql`
 4. Copy ALL the SQL content
 5. Paste into SQL Editor
 6. Click **Run** (or press Ctrl+Enter)
+7. You should see success messages: ✅ System prompts table created successfully!
 
 **Option B: Using psql Command Line**
 ```bash
-psql -h [your-supabase-host] -U postgres -d postgres -f update_ai_system_prompt.sql
+psql -h [your-supabase-host] -U postgres -d postgres -f create_system_prompts_table.sql
 ```
 
 **Option C: Using Supabase CLI**
@@ -246,9 +249,9 @@ All actions maintain multi-tenant isolation:
 
 ## 📝 Files Changed
 
-1. **src/app/api/ai/ask/route.ts** - Added 5 new action handlers
-2. **update_ai_system_prompt.sql** - System prompt update script
-3. **AI_ENHANCEMENT_SUMMARY.md** - This file
+1. **src/app/api/ai/ask/route.ts** - Added 5 new action handlers (952 lines added)
+2. **create_system_prompts_table.sql** - Complete migration script (creates table + inserts prompt)
+3. **AI_ENHANCEMENT_SUMMARY.md** - This documentation file
 
 ## 🚀 Next Steps (Optional Enhancements)
 
