@@ -641,7 +641,11 @@ export default function MatchesPage() {
         />
 
         {/* Table */}
-        <MatchesTable matches={filteredMatches} visibleColumns={visibleColumns} />
+        <MatchesTable
+          matches={filteredMatches}
+          visibleColumns={visibleColumns}
+          onDataChange={() => fetchMatches(false)} // 🆕 Refetch data after edits
+        />
 
         {/* Footer */}
         <div className="mt-2 text-sm text-gray-600">

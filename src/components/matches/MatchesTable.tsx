@@ -17,6 +17,7 @@ interface MatchesTableProps {
     salary_budget: boolean;
     availability_requirement: boolean;
   };
+  onDataChange?: () => void; // 🆕 Callback to notify parent when data changes
 }
 
 interface ModalInstance {
@@ -40,7 +41,7 @@ interface MatchStatusData {
   notes: MatchNote[];
 }
 
-export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
+export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesTableProps) {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [openModals, setOpenModals] = useState<ModalInstance[]>([]);
@@ -338,6 +339,9 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
 
       setEditingModalId(null);
       setEditData({});
+
+      // 🆕 Notify parent to refetch data for real-time updates
+      onDataChange?.();
 
       // Show success message (optional)
       alert(`${type === 'candidate' ? 'Candidate' : 'Client'} updated successfully!`);

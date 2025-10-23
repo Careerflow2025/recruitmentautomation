@@ -97,10 +97,16 @@ export async function GET(request: NextRequest) {
     } else if (matchStatus && matchStatus.status === 'error') {
       status = 'error';
       message = `Match generation failed: ${matchStatus.error_message || 'Unknown error'}`;
+    } else if (matchStatus && matchStatus.status === 'processing') {
+      // 🆕 FIX: Use the actual processing status from match_generation_status table
+      // This is updated in real-time by the background process
+      status = 'processing';
+      message = `Match generation in progress. ${matchStatus.matches_found || 0} matches created so far...`;
+      processing = true;
     } else if (matchStatus && matchStatus.status === 'completed') {
       status = 'complete';
       methodUsed = matchStatus.method_used;
-      
+
       if (methodUsed === 'fallback_estimation') {
         message = `Match generation complete using estimated commute times. ${matchCount} matches found. (Google Maps API unavailable)`;
       } else {
@@ -110,12 +116,8 @@ export async function GET(request: NextRequest) {
       status = 'processing';
       message = 'Match generation in progress. Please wait...';
       processing = true;
-    } else if (matchCount > 0 && matchCount < expectedMatches * 0.5) {
-      // Less than 50% of expected matches - likely still processing
-      status = 'processing';
-      message = `Match generation in progress. Found ${matchCount} matches so far...`;
-      processing = true;
     } else {
+      // Default to complete if we have matches but no status record
       status = 'complete';
       message = `Match generation complete. ${matchCount} matches found.`;
       processing = false;
@@ -133,7 +135,11 @@ export async function GET(request: NextRequest) {
         clients: clientsCount,
         expected_matches: expectedMatches,
         current_matches: matchCount || 0,
-        completion_percentage: expectedMatches > 0 ? Math.round(((matchCount || 0) / expectedMatches) * 100) : 0,
+        // 🆕 FIX: Use actual progress from match_generation_status.percent_complete
+        // Instead of estimating by counting database rows (which may be stale)
+        completion_percentage: matchStatus?.percent_complete !== undefined
+          ? matchStatus.percent_complete
+          : (expectedMatches > 0 ? Math.round(((matchCount || 0) / expectedMatches) * 100) : 0),
         excluded_over_80min: matchStatus?.excluded_over_80min || 0,
         errors: matchStatus?.errors || 0,
       }
