@@ -1223,6 +1223,143 @@ Q: ${question}`;
                 break;
               }
 
+              case 'ban_match': {
+                // Ban a specific match (prevent it from appearing in matches view)
+                const { candidate_id, client_id } = action.data;
+
+                const { error } = await userClient
+                  .from('matches')
+                  .update({ banned: true })
+                  .eq('candidate_id', candidate_id)
+                  .eq('client_id', client_id)
+                  .eq('user_id', user.id);
+
+                if (error) {
+                  actionResults.push(`❌ Error banning match: ${error.message}`);
+                } else {
+                  actionResults.push(`✅ Banned match: ${candidate_id} ↔ ${client_id}`);
+                }
+                break;
+              }
+
+              case 'unban_match': {
+                // Unban a previously banned match
+                const { candidate_id, client_id } = action.data;
+
+                const { error } = await userClient
+                  .from('matches')
+                  .update({ banned: false })
+                  .eq('candidate_id', candidate_id)
+                  .eq('client_id', client_id)
+                  .eq('user_id', user.id);
+
+                if (error) {
+                  actionResults.push(`❌ Error unbanning match: ${error.message}`);
+                } else {
+                  actionResults.push(`✅ Unbanned match: ${candidate_id} ↔ ${client_id}`);
+                }
+                break;
+              }
+
+              case 'bulk_ban_matches': {
+                // Ban multiple matches at once
+                const { matches: matchesToBan } = action.data;
+                let successCount = 0;
+                let errorCount = 0;
+
+                for (const match of matchesToBan) {
+                  const { error } = await userClient
+                    .from('matches')
+                    .update({ banned: true })
+                    .eq('candidate_id', match.candidate_id)
+                    .eq('client_id', match.client_id)
+                    .eq('user_id', user.id);
+
+                  if (error) {
+                    errorCount++;
+                    console.error(`Error banning match ${match.candidate_id} ↔ ${match.client_id}:`, error.message);
+                  } else {
+                    successCount++;
+                  }
+                }
+
+                actionResults.push(`✅ Bulk ban: ${successCount} matches banned${errorCount > 0 ? `, ${errorCount} failed` : ''}`);
+                break;
+              }
+
+              case 'regenerate_matches': {
+                // Trigger match regeneration (full or incremental)
+                const { mode = 'incremental' } = action.data;
+
+                try {
+                  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('https://', '').replace('.supabase.co', '') || 'localhost:3000';
+                  const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+                  const regenerateUrl = `${protocol}://${baseUrl}/api/regenerate-working?force=${mode === 'full' ? 'true' : 'false'}`;
+
+                  const response = await fetch(regenerateUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                  });
+
+                  if (response.ok) {
+                    const result = await response.json();
+                    actionResults.push(`✅ Match regeneration started (${mode} mode)`);
+                  } else {
+                    actionResults.push(`❌ Error starting match regeneration: ${response.status}`);
+                  }
+                } catch (error: any) {
+                  actionResults.push(`❌ Error triggering regeneration: ${error.message}`);
+                }
+                break;
+              }
+
+              case 'get_statistics': {
+                // Provide detailed statistics about recruitment data
+                const stats: any = {
+                  total_candidates: candidates.length,
+                  total_clients: clients.length,
+                  total_matches: matches.length,
+                  banned_matches: matches.filter(m => m.banned).length,
+                  active_matches: matches.filter(m => !m.banned).length,
+                  role_matches: matches.filter(m => m.role_match && !m.banned).length,
+                  location_only_matches: matches.filter(m => !m.role_match && !m.banned).length,
+                };
+
+                // Calculate candidate statistics
+                const candidatesByRole: Record<string, number> = {};
+                candidates.forEach(c => {
+                  const role = c.role || 'Unknown';
+                  candidatesByRole[role] = (candidatesByRole[role] || 0) + 1;
+                });
+                stats.candidates_by_role = candidatesByRole;
+
+                // Calculate client statistics
+                const clientsByRole: Record<string, number> = {};
+                clients.forEach(c => {
+                  const role = c.role || 'Unknown';
+                  clientsByRole[role] = (clientsByRole[role] || 0) + 1;
+                });
+                stats.clients_by_role = clientsByRole;
+
+                // Calculate commute time statistics
+                const activeMatches = matches.filter(m => !m.banned);
+                if (activeMatches.length > 0) {
+                  const commuteTimes = activeMatches.map(m => m.commute_minutes || 0);
+                  stats.avg_commute_minutes = Math.round(commuteTimes.reduce((a, b) => a + b, 0) / commuteTimes.length);
+                  stats.min_commute_minutes = Math.min(...commuteTimes);
+                  stats.max_commute_minutes = Math.max(...commuteTimes);
+
+                  // Count by time bands
+                  stats.matches_under_20min = activeMatches.filter(m => (m.commute_minutes || 0) <= 20).length;
+                  stats.matches_20_40min = activeMatches.filter(m => (m.commute_minutes || 0) > 20 && (m.commute_minutes || 0) <= 40).length;
+                  stats.matches_40_60min = activeMatches.filter(m => (m.commute_minutes || 0) > 40 && (m.commute_minutes || 0) <= 60).length;
+                  stats.matches_60_80min = activeMatches.filter(m => (m.commute_minutes || 0) > 60 && (m.commute_minutes || 0) <= 80).length;
+                }
+
+                actionResults.push(`📊 **Statistics Summary:**\n${JSON.stringify(stats, null, 2)}`);
+                break;
+              }
+
               default:
                 console.warn(`Unknown action: ${action.action}`);
             }
