@@ -692,7 +692,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
               {/* Role Match: Fixed width, smaller, non-resizable */}
               <th
                 className="px-1 py-1 lg:py-2 text-center text-[10px] font-bold text-white uppercase tracking-tighter border-r-4 border-white relative"
-                style={{ width: '50px' }}
+                style={{ width: '42px' }}
               >
                 <span>RM</span>
               </th>
@@ -878,7 +878,7 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
                     />
                   </button>
                 </td>
-                <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap border-r-4 border-gray-300 overflow-hidden">
+                <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap border-r-4 border-gray-300 overflow-hidden" style={{ width: '42px' }}>
                   <RoleMatchBadge
                     isMatch={match.role_match}
                     display={match.role_match_display}
