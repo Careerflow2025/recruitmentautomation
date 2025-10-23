@@ -16,6 +16,7 @@ import CustomColumnManager from './CustomColumnManager';
 import EditableColumnHeader from './EditableColumnHeader';
 import MultiNotesPopup from './MultiNotesPopup';
 import BulkParseModal from './BulkParseModal';
+import { parseNameFromEmail, findDuplicateCandidates, getDuplicateReasonText, isValidEmail } from '@/lib/utils/candidateHelpers';
 
 export default function CandidatesDataGrid() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -41,6 +42,21 @@ export default function CandidatesDataGrid() {
     role?: { valid: boolean; message: string };
     postcode?: { valid: boolean; message: string };
   }>>({});
+
+  // Name suggestion from email parsing
+  const [nameSuggestions, setNameSuggestions] = useState<Record<string, {
+    firstName: string;
+    lastName: string;
+    fromEmail: string;
+  }>>({});
+
+  // Duplicate candidate warnings
+  const [duplicateWarnings, setDuplicateWarnings] = useState<Record<string, Array<{
+    id: string;
+    first_name: string;
+    last_name: string;
+    matchReason: string;
+  }>>>({});
 
   // Get current user
   useEffect(() => {
@@ -562,16 +578,65 @@ export default function CandidatesDataGrid() {
           <div title={row.email || ''}>{row.email || ''}</div>
         ),
         renderEditCell: (props) => (
-          <input
-            autoFocus
-            type="email"
-            className="rdg-text-editor"
-            value={props.row.email || ''}
-            onChange={(e) => {
-              props.onRowChange({ ...props.row, email: e.target.value });
-              debouncedUpdate(props.row.id, 'email', e.target.value);
-            }}
-          />
+          <div className="relative">
+            <input
+              autoFocus
+              type="email"
+              className="rdg-text-editor"
+              value={props.row.email || ''}
+              onChange={(e) => {
+                props.onRowChange({ ...props.row, email: e.target.value });
+                debouncedUpdate(props.row.id, 'email', e.target.value);
+              }}
+              onBlur={async (e) => {
+                const email = e.target.value.trim();
+                if (!email || !isValidEmail(email)) return;
+
+                // Parse name from email
+                const parsedName = parseNameFromEmail(email);
+                if (parsedName && parsedName.firstName) {
+                  // Only suggest if first_name or last_name are empty
+                  if (!props.row.first_name || !props.row.last_name) {
+                    setNameSuggestions(prev => ({
+                      ...prev,
+                      [props.row.id]: {
+                        firstName: parsedName.firstName,
+                        lastName: parsedName.lastName,
+                        fromEmail: email
+                      }
+                    }));
+                  }
+                }
+
+                // Check for duplicates
+                if (userId) {
+                  const duplicates = await findDuplicateCandidates(
+                    {
+                      email,
+                      phone: props.row.phone,
+                      first_name: props.row.first_name,
+                      last_name: props.row.last_name,
+                      postcode: props.row.postcode
+                    },
+                    userId,
+                    props.row.id
+                  );
+
+                  if (duplicates.length > 0) {
+                    setDuplicateWarnings(prev => ({
+                      ...prev,
+                      [props.row.id]: duplicates.map(d => ({
+                        id: d.id,
+                        first_name: d.first_name,
+                        last_name: d.last_name,
+                        matchReason: getDuplicateReasonText(d.matchReason)
+                      }))
+                    }));
+                  }
+                }
+              }}
+            />
+          </div>
         ),
       },
       {
@@ -1393,6 +1458,135 @@ export default function CandidatesDataGrid() {
           {uploadMessage.text}
         </div>
       )}
+
+      {/* Name Suggestions from Email */}
+      {Object.entries(nameSuggestions).map(([candidateId, suggestion]) => (
+        <div
+          key={`suggestion-${candidateId}`}
+          style={{
+            padding: '12px 16px',
+            marginBottom: '8px',
+            backgroundColor: '#dbeafe',
+            border: '1px solid #3b82f6',
+            borderRadius: '6px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <div>
+            <strong style={{ color: '#1e40af' }}>💡 Name Suggestion:</strong>
+            <span style={{ marginLeft: '8px', color: '#1e3a8a' }}>
+              Is this person called <strong>{suggestion.firstName} {suggestion.lastName}</strong>?
+              (from {suggestion.fromEmail})
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => {
+                // Apply the suggestion
+                const candidate = candidates.find(c => c.id === candidateId);
+                if (candidate) {
+                  updateRow(candidateId, {
+                    ...candidate,
+                    first_name: suggestion.firstName,
+                    last_name: suggestion.lastName
+                  });
+                }
+                // Remove suggestion
+                setNameSuggestions(prev => {
+                  const updated = { ...prev };
+                  delete updated[candidateId];
+                  return updated;
+                });
+              }}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: '500'
+              }}
+            >
+              ✓ Yes, apply
+            </button>
+            <button
+              onClick={() => {
+                // Dismiss suggestion
+                setNameSuggestions(prev => {
+                  const updated = { ...prev };
+                  delete updated[candidateId];
+                  return updated;
+                });
+              }}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              ✕ No, dismiss
+            </button>
+          </div>
+        </div>
+      ))}
+
+      {/* Duplicate Candidate Warnings */}
+      {Object.entries(duplicateWarnings).map(([candidateId, duplicates]) => (
+        <div
+          key={`warning-${candidateId}`}
+          style={{
+            padding: '12px 16px',
+            marginBottom: '8px',
+            backgroundColor: '#fef3c7',
+            border: '2px solid #f59e0b',
+            borderRadius: '6px'
+          }}
+        >
+          <div style={{ marginBottom: '8px' }}>
+            <strong style={{ color: '#92400e' }}>⚠️ Similar Candidate(s) Found:</strong>
+          </div>
+          {duplicates.map((dup, idx) => (
+            <div
+              key={idx}
+              style={{
+                marginLeft: '24px',
+                marginBottom: '4px',
+                color: '#78350f'
+              }}
+            >
+              • <strong>{dup.first_name} {dup.last_name}</strong> ({dup.id}) - {dup.matchReason}
+            </div>
+          ))}
+          <button
+            onClick={() => {
+              // Dismiss warning
+              setDuplicateWarnings(prev => {
+                const updated = { ...prev };
+                delete updated[candidateId];
+                return updated;
+              });
+            }}
+            style={{
+              marginTop: '8px',
+              padding: '4px 12px',
+              backgroundColor: '#f59e0b',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      ))}
 
       {/* Grid */}
       <div className="flex-1">
