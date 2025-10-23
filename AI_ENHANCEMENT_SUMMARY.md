@@ -4,9 +4,11 @@
 
 ## ✅ What Was Completed
 
-### 1. Added 5 New AI Actions
+### 1. Added 10 New AI Actions (5 initial + 5 additional)
 
 Your Mistral AI assistant now has these additional capabilities:
+
+#### **Initial 5 Actions (Match Management & Analytics):**
 
 #### **ban_match** - Hide unwanted matches
 ```json
@@ -78,24 +80,138 @@ Provides:
 - Commute time statistics (average, min, max)
 - Time band distribution (0-20min, 20-40min, 40-60min, 60-80min)
 
-### 2. System Prompt Update
+#### **Additional 5 Actions (Export, Search, List):**
+
+#### **list_banned_matches** - Retrieve all banned matches
+```json
+{
+  "action": "list_banned_matches",
+  "data": {}
+}
+```
+Recruiters can ask: *"Show me all banned matches"* or *"What matches are hidden?"*
+
+Returns a list of all banned candidate-client pairs with commute details.
+
+#### **export_candidates** - Export candidates to CSV
+```json
+{
+  "action": "export_candidates",
+  "data": {
+    "format": "csv"
+  }
+}
+```
+Recruiters can ask: *"Export my candidates to CSV"* or *"Give me a CSV of all candidates"*
+
+Exports up to 100 candidates with ID, name, email, phone, role, postcode, salary, days.
+
+#### **export_clients** - Export clients to CSV
+```json
+{
+  "action": "export_clients",
+  "data": {
+    "format": "csv"
+  }
+}
+```
+Recruiters can ask: *"Export clients as CSV"* or *"Download client list"*
+
+Exports up to 100 clients with ID, surgery, role, postcode, budget, days.
+
+#### **export_matches** - Export matches to CSV
+```json
+{
+  "action": "export_matches",
+  "data": {
+    "format": "csv",
+    "include_banned": false
+  }
+}
+```
+Recruiters can ask: *"Export all matches"* or *"Give me CSV of matches including banned ones"*
+
+Exports up to 100 matches with candidate ID, client ID, commute time, role match, status, banned flag.
+
+#### **search_candidates** - Search candidates
+```json
+{
+  "action": "search_candidates",
+  "data": {
+    "query": "dental nurse"
+  }
+}
+```
+Recruiters can ask: *"Find all dental nurses"* or *"Search for candidates in London"*
+
+Searches by name, email, phone, role, postcode, or ID. Returns up to 20 results.
+
+#### **search_clients** - Search clients
+```json
+{
+  "action": "search_clients",
+  "data": {
+    "query": "london"
+  }
+}
+```
+Recruiters can ask: *"Find clients in London"* or *"Search for surgeries needing dentists"*
+
+Searches by surgery name, role, postcode, or ID. Returns up to 20 results.
+
+### 2. Token Optimization & Response Batching
+
+Added helper functions to handle Mistral 7B token limits:
+
+**batchResponse()**
+- Splits long responses into manageable chunks
+- Maintains paragraph boundaries for readability
+- Default max: 1000 characters per batch
+
+**estimateTokenCount()**
+- Estimates tokens from text (~4 chars = 1 token)
+- Helps predict when responses approach limits
+
+**truncateForTokenLimit()**
+- Intelligently truncates at sentence/paragraph boundaries
+- Adds helpful continuation message
+- Default max: 250 tokens
+
+**Export/Search Limits:**
+- All exports limited to 100 items (prevents token overflow)
+- Search results limited to 20 items
+- CSV truncated at 500 chars with ellipsis for preview
+
+### 3. System Prompt Update
 
 Created comprehensive system prompt that teaches the AI about:
 - ✅ **Full CRUD permissions** - Add, edit, delete anything
-- ✅ **All new actions** - Ban, unban, regenerate, statistics
+- ✅ **All 10 actions** - Ban, unban, regenerate, statistics, export, search, list
 - ✅ **Email parsing feature** - How the system suggests names from emails
 - ✅ **Duplicate detection** - How the system warns about similar candidates
 - ✅ **Ban/unban workflow** - How banned matches work
+- ✅ **Token optimization** - Response batching for Mistral 7B limits
 - ✅ **Response guidelines** - Be helpful, proactive, and conversational
-- ✅ **Examples** - Real-world usage examples for each action
+- ✅ **Examples** - Real-world usage examples for each action (6 examples total)
 
-### 3. Code Changes
+### 4. Code Changes
 
 **File Modified**: `src/app/api/ai/ask/route.ts`
-- Added 5 new action cases to the switch statement (lines 1226-1361)
-- Integrated with existing multi-tenant isolation (all actions filter by `user_id`)
+
+**Added 10 New Action Cases:**
+- Initial 5 (lines 1226-1361): ban_match, unban_match, bulk_ban_matches, regenerate_matches, get_statistics
+- Additional 5 (lines 1363-1506): list_banned_matches, export_candidates, export_clients, export_matches, search_candidates, search_clients
+
+**Added 3 Helper Functions (lines 76-140):**
+- `batchResponse()` - Splits long responses into chunks
+- `estimateTokenCount()` - Estimates token count from text
+- `truncateForTokenLimit()` - Intelligently truncates responses
+
+**Integration:**
+- All actions filter by `user_id` for multi-tenant isolation
 - Proper error handling and action result reporting
 - Statistics include comprehensive recruitment analytics
+- Export/search include limits to prevent token overflow
 
 ## 📋 What You Need to Do Next
 
@@ -177,11 +293,15 @@ The AI now has **FULL PERMISSION** to:
 - ✅ Ban and unban matches
 - ✅ Trigger match regeneration (incremental or full)
 - ✅ Provide detailed statistics
+- ✅ **Export data to CSV** (candidates, clients, matches)
+- ✅ **Search candidates and clients** (20 result limit)
+- ✅ **List all banned matches**
 - ✅ Update match statuses
 - ✅ Add match notes
 - ✅ Bulk add/delete candidates and clients
 - ✅ Parse unorganized text and extract data
 - ✅ Answer any questions about recruiter's data
+- ✅ **Handle token limits** with response batching
 
 ### Natural Language Examples
 
@@ -209,6 +329,13 @@ Recruiters can now ask things like:
 **Smart Parsing:**
 - *"I got these CVs: Emma Brown Dentist W1A1AA 07111222333, Tom Green Receptionist SW1A1AA 07444555666"*
 - AI will extract and add both candidates automatically!
+
+**Export & Search (NEW):**
+- *"Export all my dental nurses to CSV"*
+- *"Find all clients in London"*
+- *"Show me all banned matches"*
+- *"Search for candidates named Smith"*
+- *"Export matches including banned ones"*
 
 ## 🔒 Security Notes
 
@@ -255,9 +382,17 @@ All actions maintain multi-tenant isolation:
 
 ## 📝 Files Changed
 
-1. **src/app/api/ai/ask/route.ts** - Added 5 new action handlers (952 lines added)
-2. **update_ai_prompt_only.sql** - Simple UPDATE for existing ai_system_prompts table
-3. **AI_ENHANCEMENT_SUMMARY.md** - This documentation file
+1. **src/app/api/ai/ask/route.ts** - Added 10 action handlers + 3 helper functions
+   - Lines 76-140: Response batching helper functions
+   - Lines 1226-1361: Initial 5 actions (ban, unban, bulk_ban, regenerate, statistics)
+   - Lines 1363-1506: Additional 5 actions (list_banned, 3 exports, 2 searches)
+2. **update_ai_prompt_only.sql** - Simple UPDATE with comprehensive documentation
+   - Updated capabilities section
+   - Added 2 new sections (Data Export, Search & Discovery)
+   - Added 2 new examples (export, search/list)
+   - Updated success messages
+3. **FEATURE_COMPARISON.md** - NEW comprehensive feature matrix
+4. **AI_ENHANCEMENT_SUMMARY.md** - This documentation file (updated)
 
 ## 🗄️ Existing Database Structure
 
