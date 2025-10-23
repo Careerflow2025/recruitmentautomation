@@ -182,7 +182,60 @@ Added helper functions to handle Mistral 7B token limits:
 - Search results limited to 20 items
 - CSV truncated at 500 chars with ellipsis for preview
 
-### 3. System Prompt Update
+### 3. Advanced Natural Language Understanding (NLU)
+
+Added comprehensive NLU capabilities for ChatGPT-level understanding:
+
+**Intent Extraction:**
+- Action verbs: "throw away CAN015" → delete_candidate
+- Implied actions: "john smith nurse croydon 07700123456" → add_candidate
+- Vague references: "that one", "the new guy" → uses context or asks
+
+**Entity Recognition:**
+- IDs: "can 15" → CAN015, "client 5" → CL005
+- Names: Email-to-name, partial names, title handling
+- Roles: Synonym map + typo tolerance ("denta nurse" → Dental Nurse)
+- Postcodes: Normalization + area inference ("croydon" → CR0 1PB)
+- Phones, Salary, Days: Automatic format normalization
+
+**Typo & Abbreviation Handling:**
+- "shw me all denta nurss in londn" → search dental nurses london
+- "cn" vs "can" → uses context clues
+
+**Clarification vs Inference:**
+- High confidence + low risk → Infer and execute
+- Low confidence OR high risk → Ask for clarification
+- Safety checks on destructive actions
+
+**Context-Aware Interpretation:**
+- Pronoun resolution: "Delete him" → deletes CAN015 from context
+- Implicit references: "Export them" → exports from previous search
+- Topic continuation: "Ban all of them" → bans matches from context
+- State tracking: "Actually delete that" → deletes recently added
+
+**Multi-Intent Handling:**
+- Sequential: "add Sarah then show matches" → add first, then search
+- Parallel: "export candidates and clients" → both at once
+- Conditional: "if CAN015 has matches, ban them" → checks first
+
+**10 Messy Prompt Examples with reasoning patterns**
+
+**5-Step Reasoning Framework (Mistral 7B):**
+1. Parse input - tokenize, identify entities
+2. Resolve ambiguities - check context, apply strategies
+3. Decide: Infer or Ask - confidence + risk assessment
+4. Extract structured data - messy → clean JSON
+5. Execute with confirmation - plain language summary
+
+**6 NEW Examples added showcasing NLU:**
+- Example 7: Typo correction
+- Example 8: Jumbled entity data
+- Example 9: Contextual pronoun
+- Example 10: Informal slang with clarification
+- Example 11: Vague deletion safety check
+- Example 12: Multi-intent sequential execution
+
+### 4. System Prompt Update
 
 Created comprehensive system prompt that teaches the AI about:
 - ✅ **Full CRUD permissions** - Add, edit, delete anything
@@ -212,6 +265,19 @@ Created comprehensive system prompt that teaches the AI about:
 - Proper error handling and action result reporting
 - Statistics include comprehensive recruitment analytics
 - Export/search include limits to prevent token overflow
+
+**NLU Enhancement in System Prompt (~15,000 characters):**
+- New section: "NATURAL LANGUAGE UNDERSTANDING & REASONING"
+- Intent extraction patterns (action verbs, implied actions, vague references)
+- Entity recognition rules (IDs, names, roles, postcodes, phones, salary, days)
+- Typo & abbreviation handling with context clues
+- Clarification vs inference decision framework
+- Context-aware interpretation (pronouns, implicit references, state tracking)
+- Multi-intent handling (sequential, parallel, conditional)
+- Ambiguity resolution strategies (4 strategies)
+- 10 messy prompt examples with detailed reasoning
+- 5-step reasoning framework for Mistral 7B
+- Advanced reasoning patterns (fuzzy matching, intent chaining, conditional logic, etc.)
 
 ## 📋 What You Need to Do Next
 
@@ -337,6 +403,14 @@ Recruiters can now ask things like:
 - *"Search for candidates named Smith"*
 - *"Export matches including banned ones"*
 
+**Messy Prompts (NEW - NLU):**
+- *"shw me all denta nurss in londn"* (typos corrected)
+- *"add john 07700123456 dn croydon"* (jumbled data extracted)
+- *"gimme csv of everyone"* (informal language understood)
+- *"delete him"* (contextual pronoun resolved)
+- *"ban all of them"* (uses context from previous query)
+- *"add Sarah then show matches"* (multi-intent sequential execution)
+
 ## 🔒 Security Notes
 
 All actions maintain multi-tenant isolation:
@@ -386,13 +460,16 @@ All actions maintain multi-tenant isolation:
    - Lines 76-140: Response batching helper functions
    - Lines 1226-1361: Initial 5 actions (ban, unban, bulk_ban, regenerate, statistics)
    - Lines 1363-1506: Additional 5 actions (list_banned, 3 exports, 2 searches)
-2. **update_ai_prompt_only.sql** - Simple UPDATE with comprehensive documentation
-   - Updated capabilities section
+2. **update_ai_prompt_only.sql** - Simple UPDATE with NLU enhancements (~15,000 chars)
+   - Updated capabilities section (added export, search, list_banned)
    - Added 2 new sections (Data Export, Search & Discovery)
-   - Added 2 new examples (export, search/list)
-   - Updated success messages
+   - **NEW SECTION:** "NATURAL LANGUAGE UNDERSTANDING & REASONING" (~8,000 chars)
+   - Added 6 new examples showcasing NLU (typos, jumbled data, context, etc.)
+   - Updated REMEMBER section with NLU key strengths
+   - Updated success messages with NLU capabilities
 3. **FEATURE_COMPARISON.md** - NEW comprehensive feature matrix
-4. **AI_ENHANCEMENT_SUMMARY.md** - This documentation file (updated)
+4. **NLU_ENHANCEMENTS.md** - NEW comprehensive NLU documentation
+5. **AI_ENHANCEMENT_SUMMARY.md** - This documentation file (updated with NLU)
 
 ## 🗄️ Existing Database Structure
 

@@ -82,7 +82,7 @@
 4. ❌ **List banned matches** - dedicated action to retrieve all banned
 
 ### AI Has (User Doesn't)
-1. ✅ **Natural language** - understand messy prompts
+1. ✅ **Natural language** - understand messy prompts (ENHANCED with NLU)
 2. ✅ **Smart parsing** - extract data from unstructured text
 3. ✅ **Detailed analytics** - comprehensive statistics
 4. ✅ **Batch processing** - chunked operations for large datasets
@@ -90,6 +90,11 @@
 6. ✅ **Context memory** - RAG system remembers everything
 7. ✅ **Proactive suggestions** - recommends actions
 8. ✅ **Multi-turn dialogue** - maintains conversation context
+9. ✅ **Typo tolerance** - corrects spelling mistakes automatically
+10. ✅ **Entity extraction** - pulls IDs, names, roles from any format
+11. ✅ **Contextual pronouns** - "delete him" resolves to CAN015
+12. ✅ **Multi-intent handling** - "add Sarah then show matches"
+13. ✅ **Safety checks** - asks before destructive actions
 
 ### Overlapping Capabilities (Both Have)
 1. ✅ Add/Edit/Delete candidates and clients
@@ -193,14 +198,20 @@
 
 ## 🎓 AI Capabilities Documentation
 
-### Natural Language Understanding
-Mistral 7B can:
-- Parse incomplete prompts
-- Infer missing information
-- Ask clarifying questions
-- Handle typos and grammatical errors
-- Understand context from previous messages
-- Extract structured data from unstructured text
+### Natural Language Understanding (ENHANCED)
+Mistral 7B with advanced NLU can:
+- **Parse incomplete prompts** - "add john croydon" → asks for role
+- **Infer missing information** - "sw1" → SW1A 1AA, "croydon" → CR0 1PB
+- **Ask clarifying questions** - "delete the bad ones" → asks which IDs
+- **Handle typos and grammatical errors** - "denta nurss" → Dental Nurse
+- **Understand context from previous messages** - "delete him" → CAN015
+- **Extract structured data from unstructured text** - "john 07700123456 dn cr0" → add_candidate
+- **Correct abbreviations** - "dn" → Dental Nurse, "dt" → Dentist
+- **Normalize formats** - "07700 900 000" → "07700900000"
+- **Resolve pronouns** - "ban all his matches" → CAN015's matches
+- **Multi-intent execution** - "add Sarah then show matches" → sequential
+- **Informal language** - "gimme csv" → export, "nuke" → delete
+- **Safety checks** - Confirms destructive actions before executing
 
 ### Multi-turn Dialogue
 - Remembers conversation history (RAG system)
