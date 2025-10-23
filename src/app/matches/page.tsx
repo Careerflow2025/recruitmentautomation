@@ -86,14 +86,6 @@ export default function MatchesPage() {
 
         if (candidatesError) throw candidatesError;
 
-        console.log('👥 Raw candidates data:', candidatesData);
-        console.log('👥 First candidate:', candidatesData?.[0]);
-        console.log('👥 First candidate name fields:', {
-          id: candidatesData?.[0]?.id,
-          first_name: candidatesData?.[0]?.first_name,
-          last_name: candidatesData?.[0]?.last_name,
-        });
-
         const { data: clientsData, error: clientsError } = await supabase
           .from('clients')
           .select('*')
@@ -121,14 +113,6 @@ export default function MatchesPage() {
               console.warn(`⚠️ Client not found for match: ${m.client_id}`);
               return null;
             }
-
-            console.log(`🔍 Processing match for candidate ${m.candidate_id}:`, {
-              id: candidate.id,
-              first_name: candidate.first_name,
-              last_name: candidate.last_name,
-              hasFirstName: !!candidate.first_name,
-              hasLastName: !!candidate.last_name,
-            });
 
             return {
               candidate: {

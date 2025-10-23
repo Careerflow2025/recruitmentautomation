@@ -367,14 +367,6 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
     const firstName = candidate.first_name?.trim();
     const lastName = candidate.last_name?.trim();
 
-    console.log('🔍 Candidate data:', {
-      id: candidate.id,
-      first_name: candidate.first_name,
-      last_name: candidate.last_name,
-      hasFirstName: !!firstName,
-      hasLastName: !!lastName
-    });
-
     if (firstName && lastName) {
       return `${firstName} ${lastName}`;
     } else if (firstName) {
@@ -382,9 +374,9 @@ export function MatchesTable({ matches, visibleColumns }: MatchesTableProps) {
     } else if (lastName) {
       return lastName;
     } else {
-      // Fallback to ID if no name available
-      console.warn(`⚠️ No name found for candidate ${candidate.id}, using ID`);
-      return getDisplayId(candidate.id);
+      // Return empty string if no name - recruiter will know to add name
+      // ID is still visible in tooltip on hover
+      return '';
     }
   };
 
