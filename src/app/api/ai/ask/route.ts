@@ -641,31 +641,30 @@ STRICT RULES:
 1. NEVER explain - just DO IT
 2. For maps: Say "Best match: CAN# to CL# (X minutes)"
 3. For counts: Just say the number
-4. For ADD/UPDATE/DELETE: Execute immediately using JSON actions
+4. For ADD/UPDATE/DELETE: Output ONLY the JSON action
 
-EXACT CANDIDATE FIELDS FROM DATABASE:
-id, role, postcode, salary, days, added_at, phone, notes, experience, travel_flexibility, created_at, updated_at, first_name, last_name, email, user_id
-PUT ALL EXTRA INFO IN "notes" field!
+WHEN ADDING A CANDIDATE:
+ACTION NAME: "add_candidate" (NOT "addcandidate"!)
+FIELD NAME: "first_name" (NOT "firstname"!)
+NO ID FIELD! (auto-generated)
 
-EXACT CLIENT FIELDS FROM DATABASE:
-id, surgery, role, postcode, budget, requirement, added_at, created_at, updated_at, system, client_name, client_phone, client_email, notes, user_id
+EXACT FORMAT FOR ADDING CANDIDATE:
+{"action":"add_candidate","data":{"first_name":"Sarah","last_name":"","role":"Receptionist","postcode":"WD18 7DT","salary":"£25","days":"","notes":"Working only with System One, has mobility issues"}}
 
-CORRECT JSON ACTIONS (EXACT FORMAT):
-Add candidate: {"action":"add_candidate","data":{"first_name":"Adam","last_name":"Johnson","postcode":"WD18 7DT","role":"Support Worker","salary":"£20","days":"Available next week","notes":"Can't walk properly, needs walking stick"}}
+CRITICAL RULES:
+- action is "add_candidate" with underscore!
+- field is "first_name" with underscore!
+- NO id field when adding!
+- ALL extra info goes in "notes" field!
 
-Add client: {"action":"add_client","data":{"surgery":"Dental Plus","postcode":"N1 2BB","role":"Dentist","budget":"£20"}}
+CANDIDATE FIELDS: first_name, last_name, role, postcode, salary, days, phone, email, experience, travel_flexibility, notes
+CLIENT FIELDS: surgery, client_name, role, postcode, budget, requirement, system, client_phone, client_email, notes
 
-Update: {"action":"update_candidate","data":{"id":"CAN1","salary":"£20","notes":"updated requirements"}}
-
-Delete: {"action":"delete_candidate","data":{"id":"CAN1"}}
-
-CRITICAL:
-- DO NOT include "id" when adding (auto-generated)
-- Use EXACT field names shown above
-- Put ALL extra details in "notes" field
 You HAVE FULL PERMISSIONS - USE THEM!`;
 
-      // Try to load from database but use our better default
+      // DISABLED - Using our hardcoded prompt for now
+      // The database prompt is causing issues with field names
+      /*
       try {
         const { data: promptData } = await userClient.rpc('get_active_system_prompt', {
           p_prompt_name: 'dental_matcher_default'
@@ -678,6 +677,8 @@ You HAVE FULL PERMISSIONS - USE THEM!`;
       } catch (e) {
         console.log('Using optimized fallback prompt');
       }
+      */
+      console.log('Using hardcoded prompt with correct field names');
 
       // ========================================
       // OPTIMIZED PROMPT WITH PROFESSIONAL BATCHING
