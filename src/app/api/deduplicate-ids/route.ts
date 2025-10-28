@@ -160,15 +160,45 @@ async function deduplicateCandidates(supabase: any, userId: string) {
 
       // FIRST: Delete any matches that reference this candidate ID
       // This prevents foreign key constraint violations
-      const { error: deleteMatchesError } = await supabase
+      // We need to check both exact match AND case-insensitive match
+      console.log(`    Attempting to delete matches for candidate_id: ${duplicate.id}`);
+
+      // Try exact match first
+      const { data: exactMatches, error: exactCheckError } = await supabase
         .from('matches')
-        .delete()
+        .select('id')
         .eq('candidate_id', duplicate.id);
 
-      if (deleteMatchesError) {
-        console.log(`    Warning: Could not delete matches for ${duplicate.id}: ${deleteMatchesError.message}`);
-      } else {
-        console.log(`    Deleted matches for ${duplicate.id} to prevent constraint violation`);
+      if (exactMatches && exactMatches.length > 0) {
+        console.log(`    Found ${exactMatches.length} exact matches to delete`);
+        const { error: deleteMatchesError } = await supabase
+          .from('matches')
+          .delete()
+          .eq('candidate_id', duplicate.id);
+
+        if (deleteMatchesError) {
+          console.log(`    Warning: Could not delete matches for ${duplicate.id}: ${deleteMatchesError.message}`);
+        } else {
+          console.log(`    Deleted ${exactMatches.length} matches for ${duplicate.id}`);
+        }
+      }
+
+      // Also try with case variations
+      const { data: caseMatches, error: caseCheckError } = await supabase
+        .from('matches')
+        .select('id')
+        .ilike('candidate_id', duplicate.id);
+
+      if (caseMatches && caseMatches.length > 0) {
+        console.log(`    Found ${caseMatches.length} case-insensitive matches to delete`);
+        const { error: deleteCaseMatchesError } = await supabase
+          .from('matches')
+          .delete()
+          .ilike('candidate_id', duplicate.id);
+
+        if (deleteCaseMatchesError) {
+          console.log(`    Warning: Could not delete case-insensitive matches: ${deleteCaseMatchesError.message}`);
+        }
       }
 
       // NOW: Update the candidate ID
@@ -307,15 +337,45 @@ async function deduplicateClients(supabase: any, userId: string) {
 
       // FIRST: Delete any matches that reference this client ID
       // This prevents foreign key constraint violations
-      const { error: deleteMatchesError } = await supabase
+      // We need to check both exact match AND case-insensitive match
+      console.log(`    Attempting to delete matches for client_id: ${duplicate.id}`);
+
+      // Try exact match first
+      const { data: exactMatches, error: exactCheckError } = await supabase
         .from('matches')
-        .delete()
+        .select('id')
         .eq('client_id', duplicate.id);
 
-      if (deleteMatchesError) {
-        console.log(`    Warning: Could not delete matches for ${duplicate.id}: ${deleteMatchesError.message}`);
-      } else {
-        console.log(`    Deleted matches for ${duplicate.id} to prevent constraint violation`);
+      if (exactMatches && exactMatches.length > 0) {
+        console.log(`    Found ${exactMatches.length} exact matches to delete`);
+        const { error: deleteMatchesError } = await supabase
+          .from('matches')
+          .delete()
+          .eq('client_id', duplicate.id);
+
+        if (deleteMatchesError) {
+          console.log(`    Warning: Could not delete matches for ${duplicate.id}: ${deleteMatchesError.message}`);
+        } else {
+          console.log(`    Deleted ${exactMatches.length} matches for ${duplicate.id}`);
+        }
+      }
+
+      // Also try with case variations
+      const { data: caseMatches, error: caseCheckError } = await supabase
+        .from('matches')
+        .select('id')
+        .ilike('client_id', duplicate.id);
+
+      if (caseMatches && caseMatches.length > 0) {
+        console.log(`    Found ${caseMatches.length} case-insensitive matches to delete`);
+        const { error: deleteCaseMatchesError } = await supabase
+          .from('matches')
+          .delete()
+          .ilike('client_id', duplicate.id);
+
+        if (deleteCaseMatchesError) {
+          console.log(`    Warning: Could not delete case-insensitive matches: ${deleteCaseMatchesError.message}`);
+        }
       }
 
       // NOW: Update the client ID
