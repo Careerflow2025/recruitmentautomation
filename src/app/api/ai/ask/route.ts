@@ -634,22 +634,28 @@ export async function POST(request: Request) {
         .map(k => k.content.substring(0, 100))
         .join('');
 
-      // Load system prompt from database (essential for AI understanding)
-      let baseSystemPrompt = 'You are an AI assistant for dental recruitment matching.'; // Fallback
+      // CONCISE AND DIRECT system prompt for better responses
+      let baseSystemPrompt = `You are the AI assistant for a dental recruitment platform. You have FULL ACCESS to the database.
 
+IMPORTANT RULES:
+1. Be DIRECT and CONCISE. Don't explain your process.
+2. For map questions: Just say "Your best match is X to Y (Z minutes)"
+3. For count questions: Just give the number directly
+4. You HAVE the data - never say you can't access it
+5. Respond as if you ARE the system, not separate from it`;
+
+      // Try to load from database but use our better default
       try {
         const { data: promptData } = await userClient.rpc('get_active_system_prompt', {
           p_prompt_name: 'dental_matcher_default'
         });
-        if (promptData) {
-          // Truncate system prompt if too long but keep essential parts
-          baseSystemPrompt = promptData.length > 500 ?
-            promptData.substring(0, 500) + '...' :
-            promptData;
+        if (promptData && promptData.length < 400) {
+          // Only use DB prompt if it's concise
+          baseSystemPrompt = promptData;
           console.log('✅ Loaded system prompt from database');
         }
       } catch (e) {
-        console.warn('Using fallback prompt');
+        console.log('Using optimized fallback prompt');
       }
 
       // ========================================
@@ -707,20 +713,15 @@ export async function POST(request: Request) {
         contextData = `User active`;
       }
 
-      // Build PROFESSIONAL system prompt with all necessary context
-      // But keep it within token limits through smart batching
+      // Build DIRECT system prompt - no unnecessary explanations
       const systemPrompt = `${baseSystemPrompt}
 
-CONTEXT:
-Mode: ${contextMode}
-Stats: ${candidates.length} candidates, ${clients.length} clients, ${matches.length} matches
-${contextData}
+YOUR DATA:
+You have ${candidates.length} candidates, ${clients.length} clients, ${matches.length} matches
+${contextData ? `\nRelevant data:\n${contextData}` : ''}
 
-${ragConversations ? `Memory: ${ragConversations}\n` : ''}${ragKnowledge ? `Knowledge: ${ragKnowledge}\n` : ''}
-ACTIONS: You can add/update/delete candidates and clients. Update match status. Add notes.
-Format: Use JSON for actions: {"action":"add_candidate","data":{...}}
-
-Question: ${question}`;
+${ragConversations ? `Recent: ${ragConversations}\n` : ''}
+RESPOND DIRECTLY TO: ${question}`;
 
       console.log(`📤 Calling RunPod vLLM at ${process.env.VPS_AI_URL}`);
 
@@ -735,14 +736,11 @@ Question: ${question}`;
       if (systemPrompt.length > MAX_SYSTEM_PROMPT) {
         console.log(`⚠️ System prompt too long (${systemPrompt.length} chars), applying sliding window`);
 
-        // Keep essential parts: base prompt, stats, actions
+        // Keep essential parts: base prompt and stats
         const essentials = `${baseSystemPrompt}
 
-CONTEXT:
-Stats: ${candidates.length} candidates, ${clients.length} clients, ${matches.length} matches
-ACTIONS: You can add/update/delete candidates and clients. Update match status.
-
-Question: ${question}`;
+YOUR DATA: ${candidates.length} candidates, ${clients.length} clients, ${matches.length} matches
+RESPOND DIRECTLY TO: ${question}`;
 
         // Add as much context data as fits
         const remainingSpace = MAX_SYSTEM_PROMPT - essentials.length;
@@ -750,12 +748,9 @@ Question: ${question}`;
           const truncatedContext = contextData.substring(0, Math.min(remainingSpace, contextData.length));
           combinedPrompt = `${baseSystemPrompt}
 
-CONTEXT:
-Stats: ${candidates.length} candidates, ${clients.length} clients, ${matches.length} matches
-Data: ${truncatedContext}
-ACTIONS: You can add/update/delete candidates and clients. Update match status.
-
-Question: ${question}`;
+YOUR DATA: ${candidates.length} candidates, ${clients.length} clients, ${matches.length} matches
+Details: ${truncatedContext}
+RESPOND DIRECTLY TO: ${question}`;
         } else {
           combinedPrompt = essentials;
         }
