@@ -16,6 +16,7 @@ import CustomColumnManager from './CustomColumnManager';
 import EditableColumnHeader from './EditableColumnHeader';
 import MultiNotesPopup from './MultiNotesPopup';
 import BulkParseModal from './BulkParseModal';
+import { DeduplicateButton } from '@/components/admin/DeduplicateButton';
 
 // Extended Client type with user_id (exists in DB but not in type definition)
 type ClientWithUser = Client & { user_id?: string };
@@ -1256,6 +1257,7 @@ export default function ClientsDataGrid() {
             tableName="clients"
             onColumnAdded={loadCustomColumns}
           />
+          <DeduplicateButton />
           <button onClick={handleAddRow} className="grid-toolbar-button grid-toolbar-button-primary">
             ➕ Add Client
           </button>

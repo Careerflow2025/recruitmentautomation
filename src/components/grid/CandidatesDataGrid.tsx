@@ -17,6 +17,7 @@ import EditableColumnHeader from './EditableColumnHeader';
 import MultiNotesPopup from './MultiNotesPopup';
 import BulkParseModal from './BulkParseModal';
 import { parseNameFromEmail, findDuplicateCandidates, getDuplicateReasonText, isValidEmail } from '@/lib/utils/candidateHelpers';
+import { DeduplicateButton } from '@/components/admin/DeduplicateButton';
 
 export default function CandidatesDataGrid() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -1434,6 +1435,7 @@ export default function CandidatesDataGrid() {
             tableName="candidates"
             onColumnAdded={loadCustomColumns}
           />
+          <DeduplicateButton />
           <button onClick={handleAddRow} className="grid-toolbar-button grid-toolbar-button-primary">
             ➕ Add Candidate
           </button>
