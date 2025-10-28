@@ -634,15 +634,17 @@ export async function POST(request: Request) {
         .map(k => k.content.substring(0, 100))
         .join('');
 
-      // CONCISE AND DIRECT system prompt for better responses
-      let baseSystemPrompt = `You are the AI assistant for a dental recruitment platform. You have FULL ACCESS to the database.
+      // ULTRA-DIRECT system prompt - NO explanations allowed
+      let baseSystemPrompt = `You are the recruitment system. Give ONLY the answer. NO explanations.
 
-IMPORTANT RULES:
-1. Be DIRECT and CONCISE. Don't explain your process.
-2. For map questions: Just say "Your best match is X to Y (Z minutes)"
-3. For count questions: Just give the number directly
-4. You HAVE the data - never say you can't access it
-5. Respond as if you ARE the system, not separate from it`;
+STRICT RULES - NEVER BREAK THESE:
+- NEVER say "I need to", "Let me", "First", "Next", "Now"
+- NEVER explain your process or steps
+- NEVER say "Here's how" or "Let's find"
+- For maps: ONLY say "Best match: CAN# to CL# (X minutes)"
+- For counts: ONLY say the number
+- Give the answer in 1 sentence maximum
+- You HAVE all data - act like it`;
 
       // Try to load from database but use our better default
       try {
@@ -835,6 +837,37 @@ RESPOND DIRECTLY TO: ${question}`;
 
       console.log(`✅ Received response from RunPod vLLM (${aiAnswer.length} chars)`);
       console.log('📝 AI Response:', aiAnswer.substring(0, 500));
+
+      // POST-PROCESS: Remove any explanations if AI still tries to explain
+      const explanationPhrases = [
+        "First, let's", "Next, we", "Now, we", "Let me", "I need to",
+        "Here's how", "To do this", "I'll", "Let's find", "Now let's",
+        "With the", "We can now", "Let's extract", "First,", "Next,",
+        "I first need", "To show you"
+      ];
+
+      // If response contains explanation phrases, try to extract just the answer
+      const hasExplanation = explanationPhrases.some(phrase =>
+        aiAnswer.toLowerCase().includes(phrase.toLowerCase())
+      );
+
+      if (hasExplanation && questionType.isMap) {
+        // For map questions, extract just the match info
+        const matchPattern = /(?:best match[:\s]+)?([A-Z]+\d+)\s+to\s+([A-Z]+\d+)\s+\((\d+\s*(?:minutes?|mins?|m))\)/i;
+        const match = aiAnswer.match(matchPattern);
+        if (match) {
+          aiAnswer = `Best match: ${match[1]} to ${match[2]} (${match[3]})`;
+          console.log('🎯 Extracted direct answer from verbose response');
+        }
+      } else if (hasExplanation && questionLower.includes('how many')) {
+        // For count questions, extract just the number
+        const numberPattern = /(\d+)\s*(candidates?|clients?|matches?)/i;
+        const match = aiAnswer.match(numberPattern);
+        if (match) {
+          aiAnswer = `${match[1]} ${match[2]}`;
+          console.log('🎯 Extracted direct count from verbose response');
+        }
+      }
 
       // Clean up any malformed JSON artifacts (AI sometimes generates broken JSON)
       if (questionType.isMap) {
