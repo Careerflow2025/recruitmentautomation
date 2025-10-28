@@ -92,22 +92,25 @@ export async function POST(request: NextRequest) {
       method_used: 'google_maps_working',
     });
 
-    // Start background processing
-    processMatches(user.id, candidates, clients, apiKey, forceFullRegeneration).catch(error => {
-      console.error('❌ Background error:', error);
-    });
+    // SYNCHRONOUS PROCESSING: Process matches within request (no background)
+    // This works within Vercel's serverless function timeout limits
+    const result = await processMatches(user.id, candidates, clients, apiKey, forceFullRegeneration);
 
     return NextResponse.json({
       success: true,
       message: forceFullRegeneration
-        ? 'Full match regeneration started (all existing matches will be replaced)'
-        : 'Incremental match generation started (only new pairs will be processed)',
-      processing: true,
+        ? 'Full match regeneration completed'
+        : 'Incremental match generation completed',
+      processing: false,
+      completed: true,
       mode: forceFullRegeneration ? 'full' : 'incremental',
       stats: {
         candidates: candidates.length,
         clients: clients.length,
-        total_pairs_to_process: candidates.length * clients.length,
+        total_pairs: candidates.length * clients.length,
+        matches_found: result.successCount,
+        excluded_over_80min: result.excludedCount,
+        errors: result.errorCount,
       }
     });
 
@@ -388,8 +391,8 @@ async function processMatches(
           percent_complete: percentage,
         });
 
-        // Delay between batches (1 second)
-        await sleep(1000);
+        // Delay between batches (100ms to avoid rate limits but stay fast)
+        await sleep(100);
       }
 
     // Final update
@@ -417,6 +420,15 @@ async function processMatches(
     const totalSaved = skippedCount + bannedPairs.size;
     console.log(`   💾 API calls saved: ${totalSaved > 0 ? Math.round((totalSaved / totalPairs) * 100) : 0}%`);
 
+    // Return results for API response
+    return {
+      successCount,
+      excludedCount,
+      errorCount,
+      skippedCount,
+      totalPairs,
+    };
+
   } catch (error: any) {
     console.error('❌ Processing failed:', error);
 
@@ -426,6 +438,15 @@ async function processMatches(
       error_message: error.message,
       completed_at: new Date().toISOString(),
     });
+
+    // Return error results
+    return {
+      successCount: 0,
+      excludedCount: 0,
+      errorCount: 1,
+      skippedCount: 0,
+      totalPairs: 0,
+    };
   }
 }
 
