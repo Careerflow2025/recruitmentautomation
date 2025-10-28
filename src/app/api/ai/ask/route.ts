@@ -983,6 +983,23 @@ RESPOND DIRECTLY TO: ${question}`;
 
         for (const action of actionsToExecute) {
           try {
+            // FIX: Handle wrong action names from AI
+            if (action.action === 'addcandidate') {
+              action.action = 'add_candidate';
+              console.log('🔧 Fixed action name: addcandidate → add_candidate');
+            }
+            if (action.action === 'addclient') {
+              action.action = 'add_client';
+              console.log('🔧 Fixed action name: addclient → add_client');
+            }
+
+            // FIX: Handle wrong field names from AI
+            if (action.data && action.data.firstname) {
+              action.data.first_name = action.data.firstname;
+              delete action.data.firstname;
+              console.log('🔧 Fixed field name: firstname → first_name');
+            }
+
             console.log(`Executing action: ${action.action}`, JSON.stringify(action.data));
 
             switch (action.action) {
@@ -1011,17 +1028,25 @@ RESPOND DIRECTLY TO: ${question}`;
                 }
 
                 // Insert with auto-generated ID
-                const { error } = await userClient.from('candidates').insert({
+                const insertData = {
                   ...action.data,
                   id: nextId,
                   user_id: user.id,
                   added_at: new Date().toISOString(),
-                });
+                };
+
+                // Debug log to see what we're inserting
+                console.log('📝 Inserting candidate with data:', JSON.stringify(insertData));
+
+                const { error } = await userClient.from('candidates').insert(insertData);
 
                 if (error) {
                   actionResults.push(`❌ Error adding candidate: ${error.message}`);
+                  console.error('❌ Insert error:', error);
                 } else {
                   actionResults.push(`✅ Successfully added candidate ${nextId}`);
+                  // Log what was actually saved
+                  console.log(`✅ Saved candidate ${nextId} with notes: "${insertData.notes || 'NO NOTES'}"`);
                 }
                 break;
               }
