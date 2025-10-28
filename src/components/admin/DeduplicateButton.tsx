@@ -86,6 +86,17 @@ export function DeduplicateButton() {
                 Total IDs Fixed: {result.totalFixed}
               </strong>
             </div>
+
+            {result.message && (
+              <div className="mt-3 p-2 bg-yellow-50 border border-yellow-300 rounded">
+                <p className="text-sm text-yellow-800 font-semibold">{result.message}</p>
+                {result.totalFixed > 0 && (
+                  <p className="text-sm text-yellow-700 mt-1">
+                    ⚠️ Important: Go to Matches page and click "Regenerate All Matches" to rebuild match data.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {result.totalFixed > 0 && (

@@ -58,6 +58,9 @@ export async function POST(request: NextRequest) {
       candidates: candidateResults,
       clients: clientResults,
       totalFixed: candidateResults.fixed + clientResults.fixed,
+      message: candidateResults.fixed > 0 || clientResults.fixed > 0
+        ? 'Duplicates fixed! Note: Matches for duplicate IDs were deleted. Please regenerate matches.'
+        : 'No duplicates were fixed.',
     };
 
     console.log('✅ Deduplication complete:', summary);
@@ -155,8 +158,20 @@ async function deduplicateCandidates(supabase: any, userId: string) {
 
       console.log(`    Changing ${duplicate.id} → ${newId} for candidate: ${duplicate.first_name} ${duplicate.last_name} (added_at: ${duplicate.added_at})`);
 
-      // Update using a simpler approach - just match on the exact record
-      // Using created_at or added_at as a unique identifier along with the current ID
+      // FIRST: Delete any matches that reference this candidate ID
+      // This prevents foreign key constraint violations
+      const { error: deleteMatchesError } = await supabase
+        .from('matches')
+        .delete()
+        .eq('candidate_id', duplicate.id);
+
+      if (deleteMatchesError) {
+        console.log(`    Warning: Could not delete matches for ${duplicate.id}: ${deleteMatchesError.message}`);
+      } else {
+        console.log(`    Deleted matches for ${duplicate.id} to prevent constraint violation`);
+      }
+
+      // NOW: Update the candidate ID
       const { data: updatedData, error: updateError } = await supabase
         .from('candidates')
         .update({ id: newId })
@@ -290,7 +305,20 @@ async function deduplicateClients(supabase: any, userId: string) {
 
       console.log(`    Changing ${duplicate.id} → ${newId} for client: ${duplicate.surgery} (added_at: ${duplicate.added_at})`);
 
-      // Update using a simpler approach - just match on the exact record
+      // FIRST: Delete any matches that reference this client ID
+      // This prevents foreign key constraint violations
+      const { error: deleteMatchesError } = await supabase
+        .from('matches')
+        .delete()
+        .eq('client_id', duplicate.id);
+
+      if (deleteMatchesError) {
+        console.log(`    Warning: Could not delete matches for ${duplicate.id}: ${deleteMatchesError.message}`);
+      } else {
+        console.log(`    Deleted matches for ${duplicate.id} to prevent constraint violation`);
+      }
+
+      // NOW: Update the client ID
       const { data: updatedData, error: updateError } = await supabase
         .from('clients')
         .update({ id: newId })
