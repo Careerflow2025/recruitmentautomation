@@ -466,113 +466,159 @@ export async function POST(request: Request) {
       const inProgressMatches = matchStatuses.filter(s => s.status === 'in-progress').length;
       const rejectedMatches = matchStatuses.filter(s => s.status === 'rejected').length;
 
-      // SMART CONTEXT FILTERING - Only send relevant data based on question
+      // ========================================
+      // PROFESSIONAL BATCHING SYSTEM V2
+      // Context-aware token management
+      // ========================================
+
       const questionLower = question.toLowerCase();
+      const MAX_CONTEXT_TOKENS = 2800; // Reserve ~1200 for response
 
-      // Detect question type
-      const isAboutInProgress = questionLower.includes('in-progress') || questionLower.includes('follow-up') || questionLower.includes('follow up');
-      const isAboutPlaced = questionLower.includes('placed') || questionLower.includes('hired');
-      const isAboutRejected = questionLower.includes('rejected') || questionLower.includes('declined');
-      const isAboutSpecificCandidate = questionLower.match(/can\d+/i);
-      const isAboutSpecificClient = questionLower.match(/cl\d+/i);
-      const isAboutStats = questionLower.includes('how many') || questionLower.includes('total') || questionLower.includes('count');
-      const isAboutPhones = questionLower.includes('phone') || questionLower.includes('contact') || questionLower.includes('call');
-      const isAboutMap = questionLower.includes('map') || questionLower.includes('commute') || questionLower.includes('drive') || questionLower.includes('best match') || questionLower.includes('shortest');
+      // Question type detection for intelligent context selection
+      const questionType = {
+        isStats: questionLower.includes('how many') || questionLower.includes('total') || questionLower.includes('count'),
+        isSpecificCandidate: questionLower.match(/can\d+/i),
+        isSpecificClient: questionLower.match(/cl\d+/i),
+        isInProgress: questionLower.includes('in-progress') || questionLower.includes('follow'),
+        isPlaced: questionLower.includes('placed') || questionLower.includes('hired'),
+        isRejected: questionLower.includes('rejected') || questionLower.includes('declined'),
+        isMap: questionLower.includes('map') || questionLower.includes('commute') || questionLower.includes('drive'),
+        needsData: questionLower.includes('show') || questionLower.includes('list') || questionLower.includes('find')
+      };
 
-      // Filter data based on question - DRASTICALLY REDUCE CONTEXT
+      // Context batching strategy
       let relevantCandidates: any[] = [];
       let relevantClients: any[] = [];
       let relevantMatches: any[] = [];
+      let contextMode = 'minimal';
 
-      if (isAboutStats) {
-        // For stats questions, NO detailed data needed - just counts
+      // BATCH 1: Statistics-only (no data needed)
+      if (questionType.isStats) {
+        contextMode = 'stats-only';
+        // Send NO actual data, just counts
         relevantCandidates = [];
         relevantClients = [];
         relevantMatches = [];
-      } else if (isAboutInProgress) {
-        // Only in-progress matches
-        const inProgressIds = matchStatuses.filter(s => s.status === 'in-progress');
-        relevantMatches = enrichedMatches.filter(m =>
-          inProgressIds.some(s => s.candidate_id === m.candidate_id && s.client_id === m.client_id)
-        ).slice(0, 20); // Max 20 matches
-
-        // Only candidates/clients involved in these matches
-        const candidateIds = new Set(relevantMatches.map(m => m.candidate_id));
-        const clientIds = new Set(relevantMatches.map(m => m.client_id));
-        relevantCandidates = candidates.filter(c => candidateIds.has(c.id));
-        relevantClients = clients.filter(c => clientIds.has(c.id));
-      } else if (isAboutPlaced) {
-        const placedIds = matchStatuses.filter(s => s.status === 'placed');
-        relevantMatches = enrichedMatches.filter(m =>
-          placedIds.some(s => s.candidate_id === m.candidate_id && s.client_id === m.client_id)
-        ).slice(0, 20);
-
-        const candidateIds = new Set(relevantMatches.map(m => m.candidate_id));
-        const clientIds = new Set(relevantMatches.map(m => m.client_id));
-        relevantCandidates = candidates.filter(c => candidateIds.has(c.id));
-        relevantClients = clients.filter(c => clientIds.has(c.id));
-      } else if (isAboutRejected) {
-        const rejectedIds = matchStatuses.filter(s => s.status === 'rejected');
-        relevantMatches = enrichedMatches.filter(m =>
-          rejectedIds.some(s => s.candidate_id === m.candidate_id && s.client_id === m.client_id)
-        ).slice(0, 20);
-
-        const candidateIds = new Set(relevantMatches.map(m => m.candidate_id));
-        const clientIds = new Set(relevantMatches.map(m => m.client_id));
-        relevantCandidates = candidates.filter(c => candidateIds.has(c.id));
-        relevantClients = clients.filter(c => clientIds.has(c.id));
-      } else if (isAboutSpecificCandidate) {
+      }
+      // BATCH 2: Specific entity queries (focused data)
+      else if (questionType.isSpecificCandidate) {
+        contextMode = 'specific-candidate';
         const canId = questionLower.match(/can\d+/i)?.[0].toUpperCase();
-        relevantCandidates = candidates.filter(c => c.id === canId);
-        relevantMatches = enrichedMatches.filter(m => m.candidate_id === canId).slice(0, 10);
-
+        relevantCandidates = candidates.filter(c => c.id === canId).slice(0, 1);
+        relevantMatches = enrichedMatches.filter(m => m.candidate_id === canId).slice(0, 5);
         const clientIds = new Set(relevantMatches.map(m => m.client_id));
-        relevantClients = clients.filter(c => clientIds.has(c.id));
-      } else if (isAboutSpecificClient) {
+        relevantClients = clients.filter(c => clientIds.has(c.id)).slice(0, 5);
+      }
+      else if (questionType.isSpecificClient) {
+        contextMode = 'specific-client';
         const clId = questionLower.match(/cl\d+/i)?.[0].toUpperCase();
-        relevantClients = clients.filter(c => c.id === clId);
-        relevantMatches = enrichedMatches.filter(m => m.client_id === clId).slice(0, 10);
+        relevantClients = clients.filter(c => c.id === clId).slice(0, 1);
+        relevantMatches = enrichedMatches.filter(m => m.client_id === clId).slice(0, 5);
+        const candidateIds = new Set(relevantMatches.map(m => m.candidate_id));
+        relevantCandidates = candidates.filter(c => candidateIds.has(c.id)).slice(0, 5);
+      }
+      // BATCH 3: Status-filtered queries (moderate data)
+      else if (questionType.isInProgress || questionType.isPlaced || questionType.isRejected) {
+        contextMode = 'status-filtered';
+        const statusFilter = questionType.isInProgress ? 'in-progress' :
+                           questionType.isPlaced ? 'placed' : 'rejected';
+
+        const statusIds = matchStatuses.filter(s => s.status === statusFilter);
+        relevantMatches = enrichedMatches.filter(m =>
+          statusIds.some(s => s.candidate_id === m.candidate_id && s.client_id === m.client_id)
+        ).slice(0, 10); // Max 10 matches for status queries
 
         const candidateIds = new Set(relevantMatches.map(m => m.candidate_id));
-        relevantCandidates = candidates.filter(c => candidateIds.has(c.id));
-      } else {
-        // General question - show minimal sample data
-        // Aggressive filtering to stay under 2000 tokens
-        const maxItems = candidates.length > 100 ? 3 : (candidates.length > 50 ? 5 : 8);
-        relevantCandidates = candidates.slice(0, maxItems);
-        relevantClients = clients.slice(0, maxItems);
-        relevantMatches = enrichedMatches.slice(0, maxItems);
+        const clientIds = new Set(relevantMatches.map(m => m.client_id));
+        relevantCandidates = candidates.filter(c => candidateIds.has(c.id)).slice(0, 10);
+        relevantClients = clients.filter(c => clientIds.has(c.id)).slice(0, 10);
+      }
+      // BATCH 4: General queries needing data (minimal sample)
+      else if (questionType.needsData) {
+        contextMode = 'sample-data';
+        // For general "show me" queries, provide small representative sample
+        relevantCandidates = candidates.slice(0, 3);
+        relevantClients = clients.slice(0, 3);
+        relevantMatches = enrichedMatches.slice(0, 5);
+      }
+      // BATCH 5: Help/chat queries (no data)
+      else {
+        contextMode = 'chat-only';
+        relevantCandidates = [];
+        relevantClients = [];
+        relevantMatches = [];
       }
 
-      // Ultra-compact data representation (minimal tokens)
-      // BUT: If map question, include FULL postcodes so AI can create MAP_ACTION markers
-      const compactCandidates = relevantCandidates.map(c => ({
-        id: c.id,
-        role: c.role,
-        pc: isAboutMap ? (c.postcode || '') : (c.postcode?.substring(0, 4) || ''), // Full postcode for maps
-        ph: c.phone ? c.phone.slice(-4) : '' // Only last 4 digits
-      }));
+      console.log(`📦 Context Batch Mode: ${contextMode}`);
+      console.log(`📊 Data sizes - Candidates: ${relevantCandidates.length}, Clients: ${relevantClients.length}, Matches: ${relevantMatches.length}`);
 
-      const compactClients = relevantClients.map(c => ({
-        id: c.id,
-        surg: c.surgery?.substring(0, 20) || '', // Truncate long names
-        role: c.role,
-        pc: isAboutMap ? (c.postcode || '') : (c.postcode?.substring(0, 4) || '') // Full postcode for maps
-      }));
+      // ========================================
+      // ULTRA-COMPACT DATA REPRESENTATION
+      // Minimize tokens while preserving info
+      // ========================================
 
-      const compactMatches = relevantMatches.map(m => ({
-        can: m.candidate_id,
-        cl: m.client_id,
-        min: m.commute_minutes,
-        rm: m.role_match ? 1 : 0, // 1=match, 0=no match (saves tokens)
-        st: m.status ? m.status.substring(0, 3) : '', // pla/in-/rej
-        // For map questions, include full postcodes and display string
-        ...(isAboutMap && m.candidate && m.client ? {
-          can_pc: m.candidate.postcode || '',
-          cl_pc: m.client.postcode || '',
-          display: m.commute_display || `${m.commute_minutes}m`
-        } : {})
-      }));
+      // Only include essential fields based on question type
+      const compactCandidates = relevantCandidates.map(c => {
+        const compact: any = { id: c.id };
+
+        // Include fields only if relevant to the question
+        if (c.role) compact.r = c.role.substring(0, 15); // Abbreviated role
+        if (questionType.isMap && c.postcode) {
+          compact.pc = c.postcode; // Full postcode for maps
+        } else if (c.postcode) {
+          compact.p = c.postcode.substring(0, 3); // Area code only
+        }
+
+        // Only include phone if specifically asked
+        if (questionLower.includes('phone') || questionLower.includes('contact')) {
+          compact.ph = c.phone?.slice(-4) || ''; // Last 4 digits only
+        }
+
+        return compact;
+      });
+
+      const compactClients = relevantClients.map(c => {
+        const compact: any = { id: c.id };
+
+        // Truncate surgery name for space
+        if (c.surgery) compact.s = c.surgery.substring(0, 15);
+        if (c.role) compact.r = c.role.substring(0, 15);
+
+        if (questionType.isMap && c.postcode) {
+          compact.pc = c.postcode; // Full for maps
+        } else if (c.postcode) {
+          compact.p = c.postcode.substring(0, 3); // Area only
+        }
+
+        return compact;
+      });
+
+      const compactMatches = relevantMatches.map(m => {
+        const compact: any = {
+          c: m.candidate_id, // Shorter key names
+          l: m.client_id,
+          m: m.commute_minutes || 0
+        };
+
+        // Only include role match if relevant
+        if (!questionType.isStats) {
+          compact.r = m.role_match ? 1 : 0;
+        }
+
+        // Only include status if it exists and is relevant
+        if (m.status && (questionType.isInProgress || questionType.isPlaced || questionType.isRejected)) {
+          compact.s = m.status.substring(0, 3); // pla/in-/rej
+        }
+
+        // Include map data only for map questions
+        if (questionType.isMap && m.candidate && m.client) {
+          compact.cpc = m.candidate.postcode || '';
+          compact.lpc = m.client.postcode || '';
+          compact.d = m.commute_display || `${m.commute_minutes}m`;
+        }
+
+        return compact;
+      });
 
       // RAG-POWERED SYSTEM PROMPT - Uses semantic retrieval instead of recent history
       const ragConversations = relevantConversations.map(c =>
@@ -607,38 +653,49 @@ export async function POST(request: Request) {
         console.warn('⚠️ Using fallback system prompt');
       }
 
-      // Build complete system prompt with context
+      // ========================================
+      // OPTIMIZED PROMPT WITH PROFESSIONAL BATCHING
+      // Keep context under 2800 tokens (1200 reserved for response)
+      // ========================================
+
+      // Build minimal but complete context
+      let contextData = '';
+
+      if (contextMode === 'stats-only') {
+        // For stats questions, only counts needed
+        contextData = `Stats: Candidates:${candidates.length} Clients:${clients.length} Matches:${totalMatches} (Placed:${placedMatches} InProgress:${inProgressMatches} Rejected:${rejectedMatches})`;
+      } else if (compactCandidates.length > 0 || compactClients.length > 0 || compactMatches.length > 0) {
+        // Include actual data only when needed
+        const dataParts = [];
+        if (compactCandidates.length > 0) {
+          dataParts.push(`Candidates[${compactCandidates.length}]:${JSON.stringify(compactCandidates)}`);
+        }
+        if (compactClients.length > 0) {
+          dataParts.push(`Clients[${compactClients.length}]:${JSON.stringify(compactClients)}`);
+        }
+        if (compactMatches.length > 0) {
+          dataParts.push(`Matches[${compactMatches.length}]:${JSON.stringify(compactMatches)}`);
+        }
+        contextData = dataParts.join('\n');
+      } else {
+        // For general chat, include minimal stats
+        contextData = `Active user with ${candidates.length} candidates, ${clients.length} clients`;
+      }
+
+      // Limit RAG context to most relevant items
+      const compactRagMemory = relevantConversations
+        .filter(c => c.similarity > 0.75) // Higher threshold
+        .slice(0, 1) // Max 1 past conversation
+        .map(c => `[Memory: ${c.question.substring(0, 30)}]`)
+        .join(' ');
+
+      // Build system prompt with token awareness
       const systemPrompt = `${baseSystemPrompt}
 
-═══════════════════════════════════════════════
-CURRENT CONTEXT:
-═══════════════════════════════════════════════
+Mode: ${contextMode}
+${contextData}${questionType.isMap ? '\n⚠️Reply with plain text only (no JSON/MAP_ACTION)' : ''}${compactRagMemory ? `\n${compactRagMemory}` : ''}
 
-USER: ${user.id.substring(0, 8)} | Cand: ${candidates.length} | Cli: ${clients.length} | Match: ${totalMatches} (✅${placedMatches} 🔄${inProgressMatches} ❌${rejectedMatches})
-
-DATA (filtered for this question):
-Cand: ${JSON.stringify(compactCandidates)}
-Cli: ${JSON.stringify(compactClients)}
-Match: ${JSON.stringify(compactMatches)}
-
-${isAboutMap ? `
-🗺️ MAP QUESTION DETECTED 🗺️
-
-CRITICAL: DO NOT generate MAP_ACTION markers or any JSON!
-The system will handle maps automatically.
-
-Your task: Provide ONLY a simple text description (1-2 sentences).
-Example: "Your best commute is CAN24 to CL001 (22 minutes)."
-
-DO NOT output JSON, MAP_ACTION, or code blocks.
-ONLY plain text description.
-` : ''}
-${ragConversations ? `RAG MEMORY (relevant past conversations):\n${ragConversations}\n` : ''}
-${ragKnowledge ? `RAG KNOWLEDGE (relevant system info):\n${ragKnowledge}\n` : ''}
-Summary: ${existingSummary?.summary || 'None'}
-Facts: ${Object.keys(userFacts).length > 0 ? Object.entries(userFacts).map(([k, v]) => `${k}:${v}`).join('; ') : 'None'}
-
-Q: ${question}`;
+Question: ${question}`;
 
       console.log(`📤 Calling RunPod vLLM at ${process.env.VPS_AI_URL}`);
 
@@ -698,7 +755,7 @@ Q: ${question}`;
           messages: [
             { role: 'user', content: combinedPrompt }
           ],
-          max_tokens: isAboutMap ? 600 : 300, // More tokens for map responses (need room for MAP_ACTION JSON)
+          max_tokens: 250, // Conservative token limit for Mistral 7B
           temperature: 0.7,
           stream: false
         }),
@@ -718,7 +775,7 @@ Q: ${question}`;
       console.log('📝 AI Response:', aiAnswer.substring(0, 500));
 
       // Clean up any malformed JSON artifacts (AI sometimes generates broken JSON)
-      if (isAboutMap) {
+      if (questionType.isMap) {
         // Remove any standalone curly braces or MAP_ACTION attempts
         aiAnswer = aiAnswer.replace(/^\s*\}\s*$/gm, ''); // Remove lines with just }
         aiAnswer = aiAnswer.replace(/^\s*\{\s*$/gm, ''); // Remove lines with just {
@@ -732,7 +789,7 @@ Q: ${question}`;
       // ==========================================
       // Mistral 7B is too small to reliably generate complex JSON
       // So we detect map questions and inject MAP_ACTION automatically
-      if (isAboutMap && relevantMatches.length > 0) {
+      if (questionType.isMap && relevantMatches.length > 0) {
         console.log('🗺️ Map question detected - auto-injecting MAP_ACTION markers');
         console.log(`📊 Available matches: ${relevantMatches.length}`);
 
