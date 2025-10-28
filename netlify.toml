@@ -13,10 +13,9 @@
 [functions]
   # Directory for serverless functions
   directory = "netlify/functions"
-  # Node bundler
+  # Node bundler (esbuild will handle dependencies automatically)
   node_bundler = "esbuild"
 
-# Background function configuration
+# Individual function configuration (optional)
 [functions."process-matches-background"]
-  # Background functions can run up to 15 minutes on free tier!
-  included_files = ["node_modules/**"]
+  # No included_files needed - esbuild bundles dependencies automatically
