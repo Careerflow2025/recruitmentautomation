@@ -91,15 +91,26 @@ async function deduplicateCandidates(supabase: any, userId: string) {
     return { total: 0, duplicates: 0, fixed: 0 };
   }
 
-  // Group by ID to find duplicates
+  console.log(`📊 Total candidates fetched: ${candidates.length}`);
+  console.log('Sample IDs:', candidates.slice(0, 10).map(c => c.id));
+
+  // Group by ID (case-insensitive) to find duplicates
   const idGroups = new Map<string, any[]>();
   for (const candidate of candidates) {
-    const id = candidate.id || '';
+    const id = (candidate.id || '').toUpperCase().trim(); // Normalize ID to uppercase
     if (!idGroups.has(id)) {
       idGroups.set(id, []);
     }
     idGroups.get(id)!.push(candidate);
   }
+
+  // Log all ID groups for debugging
+  console.log('ID Groups:');
+  idGroups.forEach((group, id) => {
+    if (group.length > 1) {
+      console.log(`  ID "${id}": ${group.length} occurrences`);
+    }
+  });
 
   // Find duplicate groups
   const duplicateGroups = Array.from(idGroups.entries()).filter(
@@ -112,27 +123,45 @@ async function deduplicateCandidates(supabase: any, userId: string) {
   let fixed = 0;
   let nextIdNum = getHighestCandidateNumber(candidates) + 1;
 
-  for (const [id, group] of duplicateGroups) {
-    console.log(`  Fixing duplicate group: ${id} (${group.length} items)`);
+  for (const [normalizedId, group] of duplicateGroups) {
+    console.log(`  Fixing duplicate group: ${normalizedId} (${group.length} items)`);
+
+    // Sort by added_at to keep the oldest
+    group.sort((a, b) => {
+      const dateA = new Date(a.added_at || a.created_at || 0).getTime();
+      const dateB = new Date(b.added_at || b.created_at || 0).getTime();
+      return dateA - dateB;
+    });
 
     // Keep the first one, update the rest
     for (let i = 1; i < group.length; i++) {
       const duplicate = group[i];
       const newId = `CAN${nextIdNum}`;
 
-      console.log(`    Changing ${duplicate.id} → ${newId} for candidate: ${duplicate.first_name} ${duplicate.last_name}`);
+      console.log(`    Changing ${duplicate.id} → ${newId} for candidate: ${duplicate.first_name} ${duplicate.last_name} (added_at: ${duplicate.added_at})`);
 
-      // Update in database
-      const { error: updateError } = await supabase
+      // Update in database using multiple conditions to uniquely identify the record
+      // We need to be very specific to avoid updating the wrong record
+      const updateQuery = supabase
         .from('candidates')
         .update({ id: newId })
-        .eq('user_id', userId)
-        .eq('id', duplicate.id)
-        .eq('added_at', duplicate.added_at); // Use added_at to uniquely identify
+        .eq('user_id', userId);
+
+      // Add all available unique identifiers
+      if (duplicate.id) updateQuery.eq('id', duplicate.id);
+      if (duplicate.first_name) updateQuery.eq('first_name', duplicate.first_name);
+      if (duplicate.last_name) updateQuery.eq('last_name', duplicate.last_name);
+      if (duplicate.email) updateQuery.eq('email', duplicate.email);
+      if (duplicate.phone) updateQuery.eq('phone', duplicate.phone);
+
+      // Limit to 1 to ensure we only update one record
+      const { data: updatedData, error: updateError } = await updateQuery.single();
 
       if (updateError) {
         console.error(`    Failed to update: ${updateError.message}`);
+        console.error(`    Duplicate details:`, duplicate);
       } else {
+        console.log(`    ✅ Successfully updated to ${newId}`);
         fixed++;
         nextIdNum++;
       }
@@ -170,15 +199,26 @@ async function deduplicateClients(supabase: any, userId: string) {
     return { total: 0, duplicates: 0, fixed: 0 };
   }
 
-  // Group by ID to find duplicates
+  console.log(`📊 Total clients fetched: ${clients.length}`);
+  console.log('Sample IDs:', clients.slice(0, 10).map(c => c.id));
+
+  // Group by ID (case-insensitive) to find duplicates
   const idGroups = new Map<string, any[]>();
   for (const client of clients) {
-    const id = client.id || '';
+    const id = (client.id || '').toUpperCase().trim(); // Normalize ID to uppercase
     if (!idGroups.has(id)) {
       idGroups.set(id, []);
     }
     idGroups.get(id)!.push(client);
   }
+
+  // Log all ID groups for debugging
+  console.log('ID Groups:');
+  idGroups.forEach((group, id) => {
+    if (group.length > 1) {
+      console.log(`  ID "${id}": ${group.length} occurrences`);
+    }
+  });
 
   // Find duplicate groups
   const duplicateGroups = Array.from(idGroups.entries()).filter(
@@ -191,27 +231,44 @@ async function deduplicateClients(supabase: any, userId: string) {
   let fixed = 0;
   let nextIdNum = getHighestClientNumber(clients) + 1;
 
-  for (const [id, group] of duplicateGroups) {
-    console.log(`  Fixing duplicate group: ${id} (${group.length} items)`);
+  for (const [normalizedId, group] of duplicateGroups) {
+    console.log(`  Fixing duplicate group: ${normalizedId} (${group.length} items)`);
+
+    // Sort by added_at to keep the oldest
+    group.sort((a, b) => {
+      const dateA = new Date(a.added_at || a.created_at || 0).getTime();
+      const dateB = new Date(b.added_at || b.created_at || 0).getTime();
+      return dateA - dateB;
+    });
 
     // Keep the first one, update the rest
     for (let i = 1; i < group.length; i++) {
       const duplicate = group[i];
       const newId = `CL${nextIdNum}`;
 
-      console.log(`    Changing ${duplicate.id} → ${newId} for client: ${duplicate.surgery}`);
+      console.log(`    Changing ${duplicate.id} → ${newId} for client: ${duplicate.surgery} (added_at: ${duplicate.added_at})`);
 
-      // Update in database
-      const { error: updateError } = await supabase
+      // Update in database using multiple conditions to uniquely identify the record
+      const updateQuery = supabase
         .from('clients')
         .update({ id: newId })
-        .eq('user_id', userId)
-        .eq('id', duplicate.id)
-        .eq('added_at', duplicate.added_at); // Use added_at to uniquely identify
+        .eq('user_id', userId);
+
+      // Add all available unique identifiers
+      if (duplicate.id) updateQuery.eq('id', duplicate.id);
+      if (duplicate.surgery) updateQuery.eq('surgery', duplicate.surgery);
+      if (duplicate.client_name) updateQuery.eq('client_name', duplicate.client_name);
+      if (duplicate.client_email) updateQuery.eq('client_email', duplicate.client_email);
+      if (duplicate.client_phone) updateQuery.eq('client_phone', duplicate.client_phone);
+
+      // Limit to 1 to ensure we only update one record
+      const { data: updatedData, error: updateError } = await updateQuery.single();
 
       if (updateError) {
         console.error(`    Failed to update: ${updateError.message}`);
+        console.error(`    Duplicate details:`, duplicate);
       } else {
+        console.log(`    ✅ Successfully updated to ${newId}`);
         fixed++;
         nextIdNum++;
       }
