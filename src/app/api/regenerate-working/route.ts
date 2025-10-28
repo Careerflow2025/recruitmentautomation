@@ -266,8 +266,11 @@ async function processMatches(
 
         try {
           // Extract unique origins and destinations from this batch
-          const origins = Array.from(new Set(pairBatch.map(p => p.candidate.postcode))).join('|');
-          const destinations = Array.from(new Set(pairBatch.map(p => p.client.postcode))).join('|');
+          const originPostcodes = Array.from(new Set(pairBatch.map(p => p.candidate.postcode)));
+          const destPostcodes = Array.from(new Set(pairBatch.map(p => p.client.postcode)));
+
+          const origins = originPostcodes.join('|');
+          const destinations = destPostcodes.join('|');
 
           const params = new URLSearchParams({
             origins,
@@ -280,6 +283,8 @@ async function processMatches(
           const url = `https://maps.googleapis.com/maps/api/distancematrix/json?${params}`;
 
           console.log(`🌐 Calling Google Maps for ${pairBatch.length} pairs...`);
+          console.log(`   Origins: ${originPostcodes.length} unique postcodes`);
+          console.log(`   Destinations: ${destPostcodes.length} unique postcodes`);
 
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 15000);
@@ -299,22 +304,26 @@ async function processMatches(
 
           console.log(`✅ API returned ${data.rows?.length || 0} rows`);
 
-          // Build lookup map for API results
-          const originPostcodes = Array.from(new Set(pairBatch.map(p => p.candidate.postcode)));
-          const destPostcodes = Array.from(new Set(pairBatch.map(p => p.client.postcode)));
-
           // Parse results for each pair in the batch
           for (const pair of pairBatch) {
               const candidate = pair.candidate;
               const client = pair.client;
 
-              // Find indices in the API response
+              // Find indices in the unique postcode arrays (NOT indexOf which returns first match)
               const originIndex = originPostcodes.indexOf(candidate.postcode);
               const destIndex = destPostcodes.indexOf(client.postcode);
 
               const element = data.rows?.[originIndex]?.elements?.[destIndex];
 
-              if (!element || element.status !== 'OK') {
+              if (!element) {
+                console.error(`❌ No element found for ${candidate.postcode} → ${client.postcode} (origin ${originIndex}, dest ${destIndex})`);
+                errorCount++;
+                processed++;
+                continue;
+              }
+
+              if (element.status !== 'OK') {
+                console.error(`❌ API error for ${candidate.postcode} → ${client.postcode}: ${element.status}`);
                 errorCount++;
                 processed++;
                 continue;
@@ -323,6 +332,7 @@ async function processMatches(
               const minutes = Math.round(element.duration.value / 60);
 
               if (minutes > 80) {
+                console.log(`⊗ Excluded ${candidate.postcode} → ${client.postcode}: ${minutes}m (over 80)`);
                 excludedCount++;
                 processed++;
                 continue;
@@ -332,8 +342,10 @@ async function processMatches(
               // Supports formats like "Dental Nurse/ANP/PN", "Dental Nurse / ANP / PN", etc.
               const roleMatch = rolesMatch(candidate.role, client.role);
 
+              console.log(`✅ Creating match: ${candidate.id} (${candidate.postcode}) → ${client.id} (${client.postcode}): ${minutes}m, role=${roleMatch}`);
+
               // Insert
-              await supabase.from('matches').insert({
+              const { error: insertError } = await supabase.from('matches').insert({
                 candidate_id: candidate.id,
                 client_id: client.id,
                 commute_minutes: minutes,
@@ -344,7 +356,13 @@ async function processMatches(
                 user_id: userId,
               });
 
-              successCount++;
+              if (insertError) {
+                console.error(`❌ Insert failed for ${candidate.id} → ${client.id}:`, insertError);
+                errorCount++;
+              } else {
+                successCount++;
+              }
+
               processed++;
           }
 
