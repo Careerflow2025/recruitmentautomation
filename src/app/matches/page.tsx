@@ -180,64 +180,126 @@ export default function MatchesPage() {
     setGenerateResult(null);
 
     try {
-      // Start the WORKING background match generation
-      // Default: incremental (only new pairs), force=true for full regeneration
-      const url = forceFullRegeneration
-        ? '/api/regenerate-working?force=true'
-        : '/api/regenerate-working';
+      // NEW BATCH PROCESSING: Process matches in batches that complete within Netlify's timeout
+      // Each API call processes one batch, frontend calls repeatedly until done
 
-      const response = await fetch(url, {
+      // Step 1: Initialize the process
+      const initUrl = `/api/regenerate-batch?force=${forceFullRegeneration}&init=true`;
+
+      const initResponse = await fetch(initUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!initResponse.ok) {
+        throw new Error(`Initialization failed! status: ${initResponse.status}`);
       }
 
-      const responseText = await response.text();
-      if (!responseText) {
-        throw new Error('Empty response from server');
-      }
+      const initResult = await initResponse.json();
 
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('Failed to parse JSON response:', responseText);
-        throw new Error(`Invalid JSON response: ${parseError.message}`);
-      }
-
-      if (!result.success) {
-        setGenerateResult(result);
+      if (!initResult.success) {
+        setGenerateResult(initResult);
+        setGenerating(false);
         return;
       }
 
-      // If processing started, begin polling for status
-      if (result.processing) {
-        console.log('✅ Match generation started, beginning status polling...');
+      // If no pairs to process, we're done
+      if (initResult.completed) {
         setGenerateResult({
           success: true,
-          message: result.message,
-          processing: true,
-          stats: result.stats
+          message: initResult.message,
+          stats: initResult.stats
+        });
+        await fetchMatches(false);
+        setGenerating(false);
+        return;
+      }
+
+      // Step 2: Process batches sequentially
+      let currentBatch = 0;
+      const totalBatches = initResult.stats.totalBatches;
+
+      console.log(`📊 Starting batch processing: ${totalBatches} batches to process`);
+
+      setGenerateResult({
+        success: true,
+        message: `Processing ${initResult.stats.pairsToProcess} pairs in ${totalBatches} batches...`,
+        processing: true,
+        stats: initResult.stats
+      });
+
+      // Process each batch
+      while (currentBatch < totalBatches) {
+        console.log(`📦 Processing batch ${currentBatch + 1}/${totalBatches}`);
+
+        const batchUrl = `/api/regenerate-batch?force=${forceFullRegeneration}&batch=${currentBatch}`;
+
+        const batchResponse = await fetch(batchUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
         });
 
-        // Start polling for completion
-        pollMatchStatus();
-      } else {
-        // If not processing, it completed immediately
-        setGenerateResult(result);
-        await fetchMatches(false);
+        if (!batchResponse.ok) {
+          throw new Error(`Batch ${currentBatch + 1} failed! status: ${batchResponse.status}`);
+        }
+
+        const batchResult = await batchResponse.json();
+
+        if (!batchResult.success) {
+          throw new Error(`Batch ${currentBatch + 1} failed: ${batchResult.error}`);
+        }
+
+        // Update progress display
+        setGenerateResult(prev => ({
+          ...prev!,
+          message: `Processed batch ${currentBatch + 1}/${totalBatches} (${batchResult.progress.percentage}% complete)`,
+          stats: {
+            ...prev!.stats,
+            currentBatch: currentBatch + 1,
+            totalBatches,
+            percentage: batchResult.progress.percentage,
+            ...batchResult.progress.batchResults
+          }
+        }));
+
+        // Check if we're done
+        if (batchResult.completed) {
+          console.log('✅ All batches processed successfully!');
+          break;
+        }
+
+        // Move to next batch
+        currentBatch = batchResult.nextBatch ?? currentBatch + 1;
+
+        // Small delay between batches to avoid overwhelming the server
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
+
+      // Step 3: Fetch final results and update display
+      await fetchMatches(false);
+
+      // Get final stats from database
+      const statusResponse = await fetch('/api/match-status');
+      const finalStatus = await statusResponse.json();
+
+      setGenerateResult({
+        success: true,
+        message: `✅ ${forceFullRegeneration ? 'Full regeneration' : 'Incremental generation'} complete!`,
+        processing: false,
+        stats: finalStatus.stats
+      });
+
     } catch (err: any) {
       console.error('Error generating matches:', err);
       setGenerateResult({
         success: false,
         message: err.message || 'Failed to generate matches'
       });
+    } finally {
       setGenerating(false);
     }
   };
@@ -543,49 +605,73 @@ export default function MatchesPage() {
 
             {generateResult.stats && (
               <div className="mt-4 text-sm space-y-2 bg-white bg-opacity-50 rounded-lg p-4 border border-opacity-30" style={{ borderColor: generateResult.success ? '#3b82f6' : '#ef4444' }}>
-                <div className="flex gap-6 font-semibold">
-                  <span className="flex items-center gap-2">
-                    <span className="text-lg">📋</span>
-                    <span>Candidates: <span className="text-blue-700">{generateResult.stats.candidates}</span></span>
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="text-lg">🏥</span>
-                    <span>Clients: <span className="text-orange-700">{generateResult.stats.clients}</span></span>
-                  </span>
-                </div>
+                {/* Initial stats */}
+                {generateResult.stats.candidates && (
+                  <div className="flex gap-6 font-semibold">
+                    <span className="flex items-center gap-2">
+                      <span className="text-lg">📋</span>
+                      <span>Candidates: <span className="text-blue-700">{generateResult.stats.candidates}</span></span>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-lg">🏥</span>
+                      <span>Clients: <span className="text-orange-700">{generateResult.stats.clients}</span></span>
+                    </span>
+                  </div>
+                )}
 
-                {generateResult.processing && generateResult.stats.total_pairs_to_process && (
-                  <div className="font-semibold">
+                {/* Processing info for batch mode */}
+                {generateResult.processing && generateResult.stats.pairsToProcess && (
+                  <div className="font-semibold space-y-2">
                     <span className="flex items-center gap-2">
                       <span className="text-lg">🔄</span>
-                      <span>Processing <span className="text-purple-700">{generateResult.stats.total_pairs_to_process}</span> candidate-client pairs</span>
+                      <span>Processing <span className="text-purple-700">{generateResult.stats.pairsToProcess}</span> pairs</span>
                     </span>
-                    {generateResult.stats.estimated_time_seconds && (
-                      <span className="ml-2 text-gray-600 font-normal text-xs">
-                        (Est. time: ~{Math.ceil(generateResult.stats.estimated_time_seconds / 60)} minutes)
+                    {generateResult.stats.totalBatches && (
+                      <span className="flex items-center gap-2">
+                        <span className="text-lg">📦</span>
+                        <span>Batch: <span className="text-blue-700">{generateResult.stats.currentBatch || 0} / {generateResult.stats.totalBatches}</span></span>
                       </span>
                     )}
                   </div>
                 )}
 
-                {generateResult.stats.current_matches !== undefined && (
+                {/* Progress bar */}
+                {generateResult.stats.percentage !== undefined && (
                   <div className="flex items-center gap-3">
                     <span className="font-semibold flex items-center gap-2">
                       <span className="text-lg">📊</span>
-                      <span>Matches found: <span className="text-green-700">{generateResult.stats.current_matches}</span></span>
+                      <span>Progress:</span>
                     </span>
-                    {generateResult.stats.completion_percentage !== undefined && (
-                      <>
-                        <div className="w-32 bg-gray-300 rounded-full h-3 shadow-inner">
-                          <div
-                            className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-300 shadow-sm"
-                            style={{ width: `${Math.min(generateResult.stats.completion_percentage, 100)}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm font-bold text-blue-700">
-                          {generateResult.stats.completion_percentage}%
-                        </span>
-                      </>
+                    <div className="flex-1 max-w-xs bg-gray-300 rounded-full h-3 shadow-inner">
+                      <div
+                        className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-300 shadow-sm"
+                        style={{ width: `${Math.min(generateResult.stats.percentage, 100)}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-bold text-blue-700">
+                      {generateResult.stats.percentage}%
+                    </span>
+                  </div>
+                )}
+
+                {/* Current batch results */}
+                {generateResult.processing && generateResult.stats.created !== undefined && (
+                  <div className="flex items-center gap-4">
+                    <span className="flex items-center gap-2">
+                      <span className="text-lg">✅</span>
+                      <span>Created: <span className="text-green-700">{generateResult.stats.created || 0}</span></span>
+                    </span>
+                    {generateResult.stats.excluded !== undefined && (
+                      <span className="flex items-center gap-2 text-red-700">
+                        <span className="text-lg">⊗</span>
+                        <span>Excluded: {generateResult.stats.excluded || 0}</span>
+                      </span>
+                    )}
+                    {generateResult.stats.errors !== undefined && generateResult.stats.errors > 0 && (
+                      <span className="flex items-center gap-2 text-red-700">
+                        <span className="text-lg">❌</span>
+                        <span>Errors: {generateResult.stats.errors}</span>
+                      </span>
                     )}
                   </div>
                 )}
