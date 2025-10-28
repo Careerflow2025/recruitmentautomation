@@ -620,13 +620,37 @@ export async function POST(request: Request) {
         return compact;
       });
 
-      // DISABLED: RAG context to prevent token overflow
-      // These were contributing 1000+ tokens to the prompt
-      const ragConversations = ''; // Temporarily disabled
-      const ragKnowledge = '';     // Temporarily disabled
+      // PROFESSIONAL RAG SYSTEM - Token-aware batching
+      // Only include most relevant context within token budget
+      const ragConversations = relevantConversations
+        .filter(c => c.similarity > 0.8) // High relevance only
+        .slice(0, 2) // Max 2 conversations
+        .map(c => `Q:${c.question.substring(0, 50)}→${c.answer.substring(0, 50)}`)
+        .join('|');
 
-      // Use minimal system prompt to save tokens
-      let baseSystemPrompt = 'You are an AI assistant for dental recruitment matching.';
+      const ragKnowledge = relevantKnowledge
+        .filter(k => k.similarity > 0.85) // Very high relevance only
+        .slice(0, 1) // Max 1 knowledge item
+        .map(k => k.content.substring(0, 100))
+        .join('');
+
+      // Load system prompt from database (essential for AI understanding)
+      let baseSystemPrompt = 'You are an AI assistant for dental recruitment matching.'; // Fallback
+
+      try {
+        const { data: promptData } = await userClient.rpc('get_active_system_prompt', {
+          p_prompt_name: 'dental_matcher_default'
+        });
+        if (promptData) {
+          // Truncate system prompt if too long but keep essential parts
+          baseSystemPrompt = promptData.length > 500 ?
+            promptData.substring(0, 500) + '...' :
+            promptData;
+          console.log('✅ Loaded system prompt from database');
+        }
+      } catch (e) {
+        console.warn('Using fallback prompt');
+      }
 
       // ========================================
       // OPTIMIZED PROMPT WITH PROFESSIONAL BATCHING
@@ -683,36 +707,64 @@ export async function POST(request: Request) {
         contextData = `User active`;
       }
 
-      // DISABLED: All memory/RAG features to prevent token overflow
-      const compactRagMemory = '';
-
-      // Build system prompt with token awareness
+      // Build PROFESSIONAL system prompt with all necessary context
+      // But keep it within token limits through smart batching
       const systemPrompt = `${baseSystemPrompt}
 
+CONTEXT:
 Mode: ${contextMode}
-${contextData}${questionType.isMap ? '\n⚠️Reply with plain text only (no JSON/MAP_ACTION)' : ''}${compactRagMemory ? `\n${compactRagMemory}` : ''}
+Stats: ${candidates.length} candidates, ${clients.length} clients, ${matches.length} matches
+${contextData}
+
+${ragConversations ? `Memory: ${ragConversations}\n` : ''}${ragKnowledge ? `Knowledge: ${ragKnowledge}\n` : ''}
+ACTIONS: You can add/update/delete candidates and clients. Update match status. Add notes.
+Format: Use JSON for actions: {"action":"add_candidate","data":{...}}
 
 Question: ${question}`;
 
       console.log(`📤 Calling RunPod vLLM at ${process.env.VPS_AI_URL}`);
 
-      // AGGRESSIVE TOKEN LIMITING - Stay well under 4096 limit
-      // Truncate system prompt if it's too long
-      const MAX_PROMPT_LENGTH = 8000; // ~2000 tokens max for entire prompt
+      // PROFESSIONAL TOKEN MANAGEMENT with sliding window
+      const MAX_PROMPT_CHARS = 10000; // ~2500 tokens for prompt
+      const MAX_SYSTEM_PROMPT = 6000; // ~1500 tokens for system + context
 
-      let trimmedSystemPrompt = systemPrompt;
-      if (systemPrompt.length > 6000) {
-        // System prompt is too long, truncate the data portion
-        trimmedSystemPrompt = `${baseSystemPrompt}\nMode: ${contextMode}\nLimited data due to length.\nQuestion: ${question}`;
+      // Build combined prompt
+      let combinedPrompt = systemPrompt;
+
+      // If system prompt is too long, use sliding window approach
+      if (systemPrompt.length > MAX_SYSTEM_PROMPT) {
+        console.log(`⚠️ System prompt too long (${systemPrompt.length} chars), applying sliding window`);
+
+        // Keep essential parts: base prompt, stats, actions
+        const essentials = `${baseSystemPrompt}
+
+CONTEXT:
+Stats: ${candidates.length} candidates, ${clients.length} clients, ${matches.length} matches
+ACTIONS: You can add/update/delete candidates and clients. Update match status.
+
+Question: ${question}`;
+
+        // Add as much context data as fits
+        const remainingSpace = MAX_SYSTEM_PROMPT - essentials.length;
+        if (remainingSpace > 100 && contextData.length > 0) {
+          const truncatedContext = contextData.substring(0, Math.min(remainingSpace, contextData.length));
+          combinedPrompt = `${baseSystemPrompt}
+
+CONTEXT:
+Stats: ${candidates.length} candidates, ${clients.length} clients, ${matches.length} matches
+Data: ${truncatedContext}
+ACTIONS: You can add/update/delete candidates and clients. Update match status.
+
+Question: ${question}`;
+        } else {
+          combinedPrompt = essentials;
+        }
       }
 
-      // Build combined prompt with hard length limit
-      let combinedPrompt = `${trimmedSystemPrompt}\n\n${question}`;
-
-      // HARD LIMIT: Truncate if still too long
-      if (combinedPrompt.length > MAX_PROMPT_LENGTH) {
-        console.warn(`⚠️ CRITICAL: Prompt too long (${combinedPrompt.length} chars), truncating to ${MAX_PROMPT_LENGTH}`);
-        combinedPrompt = combinedPrompt.substring(0, MAX_PROMPT_LENGTH) + '\n\n[Truncated due to length]';
+      // Final safety check
+      if (combinedPrompt.length > MAX_PROMPT_CHARS) {
+        console.warn(`⚠️ FINAL TRUNCATION: ${combinedPrompt.length} → ${MAX_PROMPT_CHARS} chars`);
+        combinedPrompt = combinedPrompt.substring(0, MAX_PROMPT_CHARS);
       }
 
       const estimatedTokens = Math.ceil(combinedPrompt.length / 4);
