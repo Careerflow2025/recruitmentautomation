@@ -719,8 +719,8 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                 className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
                 style={{ backgroundColor: '#1e293b', borderColor: '#334155', width: `${columnWidths.client}px` }}
               >
-                <span className="hidden xl:inline">Surgery</span>
-                <span className="xl:hidden">SUR</span>
+                <span className="hidden xl:inline">Client</span>
+                <span className="xl:hidden">CL</span>
                 {/* Resize Handle */}
                 <div
                   className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
@@ -909,7 +909,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                     <span className="truncate">{getCandidateName(match.candidate) || '\u00A0'}</span>
                   </button>
                 </td>
-                {/* Surgery Name */}
+                {/* Client Name */}
                 <td
                   className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 text-[8px] lg:text-[9px] xl:text-xs font-bold text-gray-900 border-r border-gray-200 overflow-hidden"
                   style={{ width: `${columnWidths.client}px` }}
@@ -920,7 +920,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                       handleClientClick(match.client);
                     }}
                     className="w-full text-left hover:underline cursor-pointer focus:outline-none rounded p-0 transition-colors truncate block"
-                    title={`Surgery: ${match.client.surgery} (ID: ${getDisplayId(match.client.id)})\nClick to view full details`}
+                    title={`Client: ${match.client.surgery} (ID: ${getDisplayId(match.client.id)})\nClick to view full details`}
                   >
                     {match.client.added_at && new Date().getTime() - match.client.added_at.getTime() <= 48 * 60 * 60 * 1000 && (
                       <span className="mr-0.5">🟨</span>
@@ -1084,7 +1084,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm(`Ban this match?\n\nCandidate: ${getCandidateName(match.candidate)}\nSurgery: ${match.client.surgery}\n\nThis will hide the match from the main view. You can restore it from the Bin.`)) {
+                        if (confirm(`Ban this match?\n\nCandidate: ${getCandidateName(match.candidate)}\nClient: ${match.client.surgery}\n\nThis will hide the match from the main view. You can restore it from the Bin.`)) {
                           handleBanMatch(match);
                         }
                       }}
@@ -1374,7 +1374,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                       <p className="text-sm font-bold text-gray-900">{(modal.data as Client).id}</p>
                     </div>
                     <div className="bg-white border-2 border-gray-300 p-2">
-                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Surgery</label>
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Client</label>
                       {editingModalId === modal.id ? (
                         <input
                           type="text"
