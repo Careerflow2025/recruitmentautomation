@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface AddCandidateModalProps {
   isOpen: boolean;
@@ -22,6 +22,28 @@ export function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCandidateMo
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nextId, setNextId] = useState<string>('');
+
+  // Fetch the next available ID when modal opens
+  useEffect(() => {
+    if (isOpen && !formData.id) {
+      fetchNextId();
+    }
+  }, [isOpen]);
+
+  const fetchNextId = async () => {
+    try {
+      const response = await fetch('/api/candidates/next-id');
+      const data = await response.json();
+      if (data.success) {
+        setNextId(data.nextId);
+        // Auto-populate the ID field
+        setFormData(prev => ({ ...prev, id: data.nextId }));
+      }
+    } catch (err) {
+      console.error('Failed to fetch next ID:', err);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,8 +56,18 @@ export function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCandidateMo
         throw new Error('Postcode is required');
       }
 
-      // Generate ID if not provided
-      const candidateId = formData.id.trim() || `CAN${Date.now()}${Math.floor(Math.random() * 1000)}`;
+      // Use the pre-fetched ID or the one user entered
+      let candidateId = formData.id.trim();
+
+      // If no ID provided, fetch a fresh one (in case multiple users are adding simultaneously)
+      if (!candidateId) {
+        const response = await fetch('/api/candidates/next-id');
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error('Failed to generate ID');
+        }
+        candidateId = data.nextId;
+      }
 
       const candidate = {
         id: candidateId,
@@ -62,7 +94,7 @@ export function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCandidateMo
         throw new Error(result.error || 'Failed to add candidate');
       }
 
-      // Reset form
+      // Reset form and fetch next ID for potential next entry
       setFormData({
         id: '',
         first_name: '',

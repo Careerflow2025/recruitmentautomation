@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface AddClientModalProps {
   isOpen: boolean;
@@ -23,6 +23,28 @@ export function AddClientModal({ isOpen, onClose, onSuccess }: AddClientModalPro
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nextId, setNextId] = useState<string>('');
+
+  // Fetch the next available ID when modal opens
+  useEffect(() => {
+    if (isOpen && !formData.id) {
+      fetchNextId();
+    }
+  }, [isOpen]);
+
+  const fetchNextId = async () => {
+    try {
+      const response = await fetch('/api/clients/next-id');
+      const data = await response.json();
+      if (data.success) {
+        setNextId(data.nextId);
+        // Auto-populate the ID field
+        setFormData(prev => ({ ...prev, id: data.nextId }));
+      }
+    } catch (err) {
+      console.error('Failed to fetch next ID:', err);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,8 +57,18 @@ export function AddClientModal({ isOpen, onClose, onSuccess }: AddClientModalPro
         throw new Error('Postcode is required');
       }
 
-      // Generate ID if not provided
-      const clientId = formData.id.trim() || `CL${Date.now()}${Math.floor(Math.random() * 1000)}`;
+      // Use the pre-fetched ID or the one user entered
+      let clientId = formData.id.trim();
+
+      // If no ID provided, fetch a fresh one (in case multiple users are adding simultaneously)
+      if (!clientId) {
+        const response = await fetch('/api/clients/next-id');
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error('Failed to generate ID');
+        }
+        clientId = data.nextId;
+      }
 
       const client = {
         id: clientId,
