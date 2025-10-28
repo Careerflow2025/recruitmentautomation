@@ -16,9 +16,7 @@
   # Node bundler
   node_bundler = "esbuild"
 
-# Background function for long-running match processing
-[[functions]]
-  path = "/.netlify/functions/process-matches-background"
+# Background function configuration
+[functions."process-matches-background"]
   # Background functions can run up to 15 minutes on free tier!
-  # They run even after the triggering request returns
-  background = true
+  included_files = ["node_modules/**"]

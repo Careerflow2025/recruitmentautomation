@@ -5,13 +5,8 @@ import { cookies } from 'next/headers';
 /**
  * NETLIFY BACKGROUND FUNCTION TRIGGER
  *
- * This endpoint:
- * 1. Authenticates user
- * 2. Fetches candidates/clients
- * 3. Triggers Netlify background function (runs up to 15 minutes!)
- * 4. Returns immediately
- *
- * The background function handles all the heavy processing.
+ * Triggers Netlify background function by appending '-background' to function name
+ * Background functions run up to 15 minutes on free tier!
  */
 export async function POST(request: NextRequest) {
   try {
@@ -93,9 +88,9 @@ export async function POST(request: NextRequest) {
       method_used: 'netlify_background',
     });
 
-    // ⚡ NETLIFY BACKGROUND FUNCTION: Trigger via fetch with -background suffix
-    // This tells Netlify to run it in the background (15-minute timeout)
-    const backgroundUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://dental-matcher.netlify.app'}/.netlify/functions/process-matches-background`;
+    // ⚡ NETLIFY BACKGROUND FUNCTION INVOCATION
+    // Append '-background' to function name to trigger as background function
+    const backgroundUrl = `${url.origin}/.netlify/functions/process-matches-background-background`;
 
     console.log(`🚀 Triggering background function: ${backgroundUrl}`);
 
@@ -103,7 +98,6 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'netlify-background': 'true', // Netlify magic header
       },
       body: JSON.stringify({
         userId: user.id,

@@ -1,11 +1,12 @@
 /**
  * NETLIFY BACKGROUND FUNCTION
- * This runs for up to 15 minutes on free tier!
+ * Runs for up to 15 minutes on free tier
  *
- * Triggered by the main API endpoint
+ * To invoke as background function, append '-background' to the function name
+ * Example: /.netlify/functions/process-matches-background-background
  */
 
-import { Handler } from '@netlify/functions';
+import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -13,11 +14,19 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export const handler: Handler = async (event) => {
+export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
   console.log('🔄 [BACKGROUND FUNCTION] Started');
 
+  // Check if this is being invoked as background function
+  const isBackground = event.path?.includes('-background') || event.headers['netlify-background'];
+  console.log(`📍 Mode: ${isBackground ? 'BACKGROUND (15min timeout)' : 'SYNCHRONOUS (10s timeout)'}`);
+
   try {
-    const body = JSON.parse(event.body || '{}');
+    if (!event.body) {
+      throw new Error('No request body provided');
+    }
+
+    const body = JSON.parse(event.body);
     const { userId, candidates, clients, apiKey, forceFullRegeneration } = body;
 
     console.log(`👤 User: ${userId}`);
@@ -82,8 +91,12 @@ export const handler: Handler = async (event) => {
         status: 'completed',
         percent_complete: 100,
         completed_at: new Date().toISOString(),
+        method_used: 'netlify_background',
       });
-      return { statusCode: 200, body: 'Nothing to process' };
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ success: true, message: 'Nothing to process' })
+      };
     }
 
     // Create batches
@@ -152,7 +165,7 @@ export const handler: Handler = async (event) => {
             continue;
           }
 
-          // Check role match (simplified for background function)
+          // Check role match (simplified)
           const roleMatch = candidate.role.toLowerCase().trim() === client.role.toLowerCase().trim();
 
           console.log(`✅ Match: ${candidate.id} → ${client.id}: ${minutes}m`);
@@ -186,6 +199,7 @@ export const handler: Handler = async (event) => {
         excluded_over_80min: excludedCount,
         errors: errorCount,
         percent_complete: percentage,
+        method_used: 'netlify_background',
       });
 
       // Small delay between batches
@@ -212,10 +226,27 @@ export const handler: Handler = async (event) => {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ success: true, matches: successCount }),
+      body: JSON.stringify({
+        success: true,
+        matches: successCount,
+        excluded: excludedCount,
+        errors: errorCount
+      }),
     };
   } catch (error: any) {
     console.error('❌ Background function failed:', error);
+
+    // Try to update status on error
+    try {
+      const body = JSON.parse(event.body || '{}');
+      await supabase.from('match_generation_status').upsert({
+        user_id: body.userId,
+        status: 'error',
+        error_message: error.message,
+        completed_at: new Date().toISOString(),
+      });
+    } catch {}
+
     return {
       statusCode: 500,
       body: JSON.stringify({ error: error.message }),
