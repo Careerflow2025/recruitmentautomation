@@ -620,74 +620,71 @@ export async function POST(request: Request) {
         return compact;
       });
 
-      // RAG-POWERED SYSTEM PROMPT - Uses semantic retrieval instead of recent history
-      const ragConversations = relevantConversations.map(c =>
-        `Past Q: ${c.question.substring(0, 80)}... A: ${c.answer.substring(0, 80)}... (similarity: ${Math.round(c.similarity * 100)}%)`
-      ).join('\n');
+      // DISABLED: RAG context to prevent token overflow
+      // These were contributing 1000+ tokens to the prompt
+      const ragConversations = ''; // Temporarily disabled
+      const ragKnowledge = '';     // Temporarily disabled
 
-      const ragKnowledge = relevantKnowledge.map(k =>
-        `${k.title}: ${k.content.substring(0, 150)}... (relevance: ${Math.round(k.similarity * 100)}%)`
-      ).join('\n');
-
-      // ==========================================
-      // LOAD SYSTEM PROMPT FROM DATABASE
-      // ==========================================
-      console.log('📖 Loading system prompt from database...');
-
-      let baseSystemPrompt = 'You are a helpful AI assistant for a dental recruitment platform.'; // Fallback
-
-      try {
-        const { data: promptData, error: promptError } = await userClient.rpc('get_active_system_prompt', {
-          p_prompt_name: 'dental_matcher_default'
-        });
-
-        if (promptError) {
-          console.warn('⚠️ Error loading system prompt from database:', promptError.message);
-          console.warn('⚠️ Using fallback system prompt');
-        } else if (promptData) {
-          baseSystemPrompt = promptData;
-          console.log('✅ Loaded system prompt from database');
-        }
-      } catch (promptLoadError: any) {
-        console.warn('⚠️ Failed to load system prompt:', promptLoadError.message);
-        console.warn('⚠️ Using fallback system prompt');
-      }
+      // Use minimal system prompt to save tokens
+      let baseSystemPrompt = 'You are an AI assistant for dental recruitment matching.';
 
       // ========================================
       // OPTIMIZED PROMPT WITH PROFESSIONAL BATCHING
       // Keep context under 2800 tokens (1200 reserved for response)
       // ========================================
 
-      // Build minimal but complete context
+      // Build minimal context with HARD SIZE LIMITS
       let contextData = '';
+      const MAX_CONTEXT_LENGTH = 2000; // Hard limit for context data
 
       if (contextMode === 'stats-only') {
         // For stats questions, only counts needed
-        contextData = `Stats: Candidates:${candidates.length} Clients:${clients.length} Matches:${totalMatches} (Placed:${placedMatches} InProgress:${inProgressMatches} Rejected:${rejectedMatches})`;
+        contextData = `Stats: C:${candidates.length} L:${clients.length} M:${totalMatches}`;
       } else if (compactCandidates.length > 0 || compactClients.length > 0 || compactMatches.length > 0) {
-        // Include actual data only when needed
+        // Build context with size awareness
         const dataParts = [];
+
+        // Stringify and truncate if needed
         if (compactCandidates.length > 0) {
-          dataParts.push(`Candidates[${compactCandidates.length}]:${JSON.stringify(compactCandidates)}`);
+          const canStr = JSON.stringify(compactCandidates);
+          if (canStr.length > 500) {
+            dataParts.push(`C[${compactCandidates.length}]:${canStr.substring(0, 500)}...`);
+          } else {
+            dataParts.push(`C[${compactCandidates.length}]:${canStr}`);
+          }
         }
+
         if (compactClients.length > 0) {
-          dataParts.push(`Clients[${compactClients.length}]:${JSON.stringify(compactClients)}`);
+          const clStr = JSON.stringify(compactClients);
+          if (clStr.length > 500) {
+            dataParts.push(`L[${compactClients.length}]:${clStr.substring(0, 500)}...`);
+          } else {
+            dataParts.push(`L[${compactClients.length}]:${clStr}`);
+          }
         }
+
         if (compactMatches.length > 0) {
-          dataParts.push(`Matches[${compactMatches.length}]:${JSON.stringify(compactMatches)}`);
+          const mStr = JSON.stringify(compactMatches);
+          if (mStr.length > 800) {
+            dataParts.push(`M[${compactMatches.length}]:${mStr.substring(0, 800)}...`);
+          } else {
+            dataParts.push(`M[${compactMatches.length}]:${mStr}`);
+          }
         }
+
         contextData = dataParts.join('\n');
+
+        // Final truncation if still too long
+        if (contextData.length > MAX_CONTEXT_LENGTH) {
+          contextData = contextData.substring(0, MAX_CONTEXT_LENGTH) + '...';
+        }
       } else {
-        // For general chat, include minimal stats
-        contextData = `Active user with ${candidates.length} candidates, ${clients.length} clients`;
+        // For general chat, minimal info
+        contextData = `User active`;
       }
 
-      // Limit RAG context to most relevant items
-      const compactRagMemory = relevantConversations
-        .filter(c => c.similarity > 0.75) // Higher threshold
-        .slice(0, 1) // Max 1 past conversation
-        .map(c => `[Memory: ${c.question.substring(0, 30)}]`)
-        .join(' ');
+      // DISABLED: All memory/RAG features to prevent token overflow
+      const compactRagMemory = '';
 
       // Build system prompt with token awareness
       const systemPrompt = `${baseSystemPrompt}
@@ -699,12 +696,25 @@ Question: ${question}`;
 
       console.log(`📤 Calling RunPod vLLM at ${process.env.VPS_AI_URL}`);
 
-      // Call RunPod vLLM server
-      // Note: Mistral doesn't support separate 'system' role, so we combine system prompt + question into one user message
-      const combinedPrompt = `${systemPrompt}\n\n${question}`;
+      // AGGRESSIVE TOKEN LIMITING - Stay well under 4096 limit
+      // Truncate system prompt if it's too long
+      const MAX_PROMPT_LENGTH = 8000; // ~2000 tokens max for entire prompt
 
-      // 🔥 AUTO-CLEANUP: Rolling window memory management
-      // If we're at 90% capacity (3686 tokens), delete oldest 30% of conversation
+      let trimmedSystemPrompt = systemPrompt;
+      if (systemPrompt.length > 6000) {
+        // System prompt is too long, truncate the data portion
+        trimmedSystemPrompt = `${baseSystemPrompt}\nMode: ${contextMode}\nLimited data due to length.\nQuestion: ${question}`;
+      }
+
+      // Build combined prompt with hard length limit
+      let combinedPrompt = `${trimmedSystemPrompt}\n\n${question}`;
+
+      // HARD LIMIT: Truncate if still too long
+      if (combinedPrompt.length > MAX_PROMPT_LENGTH) {
+        console.warn(`⚠️ CRITICAL: Prompt too long (${combinedPrompt.length} chars), truncating to ${MAX_PROMPT_LENGTH}`);
+        combinedPrompt = combinedPrompt.substring(0, MAX_PROMPT_LENGTH) + '\n\n[Truncated due to length]';
+      }
+
       const estimatedTokens = Math.ceil(combinedPrompt.length / 4);
       const MAX_TOKENS = 4096;
       const INPUT_RESERVED = 300; // Reserve for response
@@ -734,10 +744,15 @@ Question: ${question}`;
         }
       }
 
-      // Log prompt size for debugging
-      console.log(`📊 Prompt size: ${combinedPrompt.length} chars, ~${estimatedTokens} tokens (${Math.round((estimatedTokens / (MAX_TOKENS - INPUT_RESERVED)) * 100)}% of limit)`);
-      console.log(`📊 System prompt: ${systemPrompt.length} chars`);
-      console.log(`📊 Data sizes - Candidates: ${compactCandidates.length}, Clients: ${compactClients.length}, Matches: ${compactMatches.length}`);
+      // Enhanced debugging to find token overflow source
+      console.log(`📊 TOKEN DEBUG:`);
+      console.log(`   Base prompt: ${baseSystemPrompt.length} chars`);
+      console.log(`   Context data: ${contextData.length} chars`);
+      console.log(`   System prompt total: ${systemPrompt.length} chars`);
+      console.log(`   Combined prompt: ${combinedPrompt.length} chars (~${estimatedTokens} tokens)`);
+      console.log(`   Data items - Candidates: ${compactCandidates.length}, Clients: ${compactClients.length}, Matches: ${compactMatches.length}`);
+      console.log(`   Relevant items - Candidates: ${relevantCandidates.length}, Clients: ${relevantClients.length}, Matches: ${relevantMatches.length}`);
+      console.log(`   Total DB items - Candidates: ${candidates.length}, Clients: ${clients.length}, Matches: ${matches.length}`);
 
       // Token limit safety check
       if (estimatedTokens > 3500) {
