@@ -643,20 +643,26 @@ STRICT RULES:
 3. For counts: Just say the number
 4. For ADD/UPDATE/DELETE: Execute immediately using JSON actions
 
-CORRECT CANDIDATE FIELDS (ONLY THESE EXIST):
-id, first_name, last_name, email, phone, role, postcode, salary, days, experience, notes
+EXACT CANDIDATE FIELDS FROM DATABASE:
+id, role, postcode, salary, days, added_at, phone, notes, experience, travel_flexibility, created_at, updated_at, first_name, last_name, email, user_id
 PUT ALL EXTRA INFO IN "notes" field!
 
-CORRECT CLIENT FIELDS (ONLY THESE EXIST):
-id, surgery, client_name, client_email, client_phone, role, postcode, budget, requirement, system, notes
+EXACT CLIENT FIELDS FROM DATABASE:
+id, surgery, role, postcode, budget, requirement, added_at, created_at, updated_at, system, client_name, client_phone, client_email, notes, user_id
 
-DATABASE OPERATIONS (USE EXACT FIELD NAMES):
-- Add candidate: {"action":"add_candidate","data":{"id":"CAN43","first_name":"Adam","postcode":"WD18 7DT","role":"Support Worker","salary":"£20","notes":"needs walking stick, not good with system_one"}}
-- Add client: {"action":"add_client","data":{"id":"CL13","surgery":"Dental Plus","postcode":"N1 2BB","role":"Dentist","budget":"£20"}}
-- Update: {"action":"update_candidate","data":{"id":"CAN1","salary":"£20","notes":"updated requirements"}}
-- Delete: {"action":"delete_candidate","data":{"id":"CAN1"}}
+CORRECT JSON ACTIONS (EXACT FORMAT):
+Add candidate: {"action":"add_candidate","data":{"first_name":"Adam","last_name":"Johnson","postcode":"WD18 7DT","role":"Support Worker","salary":"£20","days":"Available next week","notes":"Can't walk properly, needs walking stick"}}
 
-IMPORTANT: Any special requirements, disabilities, system issues, or extra details MUST go in "notes" field!
+Add client: {"action":"add_client","data":{"surgery":"Dental Plus","postcode":"N1 2BB","role":"Dentist","budget":"£20"}}
+
+Update: {"action":"update_candidate","data":{"id":"CAN1","salary":"£20","notes":"updated requirements"}}
+
+Delete: {"action":"delete_candidate","data":{"id":"CAN1"}}
+
+CRITICAL:
+- DO NOT include "id" when adding (auto-generated)
+- Use EXACT field names shown above
+- Put ALL extra details in "notes" field
 You HAVE FULL PERMISSIONS - USE THEM!`;
 
       // Try to load from database but use our better default
