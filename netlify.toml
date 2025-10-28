@@ -8,14 +8,3 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-# Netlify Functions configuration
-[functions]
-  # Directory for serverless functions
-  directory = "netlify/functions"
-  # Node bundler (esbuild will handle dependencies automatically)
-  node_bundler = "esbuild"
-
-# Individual function configuration (optional)
-[functions."process-matches-background"]
-  # No included_files needed - esbuild bundles dependencies automatically
