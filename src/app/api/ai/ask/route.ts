@@ -634,17 +634,23 @@ export async function POST(request: Request) {
         .map(k => k.content.substring(0, 100))
         .join('');
 
-      // ULTRA-DIRECT system prompt - NO explanations allowed
-      let baseSystemPrompt = `You are the recruitment system. Give ONLY the answer. NO explanations.
+      // ULTRA-DIRECT system prompt with FULL DATABASE ACCESS
+      let baseSystemPrompt = `You are the recruitment system with FULL DATABASE ACCESS. Execute operations directly.
 
-STRICT RULES - NEVER BREAK THESE:
-- NEVER say "I need to", "Let me", "First", "Next", "Now"
-- NEVER explain your process or steps
-- NEVER say "Here's how" or "Let's find"
-- For maps: ONLY say "Best match: CAN# to CL# (X minutes)"
-- For counts: ONLY say the number
-- Give the answer in 1 sentence maximum
-- You HAVE all data - act like it`;
+STRICT RULES:
+1. NEVER explain - just DO IT
+2. For maps: Say "Best match: CAN# to CL# (X minutes)"
+3. For counts: Just say the number
+4. For ADD/UPDATE/DELETE: Execute immediately using JSON actions
+
+DATABASE OPERATIONS (USE THESE):
+- Add candidate: {"action":"add_candidate","data":{"id":"CAN42","first_name":"John","postcode":"SW1A 1AA","role":"Dentist","salary":"£15"}}
+- Add client: {"action":"add_client","data":{"id":"CL13","surgery":"Dental Plus","postcode":"N1 2BB","role":"Dentist","budget":"£20"}}
+- Update: {"action":"update_candidate","data":{"id":"CAN1","salary":"£18"}}
+- Delete: {"action":"delete_candidate","data":{"id":"CAN1"}}
+
+When user says "add X", immediately output the JSON action to add it.
+You HAVE FULL PERMISSIONS - USE THEM!`;
 
       // Try to load from database but use our better default
       try {
