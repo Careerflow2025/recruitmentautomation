@@ -66,22 +66,45 @@ export async function GET(request: NextRequest) {
 
     if (candidates && candidates.length > 0) {
       console.log(`📊 Found ${candidates.length} existing candidates`);
+      console.log('Sample IDs:', candidates.slice(0, 5).map(c => c.id));
 
       // Extract all numeric parts and find the maximum
+      // Handle both formats: "CAN8" and "u3_can8" (or any prefix_can8)
       const numbers = candidates
         .map(candidate => {
           const id = candidate.id || '';
-          if (id.startsWith(prefix)) {
+
+          // Handle prefixed IDs like "u3_can8", "u1_can15", etc.
+          if (id.includes('_')) {
+            const parts = id.split('_');
+            const lastPart = parts[parts.length - 1];
+
+            // Check if last part starts with 'can' (case insensitive)
+            if (lastPart.toLowerCase().startsWith('can')) {
+              const numPart = lastPart.substring(3); // Remove 'can'
+              const parsed = parseInt(numPart, 10);
+              if (!isNaN(parsed) && parsed > 0) {
+                console.log(`  📍 Parsed prefixed ID: ${id} → ${lastPart} → number: ${parsed}`);
+                return parsed;
+              }
+            }
+          }
+
+          // Handle standard IDs like "CAN8"
+          if (id.toUpperCase().startsWith(prefix)) {
             const numPart = id.substring(prefix.length);
             const parsed = parseInt(numPart, 10);
             if (!isNaN(parsed) && parsed > 0) {
-              console.log(`  📍 Parsed ID: ${id} → number: ${parsed}`);
+              console.log(`  📍 Parsed standard ID: ${id} → number: ${parsed}`);
               return parsed;
             }
           }
+
           return 0;
         })
         .filter(num => num > 0);
+
+      console.log(`  📊 All parsed numbers: [${numbers.join(', ')}]`);
 
       if (numbers.length > 0) {
         maxNum = Math.max(...numbers);

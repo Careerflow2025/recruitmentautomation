@@ -66,22 +66,45 @@ export async function GET(request: NextRequest) {
 
     if (clients && clients.length > 0) {
       console.log(`📊 Found ${clients.length} existing clients`);
+      console.log('Sample IDs:', clients.slice(0, 5).map(c => c.id));
 
       // Extract all numeric parts and find the maximum
+      // Handle both formats: "CL8" and "u3_cl8" (or any prefix_cl8)
       const numbers = clients
         .map(client => {
           const id = client.id || '';
-          if (id.startsWith(prefix)) {
+
+          // Handle prefixed IDs like "u3_cl8", "u1_cl15", etc.
+          if (id.includes('_')) {
+            const parts = id.split('_');
+            const lastPart = parts[parts.length - 1];
+
+            // Check if last part starts with 'cl' (case insensitive)
+            if (lastPart.toLowerCase().startsWith('cl')) {
+              const numPart = lastPart.substring(2); // Remove 'cl'
+              const parsed = parseInt(numPart, 10);
+              if (!isNaN(parsed) && parsed > 0) {
+                console.log(`  📍 Parsed prefixed ID: ${id} → ${lastPart} → number: ${parsed}`);
+                return parsed;
+              }
+            }
+          }
+
+          // Handle standard IDs like "CL8"
+          if (id.toUpperCase().startsWith(prefix)) {
             const numPart = id.substring(prefix.length);
             const parsed = parseInt(numPart, 10);
             if (!isNaN(parsed) && parsed > 0) {
-              console.log(`  📍 Parsed ID: ${id} → number: ${parsed}`);
+              console.log(`  📍 Parsed standard ID: ${id} → number: ${parsed}`);
               return parsed;
             }
           }
+
           return 0;
         })
         .filter(num => num > 0);
+
+      console.log(`  📊 All parsed numbers: [${numbers.join(', ')}]`);
 
       if (numbers.length > 0) {
         maxNum = Math.max(...numbers);
