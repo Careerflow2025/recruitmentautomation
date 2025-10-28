@@ -643,19 +643,23 @@ STRICT RULES:
 3. For counts: Just say the number
 4. For ADD/UPDATE/DELETE: Output ONLY the JSON action
 
-WHEN ADDING A CANDIDATE:
-ACTION NAME: "add_candidate" (NOT "addcandidate"!)
-FIELD NAME: "first_name" (NOT "firstname"!)
-NO ID FIELD! (auto-generated)
+CRITICAL: CORRECT ACTION AND FIELD NAMES:
+✅ CORRECT: "add_candidate" (with underscore)
+❌ WRONG: "addcandidate" (no underscore)
+✅ CORRECT: "first_name" (with underscore)
+❌ WRONG: "firstname" (no underscore)
 
-EXACT FORMAT FOR ADDING CANDIDATE:
-{"action":"add_candidate","data":{"first_name":"Sarah","last_name":"","role":"Receptionist","postcode":"WD18 7DT","salary":"£25","days":"","notes":"Working only with System One, has mobility issues"}}
+WHEN ADDING A CANDIDATE - USE THIS EXACT FORMAT:
+{"action":"add_candidate","data":{"first_name":"Mark","last_name":"Tramp","role":"Therapist","postcode":"","salary":"£20","days":"","notes":"Working only with System One, disabled, needs walking stick"}}
 
-CRITICAL RULES:
-- action is "add_candidate" with underscore!
-- field is "first_name" with underscore!
-- NO id field when adding!
-- ALL extra info goes in "notes" field!
+WHEN ADDING A CLIENT - USE THIS EXACT FORMAT:
+{"action":"add_client","data":{"surgery":"Dental Plus","postcode":"N1 2BB","role":"Dentist","budget":"£20","notes":""}}
+
+IMPORTANT:
+- The system AUTOMATICALLY generates IDs (CAN1, CAN2, etc)
+- DO NOT include "id" field when adding
+- ALL disabilities, special requirements, system preferences go in "notes"
+- Use EXACT action names: add_candidate, add_client, update_candidate, delete_candidate
 
 CANDIDATE FIELDS: first_name, last_name, role, postcode, salary, days, phone, email, experience, travel_flexibility, notes
 CLIENT FIELDS: surgery, client_name, role, postcode, budget, requirement, system, client_phone, client_email, notes
@@ -983,25 +987,41 @@ RESPOND DIRECTLY TO: ${question}`;
 
             switch (action.action) {
               case 'add_candidate': {
-                const { data: existingCandidate } = await userClient
+                // Auto-generate ID like bulk-parse does
+                const { data: allCandidates } = await userClient
                   .from('candidates')
                   .select('id')
-                  .eq('id', action.data.id)
-                  .single();
+                  .eq('user_id', user.id)
+                  .order('id', { ascending: false });
 
-                if (existingCandidate) {
-                  actionResults.push(`⚠️ Candidate ${action.data.id} already exists`);
-                } else {
-                  const { error } = await userClient.from('candidates').insert({
-                    ...action.data,
-                    user_id: user.id,
-                    added_at: new Date().toISOString(),
-                  });
-                  if (error) {
-                    actionResults.push(`❌ Error adding candidate: ${error.message}`);
-                  } else {
-                    actionResults.push(`✅ Successfully added candidate ${action.data.id}`);
+                // Find the highest ID number
+                let nextId = 'CAN1';
+                if (allCandidates && allCandidates.length > 0) {
+                  const numbers = allCandidates
+                    .map(c => {
+                      const match = c.id.match(/CAN(\d+)/);
+                      return match ? parseInt(match[1], 10) : 0;
+                    })
+                    .filter(n => n > 0);
+
+                  if (numbers.length > 0) {
+                    const maxNum = Math.max(...numbers);
+                    nextId = `CAN${maxNum + 1}`;
                   }
+                }
+
+                // Insert with auto-generated ID
+                const { error } = await userClient.from('candidates').insert({
+                  ...action.data,
+                  id: nextId,
+                  user_id: user.id,
+                  added_at: new Date().toISOString(),
+                });
+
+                if (error) {
+                  actionResults.push(`❌ Error adding candidate: ${error.message}`);
+                } else {
+                  actionResults.push(`✅ Successfully added candidate ${nextId}`);
                 }
                 break;
               }
@@ -1036,25 +1056,41 @@ RESPOND DIRECTLY TO: ${question}`;
               }
 
               case 'add_client': {
-                const { data: existingClient } = await userClient
+                // Auto-generate ID like bulk-parse does
+                const { data: allClients } = await userClient
                   .from('clients')
                   .select('id')
-                  .eq('id', action.data.id)
-                  .single();
+                  .eq('user_id', user.id)
+                  .order('id', { ascending: false });
 
-                if (existingClient) {
-                  actionResults.push(`⚠️ Client ${action.data.id} already exists`);
-                } else {
-                  const { error } = await userClient.from('clients').insert({
-                    ...action.data,
-                    user_id: user.id,
-                    added_at: new Date().toISOString(),
-                  });
-                  if (error) {
-                    actionResults.push(`❌ Error adding client: ${error.message}`);
-                  } else {
-                    actionResults.push(`✅ Successfully added client ${action.data.id}`);
+                // Find the highest ID number
+                let nextId = 'CL1';
+                if (allClients && allClients.length > 0) {
+                  const numbers = allClients
+                    .map(c => {
+                      const match = c.id.match(/CL(\d+)/);
+                      return match ? parseInt(match[1], 10) : 0;
+                    })
+                    .filter(n => n > 0);
+
+                  if (numbers.length > 0) {
+                    const maxNum = Math.max(...numbers);
+                    nextId = `CL${maxNum + 1}`;
                   }
+                }
+
+                // Insert with auto-generated ID
+                const { error } = await userClient.from('clients').insert({
+                  ...action.data,
+                  id: nextId,
+                  user_id: user.id,
+                  added_at: new Date().toISOString(),
+                });
+
+                if (error) {
+                  actionResults.push(`❌ Error adding client: ${error.message}`);
+                } else {
+                  actionResults.push(`✅ Successfully added client ${nextId}`);
                 }
                 break;
               }
