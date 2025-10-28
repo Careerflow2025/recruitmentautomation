@@ -142,30 +142,51 @@ async function deduplicateCandidates(supabase: any, userId: string) {
     // Keep the first one, update the rest
     for (let i = 1; i < group.length; i++) {
       const duplicate = group[i];
-      const newId = `CAN${nextIdNum}`;
+
+      // Preserve the U3_ prefix if it exists
+      let newId: string;
+      if (duplicate.id && duplicate.id.startsWith('U3_')) {
+        newId = `U3_CAN${nextIdNum}`;
+      } else if (duplicate.id && duplicate.id.startsWith('u3_')) {
+        newId = `u3_can${nextIdNum}`;
+      } else {
+        newId = `CAN${nextIdNum}`;
+      }
 
       console.log(`    Changing ${duplicate.id} → ${newId} for candidate: ${duplicate.first_name} ${duplicate.last_name} (added_at: ${duplicate.added_at})`);
 
-      // Update in database using multiple conditions to uniquely identify the record
-      // We need to be very specific to avoid updating the wrong record
-      const updateQuery = supabase
+      // Update using a simpler approach - just match on the exact record
+      // Using created_at or added_at as a unique identifier along with the current ID
+      const { data: updatedData, error: updateError } = await supabase
         .from('candidates')
         .update({ id: newId })
-        .eq('user_id', userId);
-
-      // Add all available unique identifiers
-      if (duplicate.id) updateQuery.eq('id', duplicate.id);
-      if (duplicate.first_name) updateQuery.eq('first_name', duplicate.first_name);
-      if (duplicate.last_name) updateQuery.eq('last_name', duplicate.last_name);
-      if (duplicate.email) updateQuery.eq('email', duplicate.email);
-      if (duplicate.phone) updateQuery.eq('phone', duplicate.phone);
-
-      // Limit to 1 to ensure we only update one record
-      const { data: updatedData, error: updateError } = await updateQuery.single();
+        .eq('user_id', userId)
+        .eq('id', duplicate.id)
+        .eq('added_at', duplicate.added_at)
+        .select()
+        .single();
 
       if (updateError) {
-        console.error(`    Failed to update: ${updateError.message}`);
-        console.error(`    Duplicate details:`, duplicate);
+        // If single() fails, try without it (for multiple matches)
+        console.log(`    Retrying without .single() for ${duplicate.id}`);
+        const { data: retryData, error: retryError } = await supabase
+          .from('candidates')
+          .update({ id: newId })
+          .eq('user_id', userId)
+          .eq('id', duplicate.id)
+          .eq('first_name', duplicate.first_name || '')
+          .eq('last_name', duplicate.last_name || '')
+          .limit(1)
+          .select();
+
+        if (retryError) {
+          console.error(`    ❌ Failed to update: ${retryError.message}`);
+          console.error(`    Duplicate details:`, duplicate);
+        } else {
+          console.log(`    ✅ Successfully updated to ${newId} (retry worked)`);
+          fixed++;
+          nextIdNum++;
+        }
       } else {
         console.log(`    ✅ Successfully updated to ${newId}`);
         fixed++;
@@ -256,29 +277,49 @@ async function deduplicateClients(supabase: any, userId: string) {
     // Keep the first one, update the rest
     for (let i = 1; i < group.length; i++) {
       const duplicate = group[i];
-      const newId = `CL${nextIdNum}`;
+
+      // Preserve the U3_ prefix if it exists
+      let newId: string;
+      if (duplicate.id && duplicate.id.startsWith('U3_')) {
+        newId = `U3_CL${nextIdNum}`;
+      } else if (duplicate.id && duplicate.id.startsWith('u3_')) {
+        newId = `u3_cl${nextIdNum}`;
+      } else {
+        newId = `CL${nextIdNum}`;
+      }
 
       console.log(`    Changing ${duplicate.id} → ${newId} for client: ${duplicate.surgery} (added_at: ${duplicate.added_at})`);
 
-      // Update in database using multiple conditions to uniquely identify the record
-      const updateQuery = supabase
+      // Update using a simpler approach - just match on the exact record
+      const { data: updatedData, error: updateError } = await supabase
         .from('clients')
         .update({ id: newId })
-        .eq('user_id', userId);
-
-      // Add all available unique identifiers
-      if (duplicate.id) updateQuery.eq('id', duplicate.id);
-      if (duplicate.surgery) updateQuery.eq('surgery', duplicate.surgery);
-      if (duplicate.client_name) updateQuery.eq('client_name', duplicate.client_name);
-      if (duplicate.client_email) updateQuery.eq('client_email', duplicate.client_email);
-      if (duplicate.client_phone) updateQuery.eq('client_phone', duplicate.client_phone);
-
-      // Limit to 1 to ensure we only update one record
-      const { data: updatedData, error: updateError } = await updateQuery.single();
+        .eq('user_id', userId)
+        .eq('id', duplicate.id)
+        .eq('added_at', duplicate.added_at)
+        .select()
+        .single();
 
       if (updateError) {
-        console.error(`    Failed to update: ${updateError.message}`);
-        console.error(`    Duplicate details:`, duplicate);
+        // If single() fails, try without it (for multiple matches)
+        console.log(`    Retrying without .single() for ${duplicate.id}`);
+        const { data: retryData, error: retryError } = await supabase
+          .from('clients')
+          .update({ id: newId })
+          .eq('user_id', userId)
+          .eq('id', duplicate.id)
+          .eq('surgery', duplicate.surgery || '')
+          .limit(1)
+          .select();
+
+        if (retryError) {
+          console.error(`    ❌ Failed to update: ${retryError.message}`);
+          console.error(`    Duplicate details:`, duplicate);
+        } else {
+          console.log(`    ✅ Successfully updated to ${newId} (retry worked)`);
+          fixed++;
+          nextIdNum++;
+        }
       } else {
         console.log(`    ✅ Successfully updated to ${newId}`);
         fixed++;
