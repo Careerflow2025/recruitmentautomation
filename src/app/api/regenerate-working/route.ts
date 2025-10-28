@@ -4,25 +4,27 @@ import { cookies } from 'next/headers';
 import { rolesMatch } from '@/lib/utils/roleNormalizer';
 
 /**
- * DIRECT PROCESSING VERSION - NO BACKGROUND FUNCTIONS
+ * RESTORED WORKING VERSION: Background processing with proper batch handling
  *
- * Strategy:
- * 1. Process matches in small chunks (50 at a time)
- * 2. Return results directly (no background function complexity)
- * 3. If more than 50 pairs, frontend will call multiple times
+ * This version:
+ * 1. Starts processing in background (doesn't wait)
+ * 2. Returns immediately to avoid timeout
+ * 3. Processes ALL batches properly
+ * 4. Updates match_generation_status for progress tracking
  *
- * Parameters:
- * - force=true : Full regeneration (delete all, start fresh)
- * - force=false (default) : Incremental (skip existing)
+ * Query Parameters:
+ * - force=true : Full regeneration (deletes all existing matches)
+ * - force=false (default) : Incremental (skips existing matches)
  */
 export async function POST(request: NextRequest) {
   try {
+    // Check for force parameter
     const url = new URL(request.url);
     const forceParam = url.searchParams.get('force');
     const forceFullRegeneration = forceParam === 'true';
 
     console.log('🚀 Starting match regeneration...');
-    console.log(`🔧 Mode: ${forceFullRegeneration ? 'FULL' : 'INCREMENTAL'}`);
+    console.log(`🔧 Mode: ${forceFullRegeneration ? 'FULL REGENERATION' : 'INCREMENTAL (skip existing)'}`);
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`✅ User: ${user.email}`);
+    console.log(`✅ User authenticated: ${user.email}`);
 
     // Fetch candidates and clients
     const [candidatesResult, clientsResult] = await Promise.all([
@@ -83,126 +85,249 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    const totalPairs = candidates.length * clients.length;
-    console.log(`📊 Total: ${candidates.length} × ${clients.length} = ${totalPairs} pairs`);
+    console.log(`📊 Processing: ${candidates.length} × ${clients.length} = ${candidates.length * clients.length} pairs`);
 
+    // Initialize progress
+    await supabase.from('match_generation_status').upsert({
+      user_id: user.id,
+      status: 'processing',
+      started_at: new Date().toISOString(),
+      matches_found: 0,
+      percent_complete: 0,
+      method_used: 'google_maps_background',
+    });
+
+    // Start background processing WITHOUT awaiting
+    // This is KEY - we don't wait, just start it and return immediately
+    processMatches(user.id, candidates, clients, apiKey, forceFullRegeneration).catch(error => {
+      console.error('❌ Background processing error:', error);
+    });
+
+    // Return immediately (avoids timeout)
+    return NextResponse.json({
+      success: true,
+      message: 'Match generation started in background',
+      processing: true,
+      mode: forceFullRegeneration ? 'full' : 'incremental',
+      stats: {
+        candidates: candidates.length,
+        clients: clients.length,
+        total_pairs: candidates.length * clients.length,
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ API Error:', error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// Background processing function
+async function processMatches(
+  userId: string,
+  candidates: any[],
+  clients: any[],
+  apiKey: string,
+  forceFullRegeneration: boolean = false
+) {
+  console.log(`🔄 [BACKGROUND] Starting for user ${userId}`);
+  console.log(`🔧 Mode: ${forceFullRegeneration ? 'FULL REGENERATION' : 'INCREMENTAL (skip existing)'}`);
+
+  // Create a new Supabase client for background processing
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => [],
+        setAll: () => {}
+      },
+    }
+  );
+
+  try {
     // Fetch existing and banned pairs
     let existingPairs = new Set<string>();
     let bannedPairs = new Set<string>();
 
     if (forceFullRegeneration) {
-      console.log('🗑️ FULL: Clearing all non-banned matches...');
-      await supabase.from('matches')
+      // Full regeneration: delete all NON-BANNED matches
+      console.log('🗑️ FULL REGENERATION: Clearing all non-banned matches...');
+      const deleteResult = await supabase.from('matches')
         .delete()
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .or('banned.is.null,banned.eq.false');
-      console.log('✅ Cleared!');
+
+      console.log(`✅ Cleared existing matches!`);
     } else {
-      console.log('🔍 INCREMENTAL: Fetching existing matches...');
-      const { data: existingMatches } = await supabase
+      // Incremental: fetch existing matches to skip them
+      console.log('🔍 INCREMENTAL: Fetching existing matches to skip...');
+      const { data: existingMatches, error: fetchError } = await supabase
         .from('matches')
         .select('candidate_id, client_id')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .or('banned.is.null,banned.eq.false');
+
+      if (fetchError) {
+        console.error('❌ Error fetching existing matches:', fetchError);
+        throw fetchError;
+      }
 
       existingPairs = new Set(
         (existingMatches || []).map(m => `${m.candidate_id}:${m.client_id}`)
       );
-      console.log(`✅ Found ${existingPairs.size} existing`);
+
+      console.log(`✅ Found ${existingPairs.size} existing matches - will skip these`);
     }
 
-    // Always fetch banned pairs
-    const { data: bannedMatches } = await supabase
+    // Always fetch banned pairs (never regenerate banned matches)
+    console.log('🚫 Fetching banned pairs to skip...');
+    const { data: bannedMatches, error: bannedError } = await supabase
       .from('matches')
       .select('candidate_id, client_id')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('banned', true);
+
+    if (bannedError) {
+      console.error('❌ Error fetching banned matches:', bannedError);
+      throw bannedError;
+    }
 
     bannedPairs = new Set(
       (bannedMatches || []).map(m => `${m.candidate_id}:${m.client_id}`)
     );
-    console.log(`🚫 Found ${bannedPairs.size} banned`);
 
-    // Build pairs to process
-    const pairsToProcess: Array<{ candidate: any; client: any }> = [];
+    console.log(`🚫 Found ${bannedPairs.size} banned pairs - will never create these`);
 
-    for (const candidate of candidates) {
-      for (const client of clients) {
-        const pairKey = `${candidate.id}:${client.id}`;
-        if (bannedPairs.has(pairKey)) continue;
-        if (!forceFullRegeneration && existingPairs.has(pairKey)) continue;
-        pairsToProcess.push({ candidate, client });
-      }
-    }
-
-    console.log(`🎯 To process: ${pairsToProcess.length} pairs`);
-
-    if (pairsToProcess.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: 'All pairs already processed',
-        stats: {
-          candidates: candidates.length,
-          clients: clients.length,
-          total_pairs: totalPairs,
-          matches_found: 0,
-          excluded_over_80min: 0,
-          errors: 0,
-          skipped: existingPairs.size,
-        }
-      });
-    }
-
-    // Process ALL pairs in batches (synchronously, within request)
-    const batchSize = 10;
+    const totalPairs = candidates.length * clients.length;
     let processed = 0;
     let successCount = 0;
     let errorCount = 0;
     let excludedCount = 0;
+    let skippedCount = existingPairs.size;
 
-    // Calculate batches
-    const numBatches = Math.ceil(pairsToProcess.length / batchSize);
-    console.log(`📦 ${numBatches} batches to process`);
+    // Build pairs to process
+    const pairsToProcess: Array<{candidate: any, client: any}> = [];
 
-    for (let batchNum = 0; batchNum < numBatches; batchNum++) {
-      const start = batchNum * batchSize;
-      const end = Math.min(start + batchSize, pairsToProcess.length);
-      const batch = pairsToProcess.slice(start, end);
+    for (const candidate of candidates) {
+      for (const client of clients) {
+        const pairKey = `${candidate.id}:${client.id}`;
 
-      console.log(`📦 Batch ${batchNum + 1}/${numBatches} (${batch.length} pairs)`);
+        // Skip if banned
+        if (bannedPairs.has(pairKey)) {
+          continue;
+        }
+
+        // Skip if already exists (only in incremental mode)
+        if (!forceFullRegeneration && existingPairs.has(pairKey)) {
+          continue;
+        }
+
+        pairsToProcess.push({ candidate, client });
+      }
+    }
+
+    console.log(`🎯 Pairs to process: ${pairsToProcess.length}`);
+    console.log(`   ⏭️ Skipping ${skippedCount} existing pairs`);
+    console.log(`   🚫 Skipping ${bannedPairs.size} banned pairs`);
+
+    if (pairsToProcess.length === 0) {
+      console.log('✅ All pairs already processed or banned - nothing to do!');
+      await supabase.from('match_generation_status').upsert({
+        user_id: userId,
+        status: 'completed',
+        matches_found: 0,
+        excluded_over_80min: 0,
+        errors: 0,
+        skipped_existing: skippedCount,
+        percent_complete: 100,
+        completed_at: new Date().toISOString(),
+        method_used: 'google_maps_background',
+        mode_used: forceFullRegeneration ? 'full' : 'incremental',
+      });
+      return;
+    }
+
+    // Create batches
+    const batchSize = 10;
+    const pairBatches: Array<Array<{candidate: any, client: any}>> = [];
+
+    for (let i = 0; i < pairsToProcess.length; i += batchSize) {
+      pairBatches.push(pairsToProcess.slice(i, i + batchSize));
+    }
+
+    const totalBatches = pairBatches.length;
+    let currentBatch = 0;
+
+    console.log(`📦 Created ${totalBatches} batches from ${pairsToProcess.length} pairs`);
+
+    // Process each batch
+    for (const pairBatch of pairBatches) {
+      currentBatch++;
+      console.log(`📦 Batch ${currentBatch}/${totalBatches}`);
 
       try {
-        const originPostcodes = Array.from(new Set(batch.map(p => p.candidate.postcode)));
-        const destPostcodes = Array.from(new Set(batch.map(p => p.client.postcode)));
+        // Extract unique origins and destinations
+        const originPostcodes = Array.from(new Set(pairBatch.map(p => p.candidate.postcode)));
+        const destPostcodes = Array.from(new Set(pairBatch.map(p => p.client.postcode)));
+
+        const origins = originPostcodes.join('|');
+        const destinations = destPostcodes.join('|');
 
         const params = new URLSearchParams({
-          origins: originPostcodes.join('|'),
-          destinations: destPostcodes.join('|'),
+          origins,
+          destinations,
           mode: 'driving',
           units: 'imperial',
           key: apiKey,
         });
 
-        const gmapsUrl = `https://maps.googleapis.com/maps/api/distancematrix/json?${params}`;
+        const url = `https://maps.googleapis.com/maps/api/distancematrix/json?${params}`;
 
-        const response = await fetch(gmapsUrl);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        console.log(`🌐 Calling Google Maps for ${pairBatch.length} pairs...`);
+        console.log(`   Origins: ${originPostcodes.length} unique postcodes`);
+        console.log(`   Destinations: ${destPostcodes.length} unique postcodes`);
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeout);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
 
         const data = await response.json();
-        if (data.status !== 'OK') throw new Error(`API status: ${data.status}`);
+
+        if (data.status !== 'OK') {
+          throw new Error(`API status: ${data.status}`);
+        }
 
         console.log(`✅ API returned ${data.rows?.length || 0} rows`);
 
-        // Process each pair in batch
-        for (const pair of batch) {
-          const { candidate, client } = pair;
+        // Process results for each pair
+        for (const pair of pairBatch) {
+          const candidate = pair.candidate;
+          const client = pair.client;
+
           const originIndex = originPostcodes.indexOf(candidate.postcode);
           const destIndex = destPostcodes.indexOf(client.postcode);
 
           const element = data.rows?.[originIndex]?.elements?.[destIndex];
 
-          if (!element || element.status !== 'OK') {
-            console.error(`❌ No data: ${candidate.postcode} → ${client.postcode}`);
+          if (!element) {
+            console.error(`❌ No element for ${candidate.postcode} → ${client.postcode}`);
+            errorCount++;
+            processed++;
+            continue;
+          }
+
+          if (element.status !== 'OK') {
+            console.error(`❌ API error for ${candidate.postcode} → ${client.postcode}: ${element.status}`);
             errorCount++;
             processed++;
             continue;
@@ -211,66 +336,96 @@ export async function POST(request: NextRequest) {
           const minutes = Math.round(element.duration.value / 60);
 
           if (minutes > 80) {
-            console.log(`⊗ Excluded: ${minutes}m`);
+            console.log(`⊗ Excluded ${candidate.postcode} → ${client.postcode}: ${minutes}m (over 80)`);
             excludedCount++;
             processed++;
             continue;
           }
 
-          const roleMatchResult = rolesMatch(candidate.role, client.role);
+          // Check role match
+          const roleMatch = rolesMatch(candidate.role, client.role);
 
-          console.log(`✅ Match: ${candidate.id} → ${client.id}: ${minutes}m`);
+          console.log(`✅ Creating match: ${candidate.id} → ${client.id}: ${minutes}m, role=${roleMatch}`);
 
-          await supabase.from('matches').insert({
+          // Insert the match
+          const { error: insertError } = await supabase.from('matches').insert({
             candidate_id: candidate.id,
             client_id: client.id,
             commute_minutes: minutes,
             commute_display: formatTime(minutes),
             commute_band: getBand(minutes),
-            role_match: roleMatchResult,
-            role_match_display: roleMatchResult ? '✅ Match' : '❌ No Match',
-            user_id: user.id,
+            role_match: roleMatch,
+            role_match_display: roleMatch ? '✅ Match' : '❌ No Match',
+            user_id: userId,
           });
 
-          successCount++;
+          if (insertError) {
+            console.error(`❌ Insert failed for ${candidate.id} → ${client.id}:`, insertError);
+            errorCount++;
+          } else {
+            successCount++;
+          }
+
           processed++;
         }
+
       } catch (batchError: any) {
-        console.error(`❌ Batch ${batchNum + 1} failed:`, batchError.message);
-        errorCount += batch.length;
-        processed += batch.length;
+        console.error(`❌ Batch ${currentBatch} failed:`, batchError.message);
+        // Mark all pairs in batch as errors
+        errorCount += pairBatch.length;
+        processed += pairBatch.length;
       }
 
-      // Small delay between batches
-      await sleep(50);
-    }
+      // Update progress after each batch
+      const percentage = Math.round(((processed + skippedCount) / totalPairs) * 100);
+      console.log(`📊 Progress: ${percentage}% (${processed}/${pairsToProcess.length} processed)`);
 
-    console.log('');
-    console.log(`✅ COMPLETE!`);
-    console.log(`   ✅ Matches: ${successCount}`);
-    console.log(`   ⊗ Excluded: ${excludedCount}`);
-    console.log(`   ❌ Errors: ${errorCount}`);
-
-    return NextResponse.json({
-      success: true,
-      message: `Match generation complete. ${successCount} matches found.`,
-      stats: {
-        candidates: candidates.length,
-        clients: clients.length,
-        total_pairs: totalPairs,
+      await supabase.from('match_generation_status').upsert({
+        user_id: userId,
+        status: 'processing',
         matches_found: successCount,
         excluded_over_80min: excludedCount,
         errors: errorCount,
-        skipped: existingPairs.size,
-      }
+        skipped_existing: skippedCount,
+        percent_complete: percentage,
+      });
+
+      // Delay between batches to respect rate limits
+      await sleep(100);
+    }
+
+    // Final update
+    await supabase.from('match_generation_status').upsert({
+      user_id: userId,
+      status: 'completed',
+      matches_found: successCount,
+      excluded_over_80min: excludedCount,
+      errors: errorCount,
+      skipped_existing: skippedCount,
+      percent_complete: 100,
+      completed_at: new Date().toISOString(),
+      method_used: 'google_maps_background',
+      mode_used: forceFullRegeneration ? 'full' : 'incremental',
     });
 
+    console.log('');
+    console.log(`✅ ${forceFullRegeneration ? 'FULL REGENERATION' : 'INCREMENTAL MATCHING'} COMPLETE!`);
+    console.log(`   📊 Total pairs: ${totalPairs}`);
+    console.log(`   ✅ New matches created: ${successCount}`);
+    console.log(`   ⊗ Excluded (>80 min): ${excludedCount}`);
+    console.log(`   ⏭️ Skipped (already exist): ${skippedCount}`);
+    console.log(`   🚫 Banned pairs (never created): ${bannedPairs.size}`);
+    console.log(`   ❌ Errors: ${errorCount}`);
+
   } catch (error: any) {
-    console.error('❌ Error:', error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    console.error('❌ Processing failed:', error);
+
+    await supabase.from('match_generation_status').upsert({
+      user_id: userId,
+      status: 'error',
+      error_message: error.message,
+      completed_at: new Date().toISOString(),
+    });
   }
 }
 
@@ -280,7 +435,9 @@ function sleep(ms: number): Promise<void> {
 
 function formatTime(minutes: number): string {
   const band = getBand(minutes);
-  if (minutes < 60) return `${band} ${minutes}m`;
+  if (minutes < 60) {
+    return `${band} ${minutes}m`;
+  }
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return mins === 0 ? `${band} ${hours}h` : `${band} ${hours}h ${mins}m`;
