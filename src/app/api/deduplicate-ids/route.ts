@@ -94,10 +94,16 @@ async function deduplicateCandidates(supabase: any, userId: string) {
   console.log(`📊 Total candidates fetched: ${candidates.length}`);
   console.log('Sample IDs:', candidates.slice(0, 10).map(c => c.id));
 
-  // Group by ID (case-insensitive) to find duplicates
+  // Group by ID (case-insensitive and removing U3_ prefix) to find duplicates
   const idGroups = new Map<string, any[]>();
   for (const candidate of candidates) {
-    const id = (candidate.id || '').toUpperCase().trim(); // Normalize ID to uppercase
+    let id = (candidate.id || '').toUpperCase().trim(); // Normalize ID to uppercase
+
+    // Remove U3_ prefix if it exists to find duplicates like U3_CAN7 and CAN7
+    if (id.startsWith('U3_')) {
+      id = id.substring(3);
+    }
+
     if (!idGroups.has(id)) {
       idGroups.set(id, []);
     }
@@ -202,10 +208,16 @@ async function deduplicateClients(supabase: any, userId: string) {
   console.log(`📊 Total clients fetched: ${clients.length}`);
   console.log('Sample IDs:', clients.slice(0, 10).map(c => c.id));
 
-  // Group by ID (case-insensitive) to find duplicates
+  // Group by ID (case-insensitive and removing U3_ prefix) to find duplicates
   const idGroups = new Map<string, any[]>();
   for (const client of clients) {
-    const id = (client.id || '').toUpperCase().trim(); // Normalize ID to uppercase
+    let id = (client.id || '').toUpperCase().trim(); // Normalize ID to uppercase
+
+    // Remove U3_ prefix if it exists to find duplicates like U3_CL7 and CL7
+    if (id.startsWith('U3_')) {
+      id = id.substring(3);
+    }
+
     if (!idGroups.has(id)) {
       idGroups.set(id, []);
     }
