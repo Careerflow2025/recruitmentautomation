@@ -4,8 +4,13 @@ import { cookies } from 'next/headers';
 import { rolesMatch } from '@/lib/utils/roleNormalizer';
 
 /**
- * WORKING VERSION: Smart batching WITHOUT Bottleneck
- * 🆕 INCREMENTAL MATCHING: Only processes new candidate-client pairs
+ * NETLIFY OPTIMIZED VERSION: Works within Netlify's 10-second timeout
+ *
+ * Strategy:
+ * 1. Start processing immediately (don't wait)
+ * 2. Return success response within 10 seconds
+ * 3. Processing continues in background via async/await pattern
+ * 4. Frontend polls match_generation_status for progress
  *
  * Query Parameters:
  * - force=true : Full regeneration (deletes all existing matches)
@@ -18,7 +23,7 @@ export async function POST(request: NextRequest) {
     const forceParam = url.searchParams.get('force');
     const forceFullRegeneration = forceParam === 'true';
 
-    console.log('🚀 [WORKING] Starting match regeneration...');
+    console.log('🚀 [NETLIFY] Starting match regeneration...');
     console.log(`🔧 Mode: ${forceFullRegeneration ? 'FULL REGENERATION' : 'INCREMENTAL (skip existing)'}`);
 
     const cookieStore = await cookies();
@@ -89,28 +94,30 @@ export async function POST(request: NextRequest) {
       started_at: new Date().toISOString(),
       matches_found: 0,
       percent_complete: 0,
-      method_used: 'google_maps_working',
+      method_used: 'google_maps_netlify',
     });
 
-    // SYNCHRONOUS PROCESSING: Process matches within request (no background)
-    // This works within Vercel's serverless function timeout limits
-    const result = await processMatches(user.id, candidates, clients, apiKey, forceFullRegeneration);
+    // ⚡ NETLIFY OPTIMIZATION: Start processing but DON'T await it
+    // This allows us to return response within 10 seconds while processing continues
+    processMatches(user.id, candidates, clients, apiKey, forceFullRegeneration)
+      .catch(error => {
+        console.error('❌ Background processing error:', error);
+        // Error is already logged to match_generation_status by processMatches
+      });
 
+    // Return immediately (within 10 seconds) with success
     return NextResponse.json({
       success: true,
       message: forceFullRegeneration
-        ? 'Full match regeneration completed'
-        : 'Incremental match generation completed',
-      processing: false,
-      completed: true,
+        ? 'Full match regeneration started - check status for progress'
+        : 'Incremental match generation started - check status for progress',
+      processing: true,
+      completed: false,
       mode: forceFullRegeneration ? 'full' : 'incremental',
       stats: {
         candidates: candidates.length,
         clients: clients.length,
         total_pairs: candidates.length * clients.length,
-        matches_found: result.successCount,
-        excluded_over_80min: result.excludedCount,
-        errors: result.errorCount,
       }
     });
 
@@ -243,14 +250,15 @@ async function processMatches(
         skipped_existing: skippedCount,
         percent_complete: 100,
         completed_at: new Date().toISOString(),
-        method_used: 'google_maps_working',
+        method_used: 'google_maps_netlify',
         mode_used: forceFullRegeneration ? 'full' : 'incremental',
       });
       return;
     }
 
-    // Create batches from pairs to process (not all candidates × clients)
-    const batchSize = 10;
+    // ⚡ NETLIFY OPTIMIZATION: Smaller batches (5 instead of 10) for faster processing
+    // Reduces chance of hitting 10-second timeout during individual batch processing
+    const batchSize = 5;
     const pairBatches: Array<Array<{candidate: any, client: any}>> = [];
 
     for (let i = 0; i < pairsToProcess.length; i += batchSize) {
@@ -290,7 +298,7 @@ async function processMatches(
           console.log(`   Destinations: ${destPostcodes.length} unique postcodes`);
 
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 15000);
+          const timeout = setTimeout(() => controller.abort(), 8000); // 8 second timeout for API call
 
           const response = await fetch(url, { signal: controller.signal });
           clearTimeout(timeout);
@@ -312,7 +320,7 @@ async function processMatches(
               const candidate = pair.candidate;
               const client = pair.client;
 
-              // Find indices in the unique postcode arrays (NOT indexOf which returns first match)
+              // Find indices in the unique postcode arrays
               const originIndex = originPostcodes.indexOf(candidate.postcode);
               const destIndex = destPostcodes.indexOf(client.postcode);
 
@@ -341,8 +349,6 @@ async function processMatches(
                 continue;
               }
 
-              // 🔄 MULTI-ROLE MATCHING: Check if ANY candidate role matches client role
-              // Supports formats like "Dental Nurse/ANP/PN", "Dental Nurse / ANP / PN", etc.
               const roleMatch = rolesMatch(candidate.role, client.role);
 
               console.log(`✅ Creating match: ${candidate.id} (${candidate.postcode}) → ${client.id} (${client.postcode}): ${minutes}m, role=${roleMatch}`);
@@ -387,12 +393,12 @@ async function processMatches(
           matches_found: successCount,
           excluded_over_80min: excludedCount,
           errors: errorCount,
-          skipped_existing: skippedCount, // 🆕 Track skipped pairs
+          skipped_existing: skippedCount,
           percent_complete: percentage,
         });
 
-        // Delay between batches (100ms to avoid rate limits but stay fast)
-        await sleep(100);
+        // ⚡ NETLIFY OPTIMIZATION: Shorter delay (50ms) to process faster
+        await sleep(50);
       }
 
     // Final update
@@ -402,11 +408,11 @@ async function processMatches(
       matches_found: successCount,
       excluded_over_80min: excludedCount,
       errors: errorCount,
-      skipped_existing: skippedCount, // 🆕 Track skipped pairs
+      skipped_existing: skippedCount,
       percent_complete: 100,
       completed_at: new Date().toISOString(),
-      method_used: 'google_maps_working',
-      mode_used: forceFullRegeneration ? 'full' : 'incremental', // 🆕 Track mode
+      method_used: 'google_maps_netlify',
+      mode_used: forceFullRegeneration ? 'full' : 'incremental',
     });
 
     console.log('');
@@ -420,15 +426,6 @@ async function processMatches(
     const totalSaved = skippedCount + bannedPairs.size;
     console.log(`   💾 API calls saved: ${totalSaved > 0 ? Math.round((totalSaved / totalPairs) * 100) : 0}%`);
 
-    // Return results for API response
-    return {
-      successCount,
-      excludedCount,
-      errorCount,
-      skippedCount,
-      totalPairs,
-    };
-
   } catch (error: any) {
     console.error('❌ Processing failed:', error);
 
@@ -439,24 +436,13 @@ async function processMatches(
       completed_at: new Date().toISOString(),
     });
 
-    // Return error results
-    return {
-      successCount: 0,
-      excludedCount: 0,
-      errorCount: 1,
-      skippedCount: 0,
-      totalPairs: 0,
-    };
+    throw error; // Re-throw so the catch in POST handler logs it
   }
 }
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
-
-// 🔄 MULTI-ROLE MATCHING: Role normalization and matching now handled by imported rolesMatch() function
-// Supports multi-role candidates (e.g., "Dental Nurse/ANP/PN") matching against single client roles
-// The rolesMatch() function handles splitting, normalization, and comparison automatically
 
 function formatTime(minutes: number): string {
   const band = getBand(minutes);

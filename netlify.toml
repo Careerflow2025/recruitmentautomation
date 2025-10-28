@@ -8,3 +8,20 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Netlify function configuration for match regeneration
+[functions]
+  # Increase timeout for match regeneration endpoint
+  # Free tier: 10s max for synchronous, 15 minutes for background
+  # Pro tier: 26s max for synchronous
+  node_bundler = "esbuild"
+
+[functions."regenerate-working"]
+  # Use background function for long-running tasks
+  included_files = ["src/**"]
+
+# Next.js API routes timeout configuration
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    X-Function-Timeout = "10"

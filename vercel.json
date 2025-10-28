@@ -1,7 +1,0 @@
-{
-  "functions": {
-    "src/app/api/regenerate-working/route.ts": {
-      "maxDuration": 300
-    }
-  }
-}
