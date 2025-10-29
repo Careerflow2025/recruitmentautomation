@@ -862,6 +862,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
               <tr
                 key={`${match.candidate.id}-${match.client.id}`}
                 className={`transition-colors hover:bg-blue-50 ${
+                  // Only alternating row colors, NO status-based row colors
                   index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                 }`}
               >
