@@ -733,7 +733,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                 className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
                 style={{ backgroundColor: '#334155', borderColor: '#475569', width: `${columnWidths.can_postcode}px` }}
               >
-                <span className="hidden xl:inline">C-Post</span>
+                <span className="hidden xl:inline">CAN-Post</span>
                 <span className="xl:hidden">CPC</span>
                 {/* Resize Handle */}
                 <div
@@ -746,7 +746,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                 className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
                 style={{ backgroundColor: '#1e293b', borderColor: '#334155', width: `${columnWidths.cl_postcode}px` }}
               >
-                <span className="hidden xl:inline">L-Post</span>
+                <span className="hidden xl:inline">CLI-Post</span>
                 <span className="xl:hidden">LPC</span>
                 {/* Resize Handle */}
                 <div
@@ -762,7 +762,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                     className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
                     style={{ backgroundColor: '#334155', borderColor: '#475569', width: `${columnWidths.can_salary}px` }}
                   >
-                    £C
+                    £CAN
                     {/* Resize Handle */}
                     <div
                       className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
@@ -774,7 +774,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                     className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
                     style={{ backgroundColor: '#1e293b', borderColor: '#334155', width: `${columnWidths.cl_budget}px` }}
                   >
-                    £L
+                    £Budget
                     {/* Resize Handle */}
                     <div
                       className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
@@ -789,7 +789,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                 className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
                 style={{ backgroundColor: '#334155', borderColor: '#475569', width: `${columnWidths.can_role}px` }}
               >
-                <span className="hidden lg:inline">C-Rol</span>
+                <span className="hidden lg:inline">CAN-ROL</span>
                 <span className="lg:hidden">CR</span>
                 {/* Resize Handle */}
                 <div
@@ -802,7 +802,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                 className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
                 style={{ backgroundColor: '#1e293b', borderColor: '#334155', width: `${columnWidths.cl_role}px` }}
               >
-                <span className="hidden lg:inline">L-Rol</span>
+                <span className="hidden lg:inline">CLI-Rol</span>
                 <span className="lg:hidden">LR</span>
                 {/* Resize Handle */}
                 <div
