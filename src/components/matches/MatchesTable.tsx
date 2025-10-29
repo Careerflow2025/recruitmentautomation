@@ -626,32 +626,8 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
   };
 
 
-  // Get status column style (only for status cell, not entire row)
-  const getStatusCellStyle = (match: Match) => {
-    const key = getMatchKey(match);
-    const statusData = matchStatuses[key];
-
-    if (!statusData || !statusData.status) return {};
-
-    if (statusData.status === 'placed') {
-      return {
-        backgroundColor: '#22c55e', // green-500 - EXACT match to icon
-        borderLeft: '4px solid #15803d', // darker green border
-      };
-    } else if (statusData.status === 'in-progress') {
-      return {
-        backgroundColor: '#f97316', // orange-500 - EXACT match to icon
-        borderLeft: '4px solid #c2410c', // darker orange border
-      };
-    } else if (statusData.status === 'rejected') {
-      return {
-        backgroundColor: '#ef4444', // red-500 - EXACT match to icon
-        borderLeft: '4px solid #b91c1c', // darker red border
-      };
-    }
-
-    return {};
-  };
+  // Remove the status cell style function - we no longer need it
+  // Only the icon itself should be colored, not the cell
 
   if (matches.length === 0) {
     return (
@@ -687,7 +663,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
             <tr style={{ backgroundColor: '#1e293b' }}>
               {/* Match Info Section - COMMUTE: Fixed width to fit content, non-resizable */}
               <th
-                className="px-1 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                className="px-1 py-1 lg:py-2 text-left text-[19.38px] font-bold text-white uppercase tracking-tighter border-r relative"
                 style={{ borderColor: '#334155', width: '85px' }}
               >
                 <span>Commute</span>
@@ -695,7 +671,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
 
               {/* Role Match: Fixed width, smaller, non-resizable */}
               <th
-                className="px-1 py-1 lg:py-2 text-center text-[10px] font-bold text-white uppercase tracking-tighter border-r-4 border-white relative"
+                className="px-1 py-1 lg:py-2 text-center text-[19.38px] font-bold text-white uppercase tracking-tighter border-r-4 border-white relative"
                 style={{ width: '42px' }}
               >
                 <span>RM</span>
@@ -703,7 +679,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
 
               {/* Alternating Candidate/Client Columns - Resizable */}
               <th
-                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[19.38px] font-bold text-white uppercase tracking-tighter border-r relative"
                 style={{ backgroundColor: '#334155', borderColor: '#475569', width: `${columnWidths.candidate}px` }}
               >
                 <span className="hidden xl:inline">Candidate</span>
@@ -716,7 +692,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                 />
               </th>
               <th
-                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[19.38px] font-bold text-white uppercase tracking-tighter border-r relative"
                 style={{ backgroundColor: '#1e293b', borderColor: '#334155', width: `${columnWidths.client}px` }}
               >
                 <span className="hidden xl:inline">Client</span>
@@ -730,7 +706,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
               </th>
 
               <th
-                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[19.38px] font-bold text-white uppercase tracking-tighter border-r relative"
                 style={{ backgroundColor: '#334155', borderColor: '#475569', width: `${columnWidths.can_postcode}px` }}
               >
                 <span className="hidden xl:inline">CAN-Post</span>
@@ -743,7 +719,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                 />
               </th>
               <th
-                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[19.38px] font-bold text-white uppercase tracking-tighter border-r relative"
                 style={{ backgroundColor: '#1e293b', borderColor: '#334155', width: `${columnWidths.cl_postcode}px` }}
               >
                 <span className="hidden xl:inline">CLI-Post</span>
@@ -759,7 +735,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
               {visibleColumns.salary_budget && (
                 <>
                   <th
-                    className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                    className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[19.38px] font-bold text-white uppercase tracking-tighter border-r relative"
                     style={{ backgroundColor: '#334155', borderColor: '#475569', width: `${columnWidths.can_salary}px` }}
                   >
                     £CAN
@@ -771,7 +747,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                     />
                   </th>
                   <th
-                    className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                    className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[19.38px] font-bold text-white uppercase tracking-tighter border-r relative"
                     style={{ backgroundColor: '#1e293b', borderColor: '#334155', width: `${columnWidths.cl_budget}px` }}
                   >
                     £Budget
@@ -786,7 +762,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
               )}
 
               <th
-                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[19.38px] font-bold text-white uppercase tracking-tighter border-r relative"
                 style={{ backgroundColor: '#334155', borderColor: '#475569', width: `${columnWidths.can_role}px` }}
               >
                 <span className="hidden lg:inline">CAN-ROL</span>
@@ -799,7 +775,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                 />
               </th>
               <th
-                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[19.38px] font-bold text-white uppercase tracking-tighter border-r relative"
                 style={{ backgroundColor: '#1e293b', borderColor: '#334155', width: `${columnWidths.cl_role}px` }}
               >
                 <span className="hidden lg:inline">CLI-Rol</span>
@@ -815,11 +791,11 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
               {visibleColumns.availability_requirement && (
                 <>
                   <th
-                    className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                    className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[19.38px] font-bold text-white uppercase tracking-tighter border-r relative"
                     style={{ backgroundColor: '#334155', borderColor: '#475569', width: `${columnWidths.can_availability}px` }}
                   >
-                    <span className="hidden xl:inline">Ava</span>
-                    <span className="xl:hidden">Av</span>
+                    <span className="hidden xl:inline">Availability</span>
+                    <span className="xl:hidden">Avail</span>
                     {/* Resize Handle */}
                     <div
                       className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
@@ -828,11 +804,11 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                     />
                   </th>
                   <th
-                    className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[10px] font-bold text-white uppercase tracking-tighter border-r relative"
+                    className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-2 text-left text-[19.38px] font-bold text-white uppercase tracking-tighter border-r relative"
                     style={{ backgroundColor: '#1e293b', borderColor: '#334155', width: `${columnWidths.cl_requirement}px` }}
                   >
-                    <span className="hidden xl:inline">Req</span>
-                    <span className="xl:hidden">Rq</span>
+                    <span className="hidden xl:inline">Requirement</span>
+                    <span className="xl:hidden">Req</span>
                     {/* Resize Handle */}
                     <div
                       className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
@@ -844,10 +820,10 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
               )}
 
               <th
-                className="px-1 lg:px-2 xl:px-3 py-1 lg:py-2 text-center text-[10px] font-bold text-white uppercase tracking-tighter sticky right-0 z-10 relative"
+                className="px-1 lg:px-2 xl:px-3 py-1 lg:py-2 text-center text-[19.38px] font-bold text-white uppercase tracking-tighter sticky right-0 z-10 relative"
                 style={{ backgroundColor: '#1e293b', width: `${columnWidths.status}px` }}
               >
-                Stat
+                Stats
                 {/* Resize Handle */}
                 <div
                   className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 z-10"
@@ -867,7 +843,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                 }`}
               >
                 {/* Match Info - COMMUTE: Wide enough to contain all content without overlap */}
-                <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap border-r border-gray-200 overflow-hidden">
+                <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap border-r border-gray-200 overflow-hidden !bg-transparent">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -883,7 +859,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                     />
                   </button>
                 </td>
-                <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap border-r-4 border-gray-300 overflow-hidden" style={{ width: '42px' }}>
+                <td className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap border-r-4 border-gray-300 overflow-hidden !bg-transparent" style={{ width: '42px' }}>
                   <RoleMatchBadge
                     isMatch={match.role_match}
                     display={match.role_match_display}
@@ -893,7 +869,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                 {/* Alternating Candidate/Client Columns - Resizable */}
                 {/* Candidate Name */}
                 <td
-                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 text-[8px] lg:text-[9px] xl:text-xs font-bold text-gray-900 border-r border-gray-200 overflow-hidden"
+                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 !bg-transparent text-[8px] lg:text-[9px] xl:text-xs font-bold text-gray-900 border-r border-gray-200 overflow-hidden"
                   style={{ width: `${columnWidths.candidate}px` }}
                 >
                   <button
@@ -912,7 +888,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                 </td>
                 {/* Client Name */}
                 <td
-                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 text-[8px] lg:text-[9px] xl:text-xs font-bold text-gray-900 border-r border-gray-200 overflow-hidden"
+                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 !bg-transparent text-[8px] lg:text-[9px] xl:text-xs font-bold text-gray-900 border-r border-gray-200 overflow-hidden"
                   style={{ width: `${columnWidths.client}px` }}
                 >
                   <button
@@ -932,7 +908,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
 
                 {/* CAN Postcode */}
                 <td
-                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap font-mono text-[8px] lg:text-[9px] xl:text-sm font-bold text-gray-900 border-r border-gray-200 overflow-hidden"
+                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 !bg-transparent whitespace-nowrap font-mono text-[8px] lg:text-[9px] xl:text-sm font-bold text-gray-900 border-r border-gray-200 overflow-hidden"
                   style={{ width: `${columnWidths.can_postcode}px` }}
                   title={`Candidate Postcode: ${match.candidate.postcode}`}
                 >
@@ -940,7 +916,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                 </td>
                 {/* CL Postcode */}
                 <td
-                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap font-mono text-[8px] lg:text-[9px] xl:text-sm font-bold text-gray-900 border-r border-gray-200 overflow-hidden"
+                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 !bg-transparent whitespace-nowrap font-mono text-[8px] lg:text-[9px] xl:text-sm font-bold text-gray-900 border-r border-gray-200 overflow-hidden"
                   style={{ width: `${columnWidths.cl_postcode}px` }}
                   title={`Client Postcode: ${match.client.postcode}`}
                 >
@@ -951,7 +927,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                   <>
                     {/* CAN Salary */}
                     <td
-                      className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-semibold text-gray-900 border-r border-gray-200 overflow-hidden"
+                      className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 !bg-transparent whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-semibold text-gray-900 border-r border-gray-200 overflow-hidden"
                       style={{ width: `${columnWidths.can_salary}px` }}
                       title={`Candidate Salary: ${match.candidate.salary}`}
                     >
@@ -959,7 +935,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                     </td>
                     {/* CL Budget */}
                     <td
-                      className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-semibold text-gray-900 border-r border-gray-200 overflow-hidden"
+                      className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 !bg-transparent whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-semibold text-gray-900 border-r border-gray-200 overflow-hidden"
                       style={{ width: `${columnWidths.cl_budget}px` }}
                       title={`Client Budget: ${match.client.budget}`}
                     >
@@ -970,7 +946,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
 
                 {/* CAN Role */}
                 <td
-                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-medium text-gray-800 border-r border-gray-200 overflow-hidden"
+                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 !bg-transparent whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-medium text-gray-800 border-r border-gray-200 overflow-hidden"
                   style={{ width: `${columnWidths.can_role}px` }}
                   title={`Candidate Role: ${match.candidate.role}`}
                 >
@@ -978,7 +954,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                 </td>
                 {/* CL Role */}
                 <td
-                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-medium text-gray-800 border-r border-gray-200 overflow-hidden"
+                  className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 !bg-transparent whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs font-medium text-gray-800 border-r border-gray-200 overflow-hidden"
                   style={{ width: `${columnWidths.cl_role}px` }}
                   title={`Client Role: ${match.client.role}`}
                 >
@@ -989,7 +965,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                   <>
                     {/* CAN Availability */}
                     <td
-                      className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs text-gray-700 border-r border-gray-200 overflow-hidden"
+                      className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 !bg-transparent whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs text-gray-700 border-r border-gray-200 overflow-hidden"
                       style={{ width: `${columnWidths.can_availability}px` }}
                       title={`Candidate Availability: ${match.candidate.days}`}
                     >
@@ -997,7 +973,7 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
                     </td>
                     {/* CL Requirement */}
                     <td
-                      className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs text-gray-700 border-r border-gray-200 overflow-hidden"
+                      className="px-0.5 lg:px-1 xl:px-2 py-1 lg:py-1.5 !bg-transparent whitespace-nowrap text-[8px] lg:text-[9px] xl:text-xs text-gray-700 border-r border-gray-200 overflow-hidden"
                       style={{ width: `${columnWidths.cl_requirement}px` }}
                       title={`Client Requirement: ${match.client.requirement}`}
                     >
@@ -1008,12 +984,11 @@ export function MatchesTable({ matches, visibleColumns, onDataChange }: MatchesT
 
                 {/* Status - Ultra compact buttons */}
                 <td
-                  className="px-1 lg:px-2 xl:px-3 py-1 lg:py-1.5 whitespace-nowrap text-center sticky right-0 z-10"
+                  className="px-1 lg:px-2 xl:px-3 py-1 lg:py-1.5 whitespace-nowrap text-center sticky right-0 z-10 !bg-transparent"
                   style={{
                     width: `${columnWidths.status}px`,
-                    ...getStatusCellStyle(match),
-                    // Ensure background color if no status selected (inherit from row)
-                    backgroundColor: getStatusCellStyle(match).backgroundColor || (index % 2 === 0 ? '#ffffff' : '#f9fafb')
+                    // Force transparent background to inherit from row
+                    backgroundColor: 'transparent !important'
                   }}
                 >
                   <div className="flex items-center justify-center gap-0.5">
