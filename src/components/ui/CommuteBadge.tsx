@@ -16,9 +16,9 @@ export function CommuteBadge({ display, band, minutes }: CommuteBadgeProps) {
   };
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${getBandColor()}`}>
+    <span className={`inline-flex items-center gap-0.5 px-1 py-0 rounded-full text-[6px] font-medium border ${getBandColor()}`}>
       <svg
-        className="w-3 h-3 opacity-70"
+        className="w-1.5 h-1.5 opacity-70"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
