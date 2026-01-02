@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { v4 as uuidv4 } from 'uuid';
+import { CV_UPLOAD_LIMITS, ACCEPTED_CV_TYPES } from '@/lib/constants';
 
 /**
  * API Route: Upload CVs to Supabase Storage
@@ -9,6 +10,11 @@ import { v4 as uuidv4 } from 'uuid';
  *
  * Accepts multiple CV files (PDF, DOC, DOCX) and uploads them to Supabase Storage
  * Creates candidate_cvs records with 'uploaded' status
+ *
+ * Features:
+ * - Max 50 CVs per batch
+ * - Duplicate detection (by filename)
+ * - File type and size validation
  */
 export async function POST(request: NextRequest) {
   try {
@@ -25,7 +31,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`📄 Processing ${files.length} CV file(s)`);
+    // Enforce batch size limit (server-side validation)
+    if (files.length > CV_UPLOAD_LIMITS.MAX_BATCH_SIZE) {
+      console.log(`⚠️ Batch limit exceeded: ${files.length} files (max ${CV_UPLOAD_LIMITS.MAX_BATCH_SIZE})`);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Batch upload limit exceeded. Maximum ${CV_UPLOAD_LIMITS.MAX_BATCH_SIZE} files per upload. You submitted ${files.length} files.`,
+          limit: CV_UPLOAD_LIMITS.MAX_BATCH_SIZE,
+          submitted: files.length,
+        },
+        { status: 400 }
+      );
+    }
+
+    console.log(`📄 Processing ${files.length} CV file(s) (limit: ${CV_UPLOAD_LIMITS.MAX_BATCH_SIZE})`);
 
     // Create Supabase client with auth
     const cookieStore = await cookies();
@@ -61,6 +81,51 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Authenticated user: ${user.email}`);
 
+    // ============================================
+    // DUPLICATE DETECTION
+    // ============================================
+
+    // Get existing CVs for this user to check for duplicates
+    const { data: existingCVs } = await supabase
+      .from('candidate_cvs')
+      .select('cv_filename')
+      .eq('user_id', user.id);
+
+    const existingFilenames = new Set(
+      existingCVs?.map(cv => cv.cv_filename.toLowerCase()) || []
+    );
+
+    // Track duplicates and files to process
+    const duplicates: Array<{ filename: string; reason: string }> = [];
+    const seenInBatch = new Set<string>();
+    const filesToProcess: File[] = [];
+
+    // Check each file for duplicates
+    for (const file of files) {
+      const normalizedName = file.name.toLowerCase();
+
+      if (existingFilenames.has(normalizedName)) {
+        duplicates.push({ filename: file.name, reason: 'Already uploaded' });
+        console.log(`⚠️ Duplicate skipped (already uploaded): ${file.name}`);
+        continue;
+      }
+
+      if (seenInBatch.has(normalizedName)) {
+        duplicates.push({ filename: file.name, reason: 'Duplicate in batch' });
+        console.log(`⚠️ Duplicate skipped (duplicate in batch): ${file.name}`);
+        continue;
+      }
+
+      seenInBatch.add(normalizedName);
+      filesToProcess.push(file);
+    }
+
+    console.log(`📊 Duplicate check: ${duplicates.length} duplicates found, ${filesToProcess.length} files to process`);
+
+    // ============================================
+    // FILE PROCESSING
+    // ============================================
+
     const uploaded: Array<{
       filename: string;
       storage_path: string;
@@ -69,18 +134,11 @@ export async function POST(request: NextRequest) {
     }> = [];
     const errors: Array<{ filename: string; error: string }> = [];
 
-    // Allowed MIME types
-    const allowedMimeTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    ];
-
-    // Process each file
-    for (const file of files) {
+    // Process each non-duplicate file
+    for (const file of filesToProcess) {
       try {
-        // Validate file type
-        if (!allowedMimeTypes.includes(file.type)) {
+        // Validate file type using constants
+        if (!ACCEPTED_CV_TYPES.MIME_TYPES.includes(file.type as any)) {
           errors.push({
             filename: file.name,
             error: `Invalid file type: ${file.type}. Only PDF, DOC, and DOCX files are allowed.`,
@@ -88,12 +146,11 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Validate file size (10MB max)
-        const maxSize = 10 * 1024 * 1024; // 10MB
-        if (file.size > maxSize) {
+        // Validate file size using constants
+        if (file.size > CV_UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES) {
           errors.push({
             filename: file.name,
-            error: `File too large: ${(file.size / 1024 / 1024).toFixed(2)}MB. Maximum size is 10MB.`,
+            error: `File too large: ${(file.size / 1024 / 1024).toFixed(2)}MB. Maximum size is ${CV_UPLOAD_LIMITS.MAX_FILE_SIZE_MB}MB.`,
           });
           continue;
         }
@@ -172,16 +229,20 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      success: uploaded.length > 0,
+      success: uploaded.length > 0 || duplicates.length > 0,
       message:
         uploaded.length > 0
-          ? `Successfully uploaded ${uploaded.length} CV(s)`
+          ? `Successfully uploaded ${uploaded.length} CV(s)${duplicates.length > 0 ? `, ${duplicates.length} duplicate(s) skipped` : ''}`
+          : duplicates.length > 0
+          ? `All ${duplicates.length} file(s) were duplicates and skipped`
           : 'No CVs were uploaded',
       uploaded,
+      duplicates: duplicates.length > 0 ? duplicates : undefined,
       errors: errors.length > 0 ? errors : undefined,
       stats: {
         total: files.length,
         successful: uploaded.length,
+        duplicates: duplicates.length,
         failed: errors.length,
       },
     });

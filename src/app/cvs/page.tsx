@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import CVUploader from '@/components/cv/CVUploader';
 import CVViewerModal from '@/components/cv/CVViewerModal';
+import { CV_UPLOAD_LIMITS } from '@/lib/constants';
 
 interface CV {
   id: string;
@@ -207,6 +208,25 @@ export default function CVsPage() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Upload CVs
           </h2>
+
+          {/* Upload Guidelines Banner */}
+          <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <span className="text-blue-500 text-lg">💡</span>
+              <div>
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  Upload Guidelines
+                </p>
+                <ul className="text-xs text-blue-700 dark:text-blue-300 mt-1 space-y-0.5">
+                  <li>• Maximum <strong>{CV_UPLOAD_LIMITS.MAX_BATCH_SIZE} CVs</strong> per batch</li>
+                  <li>• Supported: PDF, DOC, DOCX</li>
+                  <li>• Max {CV_UPLOAD_LIMITS.MAX_FILE_SIZE_MB}MB per file</li>
+                  <li>• Duplicates auto-detected</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <CVUploader
             onUploadComplete={loadCVs}
             onParseComplete={loadCVs}

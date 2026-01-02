@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import { CV_UPLOAD_LIMITS, ACCEPTED_CV_TYPES } from '@/lib/constants';
 
 interface UploadedCV {
   id: string;
@@ -37,23 +38,27 @@ export default function CVUploader({
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const acceptedTypes = [
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  ];
+  // Batch limit warning state
+  const [limitExceeded, setLimitExceeded] = useState<{
+    selected: number;
+    processed: number;
+  } | null>(null);
 
-  const acceptedExtensions = ['.pdf', '.doc', '.docx'];
+  // Duplicates warning state
+  const [duplicatesFound, setDuplicatesFound] = useState<Array<{
+    filename: string;
+    reason: string;
+  }>>([]);
 
   const validateFile = (file: File): string | null => {
-    if (!acceptedTypes.includes(file.type)) {
+    if (!ACCEPTED_CV_TYPES.MIME_TYPES.includes(file.type as any)) {
       const ext = file.name.split('.').pop()?.toLowerCase();
       if (!ext || !['pdf', 'doc', 'docx'].includes(ext)) {
         return 'Invalid file type. Only PDF and Word documents are accepted.';
       }
     }
-    if (file.size > 10 * 1024 * 1024) {
-      return 'File too large. Maximum size is 10MB.';
+    if (file.size > CV_UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES) {
+      return `File too large. Maximum size is ${CV_UPLOAD_LIMITS.MAX_FILE_SIZE_MB}MB.`;
     }
     return null;
   };
@@ -61,8 +66,20 @@ export default function CVUploader({
   const uploadFiles = useCallback(
     async (files: File[]) => {
       setIsUploading(true);
+      setLimitExceeded(null); // Reset limit warning
+      setDuplicatesFound([]); // Reset duplicates warning
 
-      const validFiles = files.filter((file) => {
+      // BATCH LIMIT CHECK - Process only first MAX_BATCH_SIZE files
+      let filesToUpload = files;
+      if (files.length > CV_UPLOAD_LIMITS.MAX_BATCH_SIZE) {
+        filesToUpload = files.slice(0, CV_UPLOAD_LIMITS.MAX_BATCH_SIZE);
+        setLimitExceeded({
+          selected: files.length,
+          processed: CV_UPLOAD_LIMITS.MAX_BATCH_SIZE,
+        });
+      }
+
+      const validFiles = filesToUpload.filter((file) => {
         const error = validateFile(file);
         if (error) {
           setUploadedCVs((prev) => [
@@ -108,8 +125,8 @@ export default function CVUploader({
 
         const result = await response.json();
 
-        if (!result.success) {
-          // Mark all as error
+        if (!result.success && !result.duplicates) {
+          // Mark all as error (only if no duplicates - if all were duplicates, that's not an error)
           setUploadedCVs((prev) =>
             prev.map((cv) =>
               newCVs.some((n) => n.id === cv.id)
@@ -118,6 +135,17 @@ export default function CVUploader({
             )
           );
         } else {
+          // Handle duplicates from API response
+          if (result.duplicates && result.duplicates.length > 0) {
+            setDuplicatesFound(result.duplicates);
+            // Remove duplicates from the upload queue UI
+            setUploadedCVs((prev) =>
+              prev.filter((cv) =>
+                !result.duplicates.some((d: { filename: string }) => d.filename === cv.filename)
+              )
+            );
+          }
+
           // Update with real IDs and trigger parsing
           const uploadedFiles = result.uploaded || [];
 
@@ -129,7 +157,7 @@ export default function CVUploader({
               if (uploadedFile) {
                 return {
                   ...cv,
-                  id: uploadedFile.id,
+                  id: uploadedFile.cv_id,
                   status: 'uploaded',
                 };
               }
@@ -139,7 +167,7 @@ export default function CVUploader({
 
           // Start parsing each uploaded file
           for (const uploaded of uploadedFiles) {
-            parseCV(uploaded.id);
+            parseCV(uploaded.cv_id);
           }
 
           onUploadComplete?.(uploadedFiles);
@@ -359,7 +387,7 @@ export default function CVUploader({
           ref={fileInputRef}
           type="file"
           multiple
-          accept={acceptedExtensions.join(',')}
+          accept={ACCEPTED_CV_TYPES.EXTENSIONS.join(',')}
           onChange={handleFileSelect}
           className="hidden"
         />
@@ -373,10 +401,61 @@ export default function CVUploader({
             or click to browse
           </div>
           <div className="text-xs text-gray-400 dark:text-gray-500">
-            PDF, DOC, DOCX • Max 10MB per file
+            PDF, DOC, DOCX • Max {CV_UPLOAD_LIMITS.MAX_FILE_SIZE_MB}MB per file • Max {CV_UPLOAD_LIMITS.MAX_BATCH_SIZE} files per batch
           </div>
         </div>
       </div>
+
+      {/* Batch Limit Exceeded Warning */}
+      {limitExceeded && (
+        <div className="mt-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-3">
+          <div className="flex items-start gap-2">
+            <span className="text-amber-500 mt-0.5">⚠️</span>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                Batch limit exceeded
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                You selected {limitExceeded.selected} files. Only the first {limitExceeded.processed} will be uploaded.
+                Please upload remaining files in another batch.
+              </p>
+            </div>
+            <button
+              onClick={() => setLimitExceeded(null)}
+              className="text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 text-sm"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicates Warning */}
+      {duplicatesFound.length > 0 && (
+        <div className="mt-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-3">
+          <div className="flex items-start gap-2">
+            <span className="text-orange-500 mt-0.5">⚠️</span>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                Duplicates Skipped ({duplicatesFound.length} file{duplicatesFound.length > 1 ? 's' : ''})
+              </p>
+              <ul className="text-xs text-orange-700 dark:text-orange-300 mt-1 space-y-0.5 max-h-24 overflow-y-auto">
+                {duplicatesFound.map((dup, idx) => (
+                  <li key={idx} className="truncate">
+                    • {dup.filename} - {dup.reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <button
+              onClick={() => setDuplicatesFound([])}
+              className="text-orange-500 hover:text-orange-700 dark:hover:text-orange-300 text-sm"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Upload Queue */}
       {uploadedCVs.length > 0 && (
