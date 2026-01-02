@@ -40,6 +40,7 @@ export function Navbar() {
     { href: '/candidates', label: 'Candidates', icon: '👥' },
     { href: '/clients', label: 'Clients', icon: '🏥' },
     { href: '/matches', label: 'Matches', icon: '✨' },
+    { href: '/cvs', label: 'CVs', icon: '📄' },
   ];
 
   return (

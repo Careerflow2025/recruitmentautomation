@@ -16,6 +16,8 @@ import CustomColumnManager from './CustomColumnManager';
 import EditableColumnHeader from './EditableColumnHeader';
 import MultiNotesPopup from './MultiNotesPopup';
 import BulkParseModal from './BulkParseModal';
+import CVViewerModal from '@/components/cv/CVViewerModal';
+import CVUploader from '@/components/cv/CVUploader';
 import { parseNameFromEmail, findDuplicateCandidates, getDuplicateReasonText, isValidEmail } from '@/lib/utils/candidateHelpers';
 
 export default function CandidatesDataGrid() {
@@ -35,6 +37,9 @@ export default function CandidatesDataGrid() {
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showBulkParseModal, setShowBulkParseModal] = useState(false);
+  const [showCVUploader, setShowCVUploader] = useState(false);
+  const [selectedCVId, setSelectedCVId] = useState<string | null>(null);
+  const [candidateCVs, setCandidateCVs] = useState<Record<string, { id: string; filename: string; status: string }>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // AI Validation state: tracks validation status for role and postcode fields
@@ -206,6 +211,36 @@ export default function CandidatesDataGrid() {
       loadLatestNotes();
     }
   }, [candidates.length, loadLatestNotes]);
+
+  // Load CVs linked to candidates
+  const loadCandidateCVs = useCallback(async () => {
+    try {
+      const response = await fetch('/api/cvs/upload');
+      const data = await response.json();
+
+      if (data.success && data.cvs) {
+        const cvMap: Record<string, { id: string; filename: string; status: string }> = {};
+        for (const cv of data.cvs) {
+          if (cv.candidate_id) {
+            cvMap[cv.candidate_id] = {
+              id: cv.id,
+              filename: cv.cv_filename,
+              status: cv.status,
+            };
+          }
+        }
+        setCandidateCVs(cvMap);
+      }
+    } catch (error) {
+      console.error('Error fetching candidate CVs:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (candidates.length > 0) {
+      loadCandidateCVs();
+    }
+  }, [candidates.length, loadCandidateCVs]);
 
   // Debounced update for cell changes - increased to 1500ms for better typing experience
   const debouncedUpdate = useMemo(
@@ -980,8 +1015,77 @@ export default function CandidatesDataGrid() {
           />
         ),
       },
+      {
+        key: 'cv',
+        name: columnRenames['cv'] || 'CV',
+        width: savedWidths['cv'] || 100,
+        editable: false,
+        renderHeaderCell: () => (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            height: '100%',
+            width: '100%',
+            paddingLeft: '8px',
+            paddingRight: '8px',
+            overflow: 'hidden',
+            boxSizing: 'border-box'
+          }}>
+            📄 CV
+          </div>
+        ),
+        renderCell: ({ row }) => {
+          const cv = candidateCVs[row.id];
+
+          if (cv) {
+            return (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedCVId(cv.id);
+                }}
+                style={{
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  backgroundColor: cv.status === 'linked' ? '#d1fae5' : '#dbeafe',
+                  color: cv.status === 'linked' ? '#065f46' : '#1e40af',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                }}
+                title={`View CV: ${cv.filename}`}
+              >
+                {cv.status === 'linked' ? '🔗' : '📄'}
+                <span style={{
+                  maxWidth: '60px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>
+                  View
+                </span>
+              </div>
+            );
+          }
+
+          return (
+            <div
+              style={{
+                color: '#9ca3af',
+                fontSize: '12px',
+              }}
+              title="No CV attached"
+            >
+              —
+            </div>
+          );
+        },
+      },
     ],
-    [candidates, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths, textFilters, handleTextFilterChange, latestNotes, isNewItem, getDisplayId, fieldValidation, debouncedValidate, handleColumnResizeByKey]
+    [candidates, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths, textFilters, handleTextFilterChange, latestNotes, isNewItem, getDisplayId, fieldValidation, debouncedValidate, handleColumnResizeByKey, candidateCVs]
   );
 
   // Handle renaming custom column
@@ -1430,6 +1534,13 @@ export default function CandidatesDataGrid() {
           >
             🤖 AI Bulk Parse
           </button>
+          <button
+            onClick={() => setShowCVUploader(true)}
+            className="grid-toolbar-button"
+            title="Upload CVs to match with candidates"
+          >
+            📄 Upload CVs
+          </button>
           <CustomColumnManager
             tableName="candidates"
             onColumnAdded={loadCustomColumns}
@@ -1629,6 +1740,68 @@ export default function CandidatesDataGrid() {
           onSuccess={() => {
             // Grid will auto-refresh via real-time subscription
             loadLatestNotes();
+          }}
+        />
+      )}
+
+      {/* CV Uploader Modal */}
+      {showCVUploader && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center">
+            <div
+              className="fixed inset-0 bg-black/50 transition-opacity"
+              onClick={() => setShowCVUploader(false)}
+            />
+            <div className="relative inline-block w-full max-w-xl p-6 my-8 text-left align-middle bg-white dark:bg-gray-800 rounded-xl shadow-xl transform transition-all">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  📄 Upload CVs
+                </h3>
+                <button
+                  onClick={() => setShowCVUploader(false)}
+                  className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Upload CVs to be parsed by AI and automatically matched to existing candidates.
+              </p>
+              <CVUploader
+                onUploadComplete={() => {
+                  loadCandidateCVs();
+                }}
+                onParseComplete={() => {
+                  loadCandidateCVs();
+                }}
+              />
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => setShowCVUploader(false)}
+                  className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CV Viewer Modal */}
+      {selectedCVId && (
+        <CVViewerModal
+          cvId={selectedCVId}
+          isOpen={!!selectedCVId}
+          onClose={() => setSelectedCVId(null)}
+          onDelete={() => {
+            setSelectedCVId(null);
+            loadCandidateCVs();
+          }}
+          onUnlink={() => {
+            loadCandidateCVs();
           }}
         />
       )}
