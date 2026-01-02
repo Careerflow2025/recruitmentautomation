@@ -1,7 +1,9 @@
 /**
  * AI-Powered CV Parsing
- * Uses Mistral 7B to extract structured data from CV text
+ * Uses Claude API to extract structured data from CV text
  */
+
+import Anthropic from '@anthropic-ai/sdk';
 
 interface ParsedCVData {
   extracted_name: string | null;
@@ -27,27 +29,30 @@ interface ParsedCVData {
 }
 
 /**
- * Parse CV text using Mistral 7B AI
+ * Parse CV text using Claude API
  */
 export async function parseWithAI(cvText: string): Promise<ParsedCVData> {
-  const vpsUrl = process.env.VPS_AI_URL;
-  const vpsSecret = process.env.VPS_AI_SECRET;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
 
-  if (!vpsUrl || !vpsSecret) {
-    console.warn('VPS AI not configured, using fallback regex parsing');
+  if (!apiKey) {
+    console.warn('ANTHROPIC_API_KEY not configured, using fallback regex parsing');
     return fallbackParsing(cvText);
   }
 
   try {
-    const prompt = `You are a CV parsing assistant. Extract structured information from the following CV text.
+    const client = new Anthropic({
+      apiKey: apiKey,
+    });
 
-Return ONLY a valid JSON object with these fields:
+    const prompt = `You are a CV parsing assistant specializing in dental recruitment. Extract structured information from the following CV text.
+
+Return ONLY a valid JSON object with these exact fields (no markdown, no explanation):
 {
   "extracted_name": "Full name or null",
   "extracted_email": "Email address or null",
   "extracted_phone": "Phone number or null",
-  "skills": ["array of skills"],
-  "qualifications": ["array of professional qualifications like GDC, NEBDN, etc."],
+  "skills": ["array of relevant skills"],
+  "qualifications": ["array of professional qualifications like GDC, NEBDN, NVQ, etc."],
   "experience_years": number or null,
   "work_history": [{"role": "Job title", "employer": "Company name", "duration": "e.g. 2019-2023"}],
   "education": [{"qualification": "Degree/Cert name", "institution": "School/Uni name", "year": 2020}],
@@ -55,37 +60,30 @@ Return ONLY a valid JSON object with these fields:
 }
 
 CV TEXT:
-${cvText.slice(0, 8000)}
+${cvText.slice(0, 12000)}
 
-Return ONLY the JSON object, no explanation.`;
+Return ONLY the JSON object, nothing else.`;
 
-    const response = await fetch(vpsUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${vpsSecret}`,
-      },
-      body: JSON.stringify({
-        model: '/workspace/models/mistral-7b-instruct',
-        messages: [
-          { role: 'user', content: prompt },
-        ],
-        max_tokens: 2000,
-        temperature: 0.1,
-      }),
+    const message = await client.messages.create({
+      model: 'claude-3-haiku-20240307',
+      max_tokens: 2000,
+      messages: [
+        { role: 'user', content: prompt }
+      ],
     });
 
-    if (!response.ok) {
-      throw new Error(`AI API error: ${response.status}`);
+    // Extract text content from response
+    const content = message.content[0];
+    if (content.type !== 'text') {
+      throw new Error('Unexpected response type from Claude');
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
+    const responseText = content.text;
 
     // Extract JSON from response
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new Error('No JSON found in AI response');
+      throw new Error('No JSON found in Claude response');
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
@@ -103,13 +101,13 @@ Return ONLY the JSON object, no explanation.`;
       parse_timestamp: new Date().toISOString(),
     };
   } catch (error) {
-    console.error('AI parsing error:', error);
+    console.error('Claude parsing error:', error);
     return fallbackParsing(cvText);
   }
 }
 
 /**
- * Fallback regex-based parsing when AI is unavailable
+ * Fallback regex-based parsing when Claude API is unavailable
  */
 function fallbackParsing(cvText: string): ParsedCVData {
   // Email regex
