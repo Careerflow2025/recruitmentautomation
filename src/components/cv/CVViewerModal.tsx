@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import CVPreviewModal from './CVPreviewModal';
 
 interface CVData {
   id: string;
@@ -66,6 +67,7 @@ export default function CVViewerModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'preview' | 'parsed'>('parsed');
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   useEffect(() => {
     if (isOpen && cvId) {
@@ -229,14 +231,13 @@ export default function CVViewerModal({
                     </div>
                   </div>
                   {cvData.storage_url && (
-                    <a
-                      href={cvData.storage_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                    <button
+                      onClick={() => setShowPreviewModal(true)}
+                      className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2"
                     >
-                      View File
-                    </a>
+                      <span>👁️</span>
+                      Preview CV
+                    </button>
                   )}
                 </div>
 
@@ -479,28 +480,26 @@ export default function CVViewerModal({
                     )}
                   </div>
                 ) : activeTab === 'preview' ? (
-                  <div className="flex items-center justify-center h-64 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                  <div className="flex flex-col items-center justify-center h-64 bg-gray-100 dark:bg-gray-700 rounded-lg">
                     {cvData.storage_url ? (
-                      cvData.cv_mime_type === 'application/pdf' ? (
-                        <iframe
-                          src={cvData.storage_url}
-                          className="w-full h-96 rounded-lg"
-                          title="CV Preview"
-                        />
-                      ) : (
-                        <div className="text-center text-gray-500 dark:text-gray-400">
-                          <div className="text-4xl mb-2">📄</div>
-                          <p>Word document preview not available</p>
-                          <a
-                            href={cvData.storage_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:underline"
-                          >
-                            Download to view
-                          </a>
+                      <div className="text-center">
+                        <div className="text-5xl mb-4">
+                          {cvData.cv_mime_type === 'application/pdf' ? '📕' : '📘'}
                         </div>
-                      )
+                        <p className="text-gray-600 dark:text-gray-300 mb-4">
+                          {cvData.cv_filename}
+                        </p>
+                        <button
+                          onClick={() => setShowPreviewModal(true)}
+                          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2 mx-auto font-medium"
+                        >
+                          <span>👁️</span>
+                          Open Full Preview
+                        </button>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">
+                          Opens in a full-screen viewer
+                        </p>
+                      </div>
                     ) : (
                       <div className="text-gray-500 dark:text-gray-400">
                         Preview not available
@@ -533,6 +532,17 @@ export default function CVViewerModal({
           ) : null}
         </div>
       </div>
+
+      {/* Full-screen CV Preview Modal */}
+      {showPreviewModal && cvData && (
+        <CVPreviewModal
+          storageUrl={cvData.storage_url}
+          filename={cvData.cv_filename}
+          mimeType={cvData.cv_mime_type}
+          isOpen={showPreviewModal}
+          onClose={() => setShowPreviewModal(false)}
+        />
+      )}
     </div>
   );
 }

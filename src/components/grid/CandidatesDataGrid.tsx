@@ -17,6 +17,7 @@ import EditableColumnHeader from './EditableColumnHeader';
 import MultiNotesPopup from './MultiNotesPopup';
 import BulkParseModal from './BulkParseModal';
 import CVViewerModal from '@/components/cv/CVViewerModal';
+import CVPreviewModal from '@/components/cv/CVPreviewModal';
 import CVUploader from '@/components/cv/CVUploader';
 import { parseNameFromEmail, findDuplicateCandidates, getDuplicateReasonText, isValidEmail } from '@/lib/utils/candidateHelpers';
 
@@ -39,6 +40,7 @@ export default function CandidatesDataGrid() {
   const [showBulkParseModal, setShowBulkParseModal] = useState(false);
   const [showCVUploader, setShowCVUploader] = useState(false);
   const [selectedCVId, setSelectedCVId] = useState<string | null>(null);
+  const [previewCVId, setPreviewCVId] = useState<string | null>(null);
   const [candidateCVs, setCandidateCVs] = useState<Record<string, { id: string; filename: string; status: string }>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1040,33 +1042,57 @@ export default function CandidatesDataGrid() {
           if (cv) {
             return (
               <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedCVId(cv.id);
-                }}
                 style={{
-                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px',
-                  padding: '2px 8px',
-                  borderRadius: '4px',
-                  backgroundColor: cv.status === 'linked' ? '#d1fae5' : '#dbeafe',
-                  color: cv.status === 'linked' ? '#065f46' : '#1e40af',
-                  fontSize: '12px',
-                  fontWeight: '500',
                 }}
-                title={`View CV: ${cv.filename}`}
               >
-                {cv.status === 'linked' ? '🔗' : '📄'}
-                <span style={{
-                  maxWidth: '60px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}>
-                  View
-                </span>
+                {/* Quick Preview Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPreviewCVId(cv.id);
+                  }}
+                  style={{
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    border: 'none',
+                  }}
+                  title={`Preview CV: ${cv.filename}`}
+                >
+                  👁️ View
+                </button>
+                {/* Info/Details Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedCVId(cv.id);
+                  }}
+                  style={{
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '4px 6px',
+                    borderRadius: '4px',
+                    backgroundColor: cv.status === 'linked' ? '#d1fae5' : '#e5e7eb',
+                    color: cv.status === 'linked' ? '#065f46' : '#374151',
+                    fontSize: '11px',
+                    border: 'none',
+                  }}
+                  title="View CV details & parsed data"
+                >
+                  ℹ️
+                </button>
               </div>
             );
           }
@@ -1790,7 +1816,7 @@ export default function CandidatesDataGrid() {
         </div>
       )}
 
-      {/* CV Viewer Modal */}
+      {/* CV Viewer Modal (Details & Parsed Data) */}
       {selectedCVId && (
         <CVViewerModal
           cvId={selectedCVId}
@@ -1803,6 +1829,15 @@ export default function CandidatesDataGrid() {
           onUnlink={() => {
             loadCandidateCVs();
           }}
+        />
+      )}
+
+      {/* CV Preview Modal (Quick Full-Screen Preview) */}
+      {previewCVId && (
+        <CVPreviewModal
+          cvId={previewCVId}
+          isOpen={!!previewCVId}
+          onClose={() => setPreviewCVId(null)}
         />
       )}
     </div>
