@@ -541,9 +541,63 @@ export default function CandidatesDataGrid() {
             onColumnResize={handleColumnResizeByKey}
           />
         ),
-        renderCell: ({ row }) => (
-          <div title={row.first_name || ''}>{row.first_name || ''}</div>
-        ),
+        renderCell: ({ row }) => {
+          const cv = candidateCVs[row.id];
+          const hasCV = !!cv;
+
+          return (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                width: '100%'
+              }}
+              title={row.first_name || ''}
+            >
+              {/* CV Status Icon - Clickable */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (hasCV) {
+                    setPreviewCVId(cv.id);
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: '3px',
+                  border: 'none',
+                  cursor: hasCV ? 'pointer' : 'default',
+                  backgroundColor: hasCV ? '#dcfce7' : '#fee2e2',
+                  color: hasCV ? '#16a34a' : '#dc2626',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  flexShrink: 0,
+                  transition: 'transform 0.1s',
+                }}
+                title={hasCV ? `View CV: ${cv.filename}` : 'No CV attached'}
+                onMouseEnter={(e) => {
+                  if (hasCV) {
+                    e.currentTarget.style.transform = 'scale(1.1)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                {hasCV ? '📄' : '✗'}
+              </button>
+              {/* First Name */}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {row.first_name || ''}
+              </span>
+            </div>
+          );
+        },
         renderEditCell: (props) => (
           <input
             autoFocus
@@ -1016,99 +1070,6 @@ export default function CandidatesDataGrid() {
             rows={3}
           />
         ),
-      },
-      {
-        key: 'cv',
-        name: columnRenames['cv'] || 'CV',
-        width: savedWidths['cv'] || 100,
-        editable: false,
-        renderHeaderCell: () => (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            height: '100%',
-            width: '100%',
-            paddingLeft: '8px',
-            paddingRight: '8px',
-            overflow: 'hidden',
-            boxSizing: 'border-box'
-          }}>
-            📄 CV
-          </div>
-        ),
-        renderCell: ({ row }) => {
-          const cv = candidateCVs[row.id];
-
-          if (cv) {
-            return (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                {/* Quick Preview Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setPreviewCVId(cv.id);
-                  }}
-                  style={{
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    border: 'none',
-                  }}
-                  title={`Preview CV: ${cv.filename}`}
-                >
-                  👁️ View
-                </button>
-                {/* Info/Details Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedCVId(cv.id);
-                  }}
-                  style={{
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '4px 6px',
-                    borderRadius: '4px',
-                    backgroundColor: cv.status === 'linked' ? '#d1fae5' : '#e5e7eb',
-                    color: cv.status === 'linked' ? '#065f46' : '#374151',
-                    fontSize: '11px',
-                    border: 'none',
-                  }}
-                  title="View CV details & parsed data"
-                >
-                  ℹ️
-                </button>
-              </div>
-            );
-          }
-
-          return (
-            <div
-              style={{
-                color: '#9ca3af',
-                fontSize: '12px',
-              }}
-              title="No CV attached"
-            >
-              —
-            </div>
-          );
-        },
       },
     ],
     [candidates, selectedRows, debouncedUpdate, getFilterOptions, columnFilters, updateColumnFilters, columnRenames, handleRenameColumn, handleHideColumn, savedWidths, textFilters, handleTextFilterChange, latestNotes, isNewItem, getDisplayId, fieldValidation, debouncedValidate, handleColumnResizeByKey, candidateCVs]
