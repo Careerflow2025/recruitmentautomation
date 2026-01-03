@@ -54,6 +54,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check for duplicate email (prevent adding same candidate twice)
+    if (candidate.email && String(candidate.email).trim() !== '') {
+      const normalizedEmail = String(candidate.email).trim().toLowerCase();
+
+      // Skip duplicate check for placeholder emails
+      if (normalizedEmail !== 'n/a' && normalizedEmail !== 'not available') {
+        const { data: existingByEmail } = await supabase
+          .from('candidates')
+          .select('id, first_name, last_name, email')
+          .eq('user_id', user.id)
+          .ilike('email', normalizedEmail)
+          .limit(1)
+          .single();
+
+        if (existingByEmail) {
+          console.log(`⚠️ Duplicate email detected: ${normalizedEmail} already exists as ${existingByEmail.id}`);
+          return NextResponse.json({
+            success: false,
+            error: `Candidate with this email already exists: ${existingByEmail.first_name || ''} ${existingByEmail.last_name || ''} (${existingByEmail.id})`.trim(),
+            existingCandidate: existingByEmail,
+            isDuplicate: true,
+          }, { status: 409 });
+        }
+      }
+    }
+
     // Generate atomic ID using database function (prevents race conditions)
     let candidateId = candidate.id;
     let needsNewId = !candidateId;
