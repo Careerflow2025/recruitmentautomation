@@ -1,18 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb, PDFPage, PDFFont } from 'pdf-lib';
 
 interface GenerateRedactedRequest {
   candidate_id: string;
   cv_id?: string;
 }
 
+// Type for parsed CV data
+interface ParsedCVData {
+  extracted_name?: string;
+  extracted_email?: string;
+  extracted_phone?: string;
+  skills?: string[];
+  qualifications?: string[];
+  experience_years?: number;
+  work_history?: Array<{
+    role?: string;
+    employer?: string;
+    duration?: string;
+    description?: string;
+  }>;
+  education?: Array<{
+    qualification?: string;
+    institution?: string;
+    year?: number | string;
+  }>;
+  summary?: string;
+  role?: string;
+  desired_role?: string;
+  location?: string;
+}
+
 /**
  * POST /api/cvs/generate-redacted
- * Generate a redacted CV PDF that preserves FULL content
- * Only removes: name, email, phone, address, LinkedIn
- * Only anonymizes: MOST RECENT employer
+ * Generate a beautifully formatted redacted CV PDF
+ * - Uses cv_parsed_data for proper section structure
+ * - Only anonymizes MOST RECENT employer
+ * - Professional design with visual hierarchy
  */
 export async function POST(request: NextRequest) {
   try {
@@ -69,7 +95,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get CV with full text content
+    // Get CV with parsed data
     let cvQuery = supabase
       .from('candidate_cvs')
       .select('*')
@@ -80,63 +106,16 @@ export async function POST(request: NextRequest) {
       cvQuery = cvQuery.eq('id', cv_id);
     }
 
-    const { data: cv, error: cvError } = await cvQuery.order('created_at', { ascending: false }).limit(1).single();
+    const { data: cv } = await cvQuery.order('created_at', { ascending: false }).limit(1).single();
 
     // Generate anonymous reference
     const candidateReference = `DN-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
 
-    // Get full CV text
-    const fullCvText = cv?.cv_text_content;
+    // Get parsed data (structured sections)
+    const parsedData: ParsedCVData = cv?.cv_parsed_data || {};
 
-    // Get parsed data for employer info
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const parsedData: any = cv?.cv_parsed_data;
-    const mostRecentEmployer = parsedData?.work_history?.[0]?.employer;
-
-    let pdfBytes: Uint8Array;
-
-    if (fullCvText) {
-      // FULL CV TEXT AVAILABLE - Use it!
-      console.log('Using full CV text for PDF generation');
-
-      // Redact contacts from full text
-      const redactedText = redactContactsFromText(fullCvText, {
-        candidateName: `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim(),
-        firstName: candidate.first_name,
-        lastName: candidate.last_name,
-        mostRecentEmployer: mostRecentEmployer,
-      });
-
-      // Generate PDF from full redacted text
-      pdfBytes = await generateFullTextPDF(redactedText, candidateReference);
-    } else {
-      // NO FULL TEXT - Fallback to parsed data (summarized version)
-      console.log('No full CV text, falling back to parsed data');
-
-      const candidateLocation = parsedData?.location || candidate.postcode || '';
-
-      const redactedContent = {
-        candidateReference,
-        role: parsedData?.role || parsedData?.desired_role || candidate.role || 'Dental Professional',
-        generalArea: generalizeLocation(candidateLocation),
-        summary: parsedData?.summary || candidate.notes || 'Experienced dental professional seeking new opportunities.',
-        skills: parsedData?.skills || [],
-        experience: (parsedData?.work_history || []).map((exp: { role?: string; employer?: string; duration?: string; description?: string }, index: number) => ({
-          title: exp.role || 'Position',
-          company: index === 0 ? anonymizeMostRecentEmployer(exp.employer || '') : (exp.employer || 'Healthcare Practice'),
-          duration: exp.duration || '',
-          description: exp.description || '',
-        })),
-        education: (parsedData?.education || []).map((edu: { qualification?: string; institution?: string; year?: number | string }) => ({
-          qualification: edu.qualification || '',
-          institution: edu.institution || '',
-          year: edu.year?.toString() || '',
-        })),
-        qualifications: parsedData?.qualifications || [],
-      };
-
-      pdfBytes = await generateStructuredPDF(redactedContent, candidate);
-    }
+    // Generate beautiful PDF
+    const pdfBytes = await generateBeautifulPDF(parsedData, candidate, candidateReference);
 
     // Convert to base64 for response
     const base64Pdf = Buffer.from(pdfBytes).toString('base64');
@@ -169,7 +148,6 @@ export async function POST(request: NextRequest) {
       base64: base64Pdf,
       publicUrl,
       size: pdfBytes.length,
-      usedFullText: !!fullCvText,
     });
 
   } catch (error) {
@@ -185,96 +163,444 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Escape special regex characters in a string
+ * Generate a beautifully formatted PDF from parsed CV data
  */
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+async function generateBeautifulPDF(
+  parsedData: ParsedCVData,
+  candidate: {
+    first_name?: string;
+    last_name?: string;
+    role?: string;
+    postcode?: string;
+    days?: string;
+    notes?: string;
+  },
+  reference: string
+): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create();
+  let page = pdfDoc.addPage([595, 842]); // A4 size
+
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  // Colors
+  const brandColor = rgb(0.1, 0.3, 0.5);      // Deep blue
+  const textColor = rgb(0.15, 0.15, 0.15);    // Near black
+  const grayColor = rgb(0.4, 0.4, 0.4);       // Medium gray
+  const lightGray = rgb(0.8, 0.8, 0.8);       // Light gray
+  const lightBlue = rgb(0.95, 0.97, 1);       // Very light blue
+
+  const pageWidth = 595;
+  const pageHeight = 842;
+  const margin = 50;
+  const contentWidth = pageWidth - margin * 2;
+  let yPos = pageHeight - margin;
+
+  // Helper to check if we need a new page
+  const checkNewPage = (neededSpace: number): void => {
+    if (yPos < margin + neededSpace) {
+      // Add footer to current page
+      drawFooter(page, font, margin, grayColor, lightGray);
+      // Create new page
+      page = pdfDoc.addPage([pageWidth, pageHeight]);
+      yPos = pageHeight - margin;
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // 1. HEADER BAR (Full width at top)
+  // ═══════════════════════════════════════════════════════════════
+  page.drawRectangle({
+    x: 0,
+    y: pageHeight - 40,
+    width: pageWidth,
+    height: 40,
+    color: brandColor,
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // 2. TITLE - "CANDIDATE PROFILE"
+  // ═══════════════════════════════════════════════════════════════
+  yPos = pageHeight - 75;
+  page.drawText('CANDIDATE PROFILE', {
+    x: margin,
+    y: yPos,
+    size: 24,
+    font: boldFont,
+    color: brandColor,
+  });
+  yPos -= 28;
+
+  // ═══════════════════════════════════════════════════════════════
+  // 3. REFERENCE NUMBER
+  // ═══════════════════════════════════════════════════════════════
+  page.drawText(`Reference: ${reference}`, {
+    x: margin,
+    y: yPos,
+    size: 11,
+    font: boldFont,
+    color: grayColor,
+  });
+  yPos -= 18;
+
+  // Divider line
+  page.drawLine({
+    start: { x: margin, y: yPos },
+    end: { x: pageWidth - margin, y: yPos },
+    thickness: 1,
+    color: lightGray,
+  });
+  yPos -= 25;
+
+  // ═══════════════════════════════════════════════════════════════
+  // 4. QUICK INFO BOX (Role | Location | Availability)
+  // ═══════════════════════════════════════════════════════════════
+  const role = parsedData.role || parsedData.desired_role || candidate.role || 'Dental Professional';
+  const location = generalizeLocation(parsedData.location || candidate.postcode || '');
+  const availability = candidate.days || '';
+
+  const quickInfoParts = [role, location, availability].filter(Boolean);
+  const quickInfo = quickInfoParts.join('  |  ');
+
+  // Box background
+  page.drawRectangle({
+    x: margin,
+    y: yPos - 8,
+    width: contentWidth,
+    height: 30,
+    color: lightBlue,
+    borderColor: brandColor,
+    borderWidth: 0.5,
+  });
+
+  // Quick info text
+  page.drawText(quickInfo, {
+    x: margin + 15,
+    y: yPos + 2,
+    size: 11,
+    font: boldFont,
+    color: brandColor,
+  });
+  yPos -= 50;
+
+  // ═══════════════════════════════════════════════════════════════
+  // 5. PROFESSIONAL SUMMARY
+  // ═══════════════════════════════════════════════════════════════
+  const summary = parsedData.summary || candidate.notes || '';
+  if (summary) {
+    checkNewPage(80);
+    yPos = drawSectionHeader(page, 'PROFESSIONAL SUMMARY', margin, yPos, boldFont, brandColor);
+    yPos = drawWrappedText(page, summary, margin, yPos, font, textColor, contentWidth, 10, 14);
+    yPos -= 20;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 6. EMPLOYMENT HISTORY
+  // ═══════════════════════════════════════════════════════════════
+  if (parsedData.work_history && parsedData.work_history.length > 0) {
+    checkNewPage(60);
+    yPos = drawSectionHeader(page, 'EMPLOYMENT HISTORY', margin, yPos, boldFont, brandColor);
+
+    for (let i = 0; i < parsedData.work_history.length; i++) {
+      const job = parsedData.work_history[i];
+      const isFirstJob = i === 0;
+
+      // Anonymize only the MOST RECENT employer
+      const employerName = isFirstJob
+        ? anonymizeMostRecentEmployer(job.employer || '')
+        : (job.employer || 'Healthcare Practice');
+
+      checkNewPage(60);
+
+      // Job role (bold with arrow marker)
+      const roleText = job.role || 'Position';
+      page.drawText('▸', {
+        x: margin,
+        y: yPos,
+        size: 11,
+        font: boldFont,
+        color: brandColor,
+      });
+      page.drawText(roleText, {
+        x: margin + 15,
+        y: yPos,
+        size: 11,
+        font: boldFont,
+        color: textColor,
+      });
+      yPos -= 16;
+
+      // Employer name
+      page.drawText(employerName, {
+        x: margin + 15,
+        y: yPos,
+        size: 10,
+        font: font,
+        color: textColor,
+      });
+      yPos -= 14;
+
+      // Duration (gray)
+      if (job.duration) {
+        page.drawText(job.duration, {
+          x: margin + 15,
+          y: yPos,
+          size: 9,
+          font: font,
+          color: grayColor,
+        });
+        yPos -= 14;
+      }
+
+      // Description bullets (if available)
+      if (job.description) {
+        const bullets = job.description
+          .split(/[•\-\n]/)
+          .map(b => b.trim())
+          .filter(b => b.length > 0)
+          .slice(0, 5); // Max 5 bullets
+
+        for (const bullet of bullets) {
+          checkNewPage(15);
+          page.drawText(`•  ${bullet}`, {
+            x: margin + 20,
+            y: yPos,
+            size: 9,
+            font: font,
+            color: textColor,
+          });
+          yPos -= 12;
+        }
+      }
+
+      yPos -= 12; // Space between jobs
+    }
+    yPos -= 8;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 7. EDUCATION & QUALIFICATIONS
+  // ═══════════════════════════════════════════════════════════════
+  if (parsedData.education && parsedData.education.length > 0) {
+    checkNewPage(50);
+    yPos = drawSectionHeader(page, 'EDUCATION & QUALIFICATIONS', margin, yPos, boldFont, brandColor);
+
+    for (const edu of parsedData.education) {
+      checkNewPage(35);
+
+      // Qualification (bold with arrow)
+      const qualText = edu.qualification || 'Qualification';
+      page.drawText('▸', {
+        x: margin,
+        y: yPos,
+        size: 10,
+        font: boldFont,
+        color: brandColor,
+      });
+      page.drawText(qualText, {
+        x: margin + 15,
+        y: yPos,
+        size: 10,
+        font: boldFont,
+        color: textColor,
+      });
+      yPos -= 14;
+
+      // Institution and year
+      const instYear = [edu.institution, edu.year].filter(Boolean).join(', ');
+      if (instYear) {
+        page.drawText(instYear, {
+          x: margin + 15,
+          y: yPos,
+          size: 9,
+          font: font,
+          color: grayColor,
+        });
+        yPos -= 14;
+      }
+      yPos -= 6;
+    }
+    yPos -= 10;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 8. PROFESSIONAL TRAINING (from qualifications array)
+  // ═══════════════════════════════════════════════════════════════
+  if (parsedData.qualifications && parsedData.qualifications.length > 0) {
+    checkNewPage(50);
+    yPos = drawSectionHeader(page, 'PROFESSIONAL TRAINING & CERTIFICATIONS', margin, yPos, boldFont, brandColor);
+
+    for (const qual of parsedData.qualifications) {
+      checkNewPage(15);
+      page.drawText(`•  ${qual}`, {
+        x: margin,
+        y: yPos,
+        size: 10,
+        font: font,
+        color: textColor,
+      });
+      yPos -= 14;
+    }
+    yPos -= 15;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 9. CLINICAL SKILLS
+  // ═══════════════════════════════════════════════════════════════
+  if (parsedData.skills && parsedData.skills.length > 0) {
+    checkNewPage(50);
+    yPos = drawSectionHeader(page, 'CLINICAL SKILLS', margin, yPos, boldFont, brandColor);
+
+    // Display skills as flowing text with bullet separators
+    const skillsText = parsedData.skills.join('  •  ');
+    yPos = drawWrappedText(page, skillsText, margin, yPos, font, textColor, contentWidth, 10, 14);
+    yPos -= 15;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 10. EXPERIENCE SUMMARY (if available)
+  // ═══════════════════════════════════════════════════════════════
+  if (parsedData.experience_years && parsedData.experience_years > 0) {
+    checkNewPage(30);
+    page.drawText(`Total Experience: ${parsedData.experience_years} years`, {
+      x: margin,
+      y: yPos,
+      size: 10,
+      font: boldFont,
+      color: grayColor,
+    });
+    yPos -= 20;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // FOOTER
+  // ═══════════════════════════════════════════════════════════════
+  drawFooter(page, font, margin, grayColor, lightGray);
+
+  return await pdfDoc.save();
 }
 
 /**
- * Redact contact information from full CV text
- * Preserves ALL other content exactly as-is
+ * Draw section header with underline
  */
-function redactContactsFromText(
+function drawSectionHeader(
+  page: PDFPage,
+  title: string,
+  x: number,
+  y: number,
+  font: PDFFont,
+  color: ReturnType<typeof rgb>
+): number {
+  // Section title
+  page.drawText(title, {
+    x: x,
+    y: y,
+    size: 13,
+    font: font,
+    color: color,
+  });
+
+  // Underline
+  const underlineWidth = Math.min(title.length * 7.5, 300);
+  page.drawLine({
+    start: { x: x, y: y - 4 },
+    end: { x: x + underlineWidth, y: y - 4 },
+    thickness: 2,
+    color: color,
+  });
+
+  return y - 22; // Return new Y position
+}
+
+/**
+ * Draw wrapped text that flows across multiple lines
+ */
+function drawWrappedText(
+  page: PDFPage,
   text: string,
-  options: {
-    candidateName?: string;
-    firstName?: string;
-    lastName?: string;
-    mostRecentEmployer?: string;
-  }
-): string {
-  let redacted = text;
+  x: number,
+  startY: number,
+  font: PDFFont,
+  color: ReturnType<typeof rgb>,
+  maxWidth: number,
+  fontSize: number,
+  lineHeight: number
+): number {
+  if (!text) return startY;
 
-  // 1. Remove candidate full name (case-insensitive)
-  if (options.candidateName && options.candidateName.trim()) {
-    const nameRegex = new RegExp(escapeRegex(options.candidateName), 'gi');
-    redacted = redacted.replace(nameRegex, '[Candidate]');
-  }
+  const words = text.split(' ');
+  let currentLine = '';
+  let y = startY;
+  const charWidth = fontSize * 0.5; // Approximate character width
 
-  // 2. Remove first name separately (but be careful with common words)
-  if (options.firstName && options.firstName.trim().length > 2) {
-    // Only replace if it looks like a standalone name (word boundary)
-    const firstNameRegex = new RegExp(`\\b${escapeRegex(options.firstName)}\\b`, 'gi');
-    redacted = redacted.replace(firstNameRegex, '[Candidate]');
-  }
+  for (const word of words) {
+    const testLine = currentLine + (currentLine ? ' ' : '') + word;
+    const testWidth = testLine.length * charWidth;
 
-  // 3. Remove last name separately
-  if (options.lastName && options.lastName.trim().length > 2) {
-    const lastNameRegex = new RegExp(`\\b${escapeRegex(options.lastName)}\\b`, 'gi');
-    redacted = redacted.replace(lastNameRegex, '[Candidate]');
-  }
-
-  // 4. Remove email addresses
-  redacted = redacted.replace(
-    /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
-    '[Email on request]'
-  );
-
-  // 5. Remove UK phone numbers (various formats)
-  // Mobile: 07xxx, Landline: 01xxx/02xxx, International: +44
-  redacted = redacted.replace(
-    /(\+44\s?|0)(\d{4}[\s-]?\d{6}|\d{3}[\s-]?\d{4}[\s-]?\d{4}|\d{2}[\s-]?\d{4}[\s-]?\d{4}|\d{10,11})/g,
-    '[Phone on request]'
-  );
-
-  // 6. Remove addresses (house number + street name)
-  redacted = redacted.replace(
-    /\d+[a-zA-Z]?\s+[\w\s]+(Street|Road|Lane|Avenue|Drive|Close|Way|Court|Gardens|Place|Crescent|Terrace|Grove|Mews|Row|Square|Hill|Park|Rise|Walk|Gate|Parade)\b[^,\n]*/gi,
-    '[Address on request]'
-  );
-
-  // 7. Generalize full postcodes (keep area prefix, remove specific code)
-  // E.g., "NW10 5AB" → "NW10 area"
-  redacted = redacted.replace(
-    /\b([A-Z]{1,2}\d{1,2}[A-Z]?)\s*\d[A-Z]{2}\b/gi,
-    '$1 area'
-  );
-
-  // 8. Remove LinkedIn URLs
-  redacted = redacted.replace(
-    /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[^\s,)\]]+/gi,
-    '[LinkedIn on request]'
-  );
-
-  // 9. Remove other social media URLs
-  redacted = redacted.replace(
-    /(?:https?:\/\/)?(?:www\.)?(twitter|x|facebook|instagram)\.com\/[^\s,)\]]+/gi,
-    '[Social media on request]'
-  );
-
-  // 10. Anonymize ONLY the most recent employer
-  if (options.mostRecentEmployer && options.mostRecentEmployer.trim()) {
-    const employerRegex = new RegExp(escapeRegex(options.mostRecentEmployer), 'gi');
-    const anonymizedName = anonymizeMostRecentEmployer(options.mostRecentEmployer);
-    redacted = redacted.replace(employerRegex, anonymizedName);
+    if (testWidth > maxWidth && currentLine) {
+      page.drawText(currentLine, { x, y, size: fontSize, font, color });
+      y -= lineHeight;
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
   }
 
-  return redacted;
+  // Draw remaining text
+  if (currentLine) {
+    page.drawText(currentLine, { x, y, size: fontSize, font, color });
+    y -= lineHeight;
+  }
+
+  return y;
 }
 
 /**
- * Anonymize employer name based on type
+ * Draw footer on page
+ */
+function drawFooter(
+  page: PDFPage,
+  font: PDFFont,
+  margin: number,
+  grayColor: ReturnType<typeof rgb>,
+  lightGray: ReturnType<typeof rgb>
+): void {
+  const pageWidth = 595;
+
+  // Footer divider line
+  page.drawLine({
+    start: { x: margin, y: 55 },
+    end: { x: pageWidth - margin, y: 55 },
+    thickness: 0.5,
+    color: lightGray,
+  });
+
+  // Left text
+  page.drawText('Contact details available upon successful placement', {
+    x: margin,
+    y: 40,
+    size: 8,
+    font: font,
+    color: grayColor,
+  });
+
+  // Right text - date
+  const dateStr = new Date().toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  page.drawText(`Generated: ${dateStr}`, {
+    x: pageWidth - margin - 90,
+    y: 40,
+    size: 8,
+    font: font,
+    color: grayColor,
+  });
+}
+
+/**
+ * Anonymize employer name based on type (for most recent employer only)
  */
 function anonymizeMostRecentEmployer(employer: string): string {
   if (!employer) return 'A Healthcare Practice';
@@ -296,190 +622,15 @@ function anonymizeMostRecentEmployer(employer: string): string {
   if (lower.includes('pharmacy') || lower.includes('chemist')) {
     return 'A Pharmacy';
   }
+
   return 'A Healthcare Practice';
 }
 
 /**
- * Generate PDF from FULL redacted text (preserves original structure)
- */
-async function generateFullTextPDF(
-  redactedText: string,
-  reference: string
-): Promise<Uint8Array> {
-  const pdfDoc = await PDFDocument.create();
-  let page = pdfDoc.addPage([595, 842]); // A4
-
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-  const { height } = page.getSize();
-  const margin = 50;
-  const lineHeight = 12;
-  const fontSize = 9;
-  const maxWidth = 595 - margin * 2;
-  let yPos = height - margin;
-
-  // Header with reference
-  page.drawText('CANDIDATE PROFILE', {
-    x: margin,
-    y: yPos,
-    size: 14,
-    font: boldFont,
-    color: rgb(0.2, 0.4, 0.6),
-  });
-  yPos -= 20;
-
-  page.drawText(`Reference: ${reference}`, {
-    x: margin,
-    y: yPos,
-    size: 9,
-    font: boldFont,
-    color: rgb(0.3, 0.3, 0.3),
-  });
-  yPos -= 10;
-
-  // Divider
-  page.drawLine({
-    start: { x: margin, y: yPos },
-    end: { x: 595 - margin, y: yPos },
-    thickness: 0.5,
-    color: rgb(0.7, 0.7, 0.7),
-  });
-  yPos -= 20;
-
-  // Process full CV text line by line
-  const lines = redactedText.split('\n');
-
-  for (const line of lines) {
-    // Skip very short empty lines but keep some spacing
-    if (line.trim() === '') {
-      yPos -= lineHeight * 0.5;
-      continue;
-    }
-
-    // Check if we need a new page
-    if (yPos < margin + 40) {
-      // Add footer to current page
-      page.drawText('Contact details available upon successful placement', {
-        x: margin,
-        y: 25,
-        size: 7,
-        font,
-        color: rgb(0.5, 0.5, 0.5),
-      });
-
-      // Create new page
-      page = pdfDoc.addPage([595, 842]);
-      yPos = height - margin;
-    }
-
-    // Word wrap the line
-    const wrappedLines = wrapText(line, font, fontSize, maxWidth);
-
-    for (const wrappedLine of wrappedLines) {
-      // Check again if need new page after wrapping
-      if (yPos < margin + 40) {
-        page.drawText('Contact details available upon successful placement', {
-          x: margin,
-          y: 25,
-          size: 7,
-          font,
-          color: rgb(0.5, 0.5, 0.5),
-        });
-
-        page = pdfDoc.addPage([595, 842]);
-        yPos = height - margin;
-      }
-
-      // Detect if line looks like a header (ALL CAPS or short and bold-looking)
-      const isHeader = wrappedLine === wrappedLine.toUpperCase() &&
-                       wrappedLine.length > 3 &&
-                       wrappedLine.length < 50 &&
-                       !wrappedLine.includes('[');
-
-      if (isHeader) {
-        yPos -= 5; // Extra space before headers
-        page.drawText(wrappedLine, {
-          x: margin,
-          y: yPos,
-          size: 10,
-          font: boldFont,
-          color: rgb(0.2, 0.4, 0.6),
-        });
-        yPos -= lineHeight + 3;
-      } else {
-        page.drawText(wrappedLine, {
-          x: margin,
-          y: yPos,
-          size: fontSize,
-          font,
-          color: rgb(0.1, 0.1, 0.1),
-        });
-        yPos -= lineHeight;
-      }
-    }
-  }
-
-  // Footer on last page
-  page.drawText('Contact details available upon successful placement', {
-    x: margin,
-    y: 25,
-    size: 7,
-    font,
-    color: rgb(0.5, 0.5, 0.5),
-  });
-
-  page.drawText(`Generated: ${new Date().toLocaleDateString('en-GB')}`, {
-    x: 595 - margin - 80,
-    y: 25,
-    size: 7,
-    font,
-    color: rgb(0.5, 0.5, 0.5),
-  });
-
-  return await pdfDoc.save();
-}
-
-/**
- * Word wrap text to fit within maxWidth
- */
-function wrapText(
-  text: string,
-  font: Awaited<ReturnType<typeof StandardFonts.Helvetica extends infer T ? T : never>>,
-  fontSize: number,
-  maxWidth: number
-): string[] {
-  if (!text.trim()) return [''];
-
-  const words = text.split(' ');
-  const lines: string[] = [];
-  let currentLine = '';
-
-  for (const word of words) {
-    const testLine = currentLine + (currentLine ? ' ' : '') + word;
-    // Approximate width calculation (pdf-lib font method)
-    const testWidth = testLine.length * fontSize * 0.5; // Rough estimate
-
-    if (testWidth > maxWidth && currentLine) {
-      lines.push(currentLine);
-      currentLine = word;
-    } else {
-      currentLine = testLine;
-    }
-  }
-
-  if (currentLine) {
-    lines.push(currentLine);
-  }
-
-  return lines;
-}
-
-/**
- * Generalize location to area name (fallback for structured data)
+ * Generalize location to area name
  */
 function generalizeLocation(postcode: string): string {
-  if (!postcode) return 'UK';
+  if (!postcode) return '';
 
   const areaMap: Record<string, string> = {
     'SW': 'South West London',
@@ -504,6 +655,13 @@ function generalizeLocation(postcode: string): string {
     'RM': 'Romford area',
     'SM': 'Sutton area',
     'WD': 'Watford area',
+    'AL': 'St Albans area',
+    'HP': 'Hemel Hempstead area',
+    'LU': 'Luton area',
+    'MK': 'Milton Keynes area',
+    'SL': 'Slough area',
+    'RG': 'Reading area',
+    'GU': 'Guildford area',
     'B': 'Birmingham area',
     'M': 'Manchester area',
     'L': 'Liverpool area',
@@ -514,278 +672,20 @@ function generalizeLocation(postcode: string): string {
     'CF': 'Cardiff area',
   };
 
-  const match = postcode.match(/^([A-Z]{1,2})\d/i);
+  // Extract postcode prefix
+  const match = postcode.toUpperCase().match(/^([A-Z]{1,2})\d/);
   if (match) {
-    const prefix = match[1].toUpperCase();
+    const prefix = match[1];
     if (areaMap[prefix]) {
       return areaMap[prefix];
     }
   }
 
-  return 'UK';
-}
-
-/**
- * Generate structured PDF (fallback when no full text available)
- */
-async function generateStructuredPDF(
-  content: {
-    candidateReference: string;
-    role: string;
-    generalArea: string;
-    summary: string;
-    skills: string[];
-    experience: Array<{
-      title: string;
-      company: string;
-      duration: string;
-      description: string;
-    }>;
-    education: Array<{
-      qualification: string;
-      institution: string;
-      year: string;
-    }>;
-    qualifications: string[];
-  },
-  candidate: {
-    first_name?: string;
-    last_name?: string;
-    role?: string;
-    days?: string;
-  }
-): Promise<Uint8Array> {
-  const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([595, 842]);
-
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-  const { width, height } = page.getSize();
-  const margin = 50;
-  let yPos = height - margin;
-
-  const primaryColor = rgb(0.2, 0.4, 0.6);
-  const textColor = rgb(0.1, 0.1, 0.1);
-  const lightGray = rgb(0.6, 0.6, 0.6);
-
-  // Header
-  page.drawText('CANDIDATE PROFILE', {
-    x: margin,
-    y: yPos,
-    size: 20,
-    font: boldFont,
-    color: primaryColor,
-  });
-  yPos -= 30;
-
-  page.drawText(`Reference: ${content.candidateReference}`, {
-    x: margin,
-    y: yPos,
-    size: 12,
-    font: boldFont,
-    color: textColor,
-  });
-  yPos -= 25;
-
-  page.drawText(content.role, {
-    x: margin,
-    y: yPos,
-    size: 14,
-    font: boldFont,
-    color: textColor,
-  });
-  yPos -= 20;
-
-  page.drawText(`Location: ${content.generalArea}`, {
-    x: margin,
-    y: yPos,
-    size: 11,
-    font: font,
-    color: lightGray,
-  });
-  yPos -= 15;
-
-  if (candidate.days) {
-    page.drawText(`Availability: ${candidate.days}`, {
-      x: margin,
-      y: yPos,
-      size: 11,
-      font: font,
-      color: lightGray,
-    });
-    yPos -= 15;
+  // If we have a full postcode, show first part + "area"
+  const fullMatch = postcode.toUpperCase().match(/^([A-Z]{1,2}\d{1,2}[A-Z]?)/);
+  if (fullMatch) {
+    return `${fullMatch[1]} area`;
   }
 
-  yPos -= 10;
-  page.drawLine({
-    start: { x: margin, y: yPos },
-    end: { x: width - margin, y: yPos },
-    thickness: 1,
-    color: rgb(0.8, 0.8, 0.8),
-  });
-  yPos -= 20;
-
-  // Summary
-  if (content.summary) {
-    page.drawText('PROFESSIONAL SUMMARY', {
-      x: margin,
-      y: yPos,
-      size: 12,
-      font: boldFont,
-      color: primaryColor,
-    });
-    yPos -= 18;
-
-    const summaryLines = wrapText(content.summary, font, 10, width - margin * 2);
-    for (const line of summaryLines) {
-      page.drawText(line, { x: margin, y: yPos, size: 10, font, color: textColor });
-      yPos -= 15;
-    }
-    yPos -= 10;
-  }
-
-  // Skills
-  if (content.skills && content.skills.length > 0) {
-    page.drawText('SKILLS', {
-      x: margin,
-      y: yPos,
-      size: 12,
-      font: boldFont,
-      color: primaryColor,
-    });
-    yPos -= 18;
-
-    const skillsText = content.skills.join(' • ');
-    const skillLines = wrapText(skillsText, font, 10, width - margin * 2);
-    for (const line of skillLines) {
-      page.drawText(line, { x: margin, y: yPos, size: 10, font, color: textColor });
-      yPos -= 15;
-    }
-    yPos -= 10;
-  }
-
-  // Experience
-  if (content.experience && content.experience.length > 0) {
-    page.drawText('PROFESSIONAL EXPERIENCE', {
-      x: margin,
-      y: yPos,
-      size: 12,
-      font: boldFont,
-      color: primaryColor,
-    });
-    yPos -= 18;
-
-    for (const exp of content.experience) {
-      page.drawText(exp.title, {
-        x: margin,
-        y: yPos,
-        size: 11,
-        font: boldFont,
-        color: textColor,
-      });
-      yPos -= 15;
-
-      page.drawText(`${exp.company} | ${exp.duration}`, {
-        x: margin,
-        y: yPos,
-        size: 10,
-        font: font,
-        color: lightGray,
-      });
-      yPos -= 15;
-
-      if (exp.description) {
-        const descLines = wrapText(exp.description, font, 10, width - margin * 2);
-        for (const line of descLines) {
-          page.drawText(line, { x: margin, y: yPos, size: 10, font, color: textColor });
-          yPos -= 15;
-        }
-      }
-      yPos -= 10;
-    }
-  }
-
-  // Education
-  if (content.education && content.education.length > 0) {
-    page.drawText('EDUCATION', {
-      x: margin,
-      y: yPos,
-      size: 12,
-      font: boldFont,
-      color: primaryColor,
-    });
-    yPos -= 18;
-
-    for (const edu of content.education) {
-      page.drawText(edu.qualification, {
-        x: margin,
-        y: yPos,
-        size: 11,
-        font: boldFont,
-        color: textColor,
-      });
-      yPos -= 15;
-
-      page.drawText(`${edu.institution} | ${edu.year}`, {
-        x: margin,
-        y: yPos,
-        size: 10,
-        font: font,
-        color: lightGray,
-      });
-      yPos -= 15;
-    }
-    yPos -= 5;
-  }
-
-  // Qualifications
-  if (content.qualifications && content.qualifications.length > 0) {
-    page.drawText('QUALIFICATIONS & CERTIFICATIONS', {
-      x: margin,
-      y: yPos,
-      size: 12,
-      font: boldFont,
-      color: primaryColor,
-    });
-    yPos -= 18;
-
-    for (const qual of content.qualifications) {
-      page.drawText(`• ${qual}`, {
-        x: margin,
-        y: yPos,
-        size: 10,
-        font: font,
-        color: textColor,
-      });
-      yPos -= 15;
-    }
-  }
-
-  // Footer
-  const footerY = 40;
-  page.drawLine({
-    start: { x: margin, y: footerY + 15 },
-    end: { x: width - margin, y: footerY + 15 },
-    thickness: 0.5,
-    color: rgb(0.8, 0.8, 0.8),
-  });
-
-  page.drawText('Contact details available upon successful placement', {
-    x: margin,
-    y: footerY,
-    size: 9,
-    font: font,
-    color: lightGray,
-  });
-
-  page.drawText(`Generated: ${new Date().toLocaleDateString('en-GB')}`, {
-    x: width - margin - 100,
-    y: footerY,
-    size: 9,
-    font: font,
-    color: lightGray,
-  });
-
-  return await pdfDoc.save();
+  return postcode; // Return as-is if no pattern matches
 }
