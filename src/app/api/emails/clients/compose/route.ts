@@ -187,7 +187,24 @@ export async function POST(request: NextRequest) {
     const generatedContent = message.content[0].type === 'text' ? message.content[0].text : '';
 
     // Parse subject and body from response
-    const { subject, body: emailBody } = parseEmailResponse(generatedContent);
+    const { subject: rawSubject, body: rawBody } = parseEmailResponse(generatedContent);
+
+    // Post-process to replace any leftover placeholders with actual values
+    const replacePlaceholders = (text: string): string => {
+      return text
+        .replace(/\[Practice Name\]/gi, clientContext.surgery_name)
+        .replace(/\[Surgery Name\]/gi, clientContext.surgery_name)
+        .replace(/\[Surgery\]/gi, clientContext.surgery_name)
+        .replace(/\[Practice\]/gi, clientContext.surgery_name)
+        .replace(/\[Contact Name\]/gi, clientContext.contact_name || 'there')
+        .replace(/\[Name\]/gi, clientContext.contact_name || 'there')
+        .replace(/\{\{surgery_name\}\}/gi, clientContext.surgery_name)
+        .replace(/\{\{practice_name\}\}/gi, clientContext.surgery_name)
+        .replace(/\{\{contact_name\}\}/gi, clientContext.contact_name || 'there');
+    };
+
+    const subject = replacePlaceholders(rawSubject);
+    const emailBody = replacePlaceholders(rawBody);
 
     // Log the AI generation
     await supabase
@@ -298,9 +315,10 @@ IMPORTANT FORMATTING RULES:
 3. Then write the email body
 4. Keep the email concise but informative (150-300 words)
 5. Include a professional sign-off
-6. Address the practice by name where appropriate
+6. CRITICAL: Use the ACTUAL practice name "${client.surgery_name}" in the email - do NOT use placeholders like [Practice Name] or [Surgery Name]
 7. Sign the email as "The Locum Meds Recruitment Team"
 ${candidate ? `8. Mention that a redacted CV is attached (if applicable)` : ''}
+9. NEVER use square bracket placeholders like [Name], [Practice], etc. Always use the real values provided above.
 
 Generate the email now:`;
 

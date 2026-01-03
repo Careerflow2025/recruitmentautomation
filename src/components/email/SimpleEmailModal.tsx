@@ -225,8 +225,8 @@ export default function SimpleEmailModal({
             recipient_name: client.client_name || client.surgery,
             subject: subject,
             body_html: body.includes('<') ? body : `<p>${body.replace(/\n/g, '<br>')}</p>`,
-            attach_candidate_id: selectedCandidateId || undefined,
-            redact_cv: true,
+            candidate_id: selectedCandidateId || undefined,
+            attach_redacted_cv: !!selectedCandidateId,
           }),
         });
 

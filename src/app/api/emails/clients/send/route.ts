@@ -147,6 +147,27 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Replace any placeholders with actual client data
+    const surgeryName = client.surgery || client.name || 'the practice';
+    const contactName = client.client_name || client.contact_name || 'there';
+
+    const replacePlaceholders = (text: string): string => {
+      return text
+        .replace(/\[Practice Name\]/gi, surgeryName)
+        .replace(/\[Surgery Name\]/gi, surgeryName)
+        .replace(/\[Surgery\]/gi, surgeryName)
+        .replace(/\[Practice\]/gi, surgeryName)
+        .replace(/\[Contact Name\]/gi, contactName)
+        .replace(/\[Name\]/gi, contactName)
+        .replace(/\{\{surgery_name\}\}/gi, surgeryName)
+        .replace(/\{\{practice_name\}\}/gi, surgeryName)
+        .replace(/\{\{contact_name\}\}/gi, contactName);
+    };
+
+    const finalSubject = replacePlaceholders(subject);
+    const finalBodyHtml = replacePlaceholders(body_html);
+    const finalBodyText = body_text ? replacePlaceholders(body_text) : undefined;
+
     // Prepare Brevo email payload
     const senderEmail = process.env.BREVO_SENDER_EMAIL || 'recruitment@locummeds.co.uk';
     const senderName = process.env.BREVO_SENDER_NAME || 'Locum Meds Recruitment';
@@ -172,13 +193,13 @@ export async function POST(request: NextRequest) {
           name: client.contact_name || client.surgery || client.name,
         },
       ],
-      subject: subject,
-      htmlContent: body_html,
+      subject: finalSubject,
+      htmlContent: finalBodyHtml,
     };
 
     // Add optional fields
-    if (body_text) {
-      brevoPayload.textContent = body_text;
+    if (finalBodyText) {
+      brevoPayload.textContent = finalBodyText;
     }
 
     if (cc && cc.length > 0) {
@@ -231,9 +252,9 @@ export async function POST(request: NextRequest) {
         candidate_id: candidate_id || null,
         recipient_email: clientEmail,
         recipient_type: 'client',
-        subject: subject,
-        body_html: body_html,
-        body_text: body_text || null,
+        subject: finalSubject,
+        body_html: finalBodyHtml,
+        body_text: finalBodyText || null,
         has_attachment: attachments.length > 0,
         attachment_count: attachments.length,
         brevo_message_id: brevoResult.messageId,
