@@ -9,6 +9,8 @@ interface SendClientEmailRequest {
   body_html: string;
   body_text?: string;
   attach_redacted_cv?: boolean;
+  cv_base64?: string;     // Pre-generated CV base64 from browser
+  cv_filename?: string;   // Pre-generated CV filename
   cc?: string[];
   bcc?: string[];
   reply_to?: string;
@@ -33,6 +35,8 @@ export async function POST(request: NextRequest) {
       body_html,
       body_text,
       attach_redacted_cv = false,
+      cv_base64,
+      cv_filename,
       cc,
       bcc,
       reply_to,
@@ -116,35 +120,12 @@ export async function POST(request: NextRequest) {
     // Prepare attachments
     const attachments: BrevoAttachment[] = [];
 
-    // Generate and attach redacted CV if requested
-    if (attach_redacted_cv && candidate_id) {
-      try {
-        // Call our generate-redacted API to get the PDF
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const redactedResponse = await fetch(`${baseUrl}/api/cvs/generate-redacted`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cookie': request.headers.get('cookie') || '',
-          },
-          body: JSON.stringify({ candidate_id }),
-        });
-
-        if (redactedResponse.ok) {
-          const redactedData = await redactedResponse.json();
-          if (redactedData.success && redactedData.base64) {
-            attachments.push({
-              content: redactedData.base64,
-              name: redactedData.filename || `candidate_profile_${redactedData.anonymousReference}.pdf`,
-            });
-          }
-        } else {
-          console.warn('Failed to generate redacted CV, sending without attachment');
-        }
-      } catch (cvError) {
-        console.error('Error generating redacted CV:', cvError);
-        // Continue sending email without attachment
-      }
+    // Use pre-generated CV from browser (preferred - has proper auth context)
+    if (cv_base64 && cv_filename) {
+      attachments.push({
+        content: cv_base64,
+        name: cv_filename,
+      });
     }
 
     // Replace any placeholders with actual client data

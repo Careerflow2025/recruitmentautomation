@@ -7,6 +7,11 @@ interface BrevoAttachment {
   name: string;
 }
 
+interface SendCampaignRequest {
+  cv_base64?: string;   // Pre-generated CV from browser
+  cv_filename?: string;
+}
+
 /**
  * POST /api/emails/clients/campaigns/[id]/send
  * Start sending a campaign to all recipients
@@ -17,6 +22,17 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+
+    // Parse request body for CV data
+    let cv_base64: string | undefined;
+    let cv_filename: string | undefined;
+    try {
+      const body: SendCampaignRequest = await request.json();
+      cv_base64 = body.cv_base64;
+      cv_filename = body.cv_filename;
+    } catch {
+      // Body may be empty, that's ok
+    }
 
     // Create Supabase client
     const cookieStore = await cookies();
@@ -108,32 +124,13 @@ export async function POST(
       });
     }
 
-    // Prepare CV attachment if needed
+    // Use pre-generated CV attachment from browser (has proper auth context)
     let cvAttachment: BrevoAttachment | null = null;
-    if (campaign.attach_cv && campaign.candidate_id) {
-      try {
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const redactedResponse = await fetch(`${baseUrl}/api/cvs/generate-redacted`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cookie': request.headers.get('cookie') || '',
-          },
-          body: JSON.stringify({ candidate_id: campaign.candidate_id }),
-        });
-
-        if (redactedResponse.ok) {
-          const redactedData = await redactedResponse.json();
-          if (redactedData.success && redactedData.base64) {
-            cvAttachment = {
-              content: redactedData.base64,
-              name: redactedData.filename || `candidate_profile.pdf`,
-            };
-          }
-        }
-      } catch (cvError) {
-        console.error('Error generating CV for campaign:', cvError);
-      }
+    if (cv_base64 && cv_filename) {
+      cvAttachment = {
+        content: cv_base64,
+        name: cv_filename,
+      };
     }
 
     // Sender details

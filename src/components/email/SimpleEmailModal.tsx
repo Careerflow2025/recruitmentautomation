@@ -176,6 +176,41 @@ export default function SimpleEmailModal({
     setErrorMessage('');
 
     try {
+      // Step 1: Generate CV in browser FIRST (if candidate selected)
+      // This ensures we have proper auth cookies - internal API calls lose auth context
+      let cvBase64: string | null = null;
+      let cvFilename: string | null = null;
+
+      if (selectedCandidateId) {
+        try {
+          const cvResponse = await fetch('/api/cvs/generate-redacted', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ candidate_id: selectedCandidateId }),
+          });
+
+          if (cvResponse.ok) {
+            const cvData = await cvResponse.json();
+            if (cvData.success && cvData.base64) {
+              cvBase64 = cvData.base64;
+              cvFilename = cvData.filename;
+            }
+          }
+
+          if (!cvBase64) {
+            setErrorMessage('Failed to generate CV. Please try again.');
+            setStatus('error');
+            return;
+          }
+        } catch (cvError) {
+          console.error('CV generation failed:', cvError);
+          setErrorMessage('Failed to generate CV. Please try again.');
+          setStatus('error');
+          return;
+        }
+      }
+
+      // Step 2: Send email(s) with pre-generated CV
       if (isBulk) {
         // Bulk send via campaigns API
         const response = await fetch('/api/emails/clients/campaigns', {
@@ -187,7 +222,8 @@ export default function SimpleEmailModal({
             subject: subject,
             body_html: body.includes('<') ? body : `<p>${body.replace(/\n/g, '<br>')}</p>`,
             candidate_id: selectedCandidateId || undefined,
-            attach_redacted_cv: !!selectedCandidateId,
+            cv_base64: cvBase64 || undefined,
+            cv_filename: cvFilename || undefined,
           }),
         });
 
@@ -197,9 +233,14 @@ export default function SimpleEmailModal({
           throw new Error(result.error || 'Failed to create campaign');
         }
 
-        // Now send the campaign
+        // Now send the campaign (pass CV data)
         const sendResponse = await fetch(`/api/emails/clients/campaigns/${result.campaign.id}/send`, {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cv_base64: cvBase64 || undefined,
+            cv_filename: cvFilename || undefined,
+          }),
         });
 
         const sendResult = await sendResponse.json();
@@ -226,7 +267,8 @@ export default function SimpleEmailModal({
             subject: subject,
             body_html: body.includes('<') ? body : `<p>${body.replace(/\n/g, '<br>')}</p>`,
             candidate_id: selectedCandidateId || undefined,
-            attach_redacted_cv: !!selectedCandidateId,
+            cv_base64: cvBase64 || undefined,
+            cv_filename: cvFilename || undefined,
           }),
         });
 
