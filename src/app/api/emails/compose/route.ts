@@ -4,13 +4,21 @@ import { cookies } from 'next/headers';
 import Anthropic from '@anthropic-ai/sdk';
 
 interface ComposeRequest {
-  candidateId: string;
+  // Accept both camelCase and snake_case
+  candidateId?: string;
+  candidate_id?: string;
   clientId?: string;
-  emailType: 'cv_submission' | 'interview' | 'terms' | 'follow_up' | 'marketing' | 'custom';
+  client_id?: string;
+  emailType?: 'cv_submission' | 'interview' | 'terms' | 'follow_up' | 'marketing' | 'custom';
+  email_type?: 'cv_submission' | 'interview' | 'terms' | 'follow_up' | 'marketing' | 'custom';
   tone?: 'professional' | 'friendly' | 'formal';
   additionalContext?: string;
+  additional_context?: string;
   includeCV?: boolean;
+  include_cv?: boolean;
+  include_cv_context?: boolean;
   templateId?: string;
+  template_id?: string;
 }
 
 interface CandidateContext {
@@ -39,7 +47,14 @@ interface ClientContext {
 export async function POST(request: NextRequest) {
   try {
     const requestBody: ComposeRequest = await request.json();
-    const { candidateId, clientId, emailType, tone = 'professional', additionalContext, includeCV } = requestBody;
+
+    // Normalize field names (accept both camelCase and snake_case)
+    const candidateId = requestBody.candidateId || requestBody.candidate_id;
+    const clientId = requestBody.clientId || requestBody.client_id;
+    const emailType = requestBody.emailType || requestBody.email_type || 'cv_submission';
+    const tone = requestBody.tone || 'professional';
+    const additionalContext = requestBody.additionalContext || requestBody.additional_context;
+    const includeCV = requestBody.includeCV || requestBody.include_cv || requestBody.include_cv_context;
 
     if (!candidateId) {
       return NextResponse.json(

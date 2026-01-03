@@ -3,20 +3,29 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 interface SendEmailRequest {
-  to: string;
+  // Accept both camelCase and snake_case
+  to?: string;
+  recipient_email?: string;
   toName?: string;
+  recipient_name?: string;
   subject: string;
-  htmlContent: string;
+  htmlContent?: string;
+  body_html?: string;
   textContent?: string;
+  body_text?: string;
   candidateId?: string;
+  candidate_id?: string;
   clientId?: string;
+  client_id?: string;
   aiLogId?: string;
+  ai_log_id?: string;
   attachments?: Array<{
     name: string;
     content: string; // Base64 encoded
     contentType: string;
   }>;
   replyTo?: string;
+  reply_to?: string;
 }
 
 /**
@@ -26,18 +35,18 @@ interface SendEmailRequest {
 export async function POST(request: NextRequest) {
   try {
     const body: SendEmailRequest = await request.json();
-    const {
-      to,
-      toName,
-      subject,
-      htmlContent,
-      textContent,
-      candidateId,
-      clientId,
-      aiLogId,
-      attachments,
-      replyTo,
-    } = body;
+
+    // Normalize field names (accept both camelCase and snake_case)
+    const to = body.to || body.recipient_email;
+    const toName = body.toName || body.recipient_name;
+    const subject = body.subject;
+    const htmlContent = body.htmlContent || body.body_html;
+    const textContent = body.textContent || body.body_text;
+    const candidateId = body.candidateId || body.candidate_id;
+    const clientId = body.clientId || body.client_id;
+    const aiLogId = body.aiLogId || body.ai_log_id;
+    const attachments = body.attachments;
+    const replyTo = body.replyTo || body.reply_to;
 
     // Validate required fields
     if (!to || !subject || !htmlContent) {

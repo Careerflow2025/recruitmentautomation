@@ -56,21 +56,10 @@ export function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCandidateMo
         throw new Error('Postcode is required');
       }
 
-      // Use the pre-fetched ID or the one user entered
-      let candidateId = formData.id.trim();
-
-      // If no ID provided, fetch a fresh one (in case multiple users are adding simultaneously)
-      if (!candidateId) {
-        const response = await fetch('/api/candidates/next-id');
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error('Failed to generate ID');
-        }
-        candidateId = data.nextId;
-      }
-
+      // Send the candidate data - backend will generate atomic ID if needed
+      // or verify the provided ID is unique
       const candidate = {
-        id: candidateId,
+        id: formData.id.trim() || undefined, // Let backend generate if empty
         first_name: formData.first_name.trim() || null,
         last_name: formData.last_name.trim() || null,
         email: formData.email.trim() || null,
@@ -93,6 +82,10 @@ export function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCandidateMo
       if (!result.success) {
         throw new Error(result.error || 'Failed to add candidate');
       }
+
+      // Log the actual assigned ID (backend confirms/generates unique ID)
+      const assignedId = result.data?.id || result.generatedId || formData.id;
+      console.log(`✅ Candidate added with ID: ${assignedId}`);
 
       // Reset form and fetch next ID for potential next entry
       setFormData({
@@ -164,16 +157,18 @@ export function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCandidateMo
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                ID <span className="text-gray-400">(optional - auto-generated if empty)</span>
+                ID <span className="text-gray-400">(auto-generated - unique ID guaranteed)</span>
               </label>
               <input
                 type="text"
                 name="id"
                 value={formData.id}
                 onChange={handleChange}
-                placeholder="e.g., CAN001"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400 text-gray-900"
+                placeholder={nextId || 'e.g., CAN001'}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400 text-gray-900 bg-gray-50"
+                readOnly
               />
+              <p className="text-xs text-gray-500 mt-1">System will assign a unique sequential ID</p>
             </div>
 
             <div>
