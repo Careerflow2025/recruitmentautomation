@@ -14,6 +14,8 @@ export interface RedactionConfig {
   redactSocialMedia: boolean;
   redactWebsites: boolean;
   redactNames: boolean;
+  redactEmployers: boolean;
+  redactReferences: boolean;
   placeholder: string;
   anonymousReference?: string;
 }
@@ -63,6 +65,8 @@ const DEFAULT_CONFIG: RedactionConfig = {
   redactSocialMedia: true,
   redactWebsites: true,
   redactNames: false, // Names usually kept for context
+  redactEmployers: true, // Anonymize surgery/clinic names
+  redactReferences: true, // Remove reference contact details
   placeholder: '[Contact details available upon successful placement]',
   anonymousReference: undefined,
 };
@@ -103,7 +107,7 @@ export function redactCV(
     const shouldRedact = shouldRedactType(match.type, fullConfig);
     if (!shouldRedact) continue;
 
-    const replacement = getReplacementText(match.type, fullConfig.placeholder);
+    const replacement = getReplacementText(match.type, fullConfig.placeholder, match.value);
 
     // Calculate actual position with offset
     const start = match.position.start;
@@ -166,6 +170,10 @@ function shouldRedactType(type: string, config: RedactionConfig): boolean {
       return config.redactWebsites;
     case 'name':
       return config.redactNames;
+    case 'employer':
+      return config.redactEmployers;
+    case 'reference':
+      return config.redactReferences;
     default:
       return true;
   }
@@ -174,7 +182,7 @@ function shouldRedactType(type: string, config: RedactionConfig): boolean {
 /**
  * Get appropriate replacement text for each type
  */
-function getReplacementText(type: string, defaultPlaceholder: string): string {
+function getReplacementText(type: string, defaultPlaceholder: string, originalValue?: string): string {
   switch (type) {
     case 'email':
       return '[Email available upon placement]';
@@ -190,9 +198,66 @@ function getReplacementText(type: string, defaultPlaceholder: string): string {
       return '[Social media available upon request]';
     case 'website':
       return '[Portfolio available upon request]';
+    case 'employer':
+      return anonymizeEmployerName(originalValue || '');
+    case 'reference':
+      return '[References available upon request]';
     default:
       return defaultPlaceholder;
   }
+}
+
+/**
+ * Anonymize employer/surgery/clinic name while preserving type and location context
+ * Example: "GP Village Medical Centre in London" → "GP Practice in London"
+ * Example: "Smile Dental Clinic Croydon" → "Dental Practice in Croydon"
+ */
+function anonymizeEmployerName(original: string): string {
+  if (!original) return '[Healthcare Practice]';
+
+  const text = original.trim();
+
+  // Extract location if present (common UK cities/areas)
+  const locationPatterns = [
+    /\b(London|Manchester|Birmingham|Leeds|Liverpool|Bristol|Glasgow|Edinburgh|Cardiff|Belfast|Sheffield|Newcastle|Nottingham|Leicester|Brighton|Cambridge|Oxford|Croydon|Bromley|Sutton|Greenwich|Lewisham|Hackney|Islington|Camden|Westminster|Kensington|Chelsea|Hammersmith|Fulham|Wandsworth|Lambeth|Southwark|Tower Hamlets|Newham|Barking|Dagenham|Redbridge|Havering|Bexley|Enfield|Barnet|Haringey|Waltham Forest|Ealing|Hounslow|Richmond|Kingston|Merton|Harrow|Hillingdon|Brent)\b/gi,
+  ];
+
+  let location = '';
+  for (const pattern of locationPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      location = match[0];
+      break;
+    }
+  }
+
+  // Determine the type of facility
+  let facilityType = 'Healthcare Practice';
+
+  if (/dental/i.test(text)) {
+    facilityType = 'Dental Practice';
+  } else if (/GP|general\s+practitioner/i.test(text)) {
+    facilityType = 'GP Practice';
+  } else if (/hospital/i.test(text)) {
+    facilityType = 'Hospital';
+  } else if (/NHS\s+Trust/i.test(text)) {
+    facilityType = 'NHS Trust';
+  } else if (/medical\s+centre|medical\s+center/i.test(text)) {
+    facilityType = 'Medical Centre';
+  } else if (/clinic/i.test(text)) {
+    facilityType = 'Medical Clinic';
+  } else if (/surgery/i.test(text)) {
+    facilityType = 'Surgery';
+  } else if (/health\s*care|healthcare/i.test(text)) {
+    facilityType = 'Healthcare Provider';
+  }
+
+  // Return anonymized version with location if available
+  if (location) {
+    return `${facilityType} in ${location}`;
+  }
+
+  return facilityType;
 }
 
 /**
@@ -318,12 +383,12 @@ function generalizeLocation(location: string): string {
 }
 
 /**
- * Anonymize company names (keep for context but remove identifying details)
+ * Anonymize company names in structured content
+ * Uses the same logic as employer name anonymization
  */
 function anonymizeCompany(company: string): string {
-  // For now, keep company names as they're public information
-  // Could be made more anonymous if needed
-  return company;
+  if (!company || company.trim() === '') return 'Healthcare Provider';
+  return anonymizeEmployerName(company);
 }
 
 /**
@@ -377,6 +442,8 @@ export function generateRedactionSummary(result: RedactedCV): string {
   if (typeCounts.linkedin) parts.push(`${typeCounts.linkedin} LinkedIn profile(s)`);
   if (typeCounts.social) parts.push(`${typeCounts.social} social media link(s)`);
   if (typeCounts.website) parts.push(`${typeCounts.website} website(s)`);
+  if (typeCounts.employer) parts.push(`${typeCounts.employer} employer name(s)`);
+  if (typeCounts.reference) parts.push(`${typeCounts.reference} reference(s)`);
 
   return `Redacted ${redactionCount} item(s): ${parts.join(', ')}.`;
 }

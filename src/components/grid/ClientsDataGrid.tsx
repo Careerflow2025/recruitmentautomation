@@ -16,6 +16,7 @@ import CustomColumnManager from './CustomColumnManager';
 import EditableColumnHeader from './EditableColumnHeader';
 import MultiNotesPopup from './MultiNotesPopup';
 import BulkParseModal from './BulkParseModal';
+import ClientEmailCommandCenter from '@/components/email/ClientEmailCommandCenter';
 
 // Extended Client type with user_id (exists in DB but not in type definition)
 type ClientWithUser = Client & { user_id?: string };
@@ -36,6 +37,7 @@ export default function ClientsDataGrid() {
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showBulkParseModal, setShowBulkParseModal] = useState(false);
+  const [emailModalClientId, setEmailModalClientId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // AI Validation state: tracks validation status for role and postcode fields
@@ -469,7 +471,47 @@ export default function ClientsDataGrid() {
           />
         ),
         renderCell: ({ row }) => (
-          <div title={row.surgery || ''}>{row.surgery || ''}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+            {/* Email Icon - Opens Client Email Command Center */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setEmailModalClientId(row.id);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '24px',
+                height: '24px',
+                borderRadius: '4px',
+                border: 'none',
+                background: row.client_email ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#e5e7eb',
+                color: row.client_email ? 'white' : '#9ca3af',
+                cursor: row.client_email ? 'pointer' : 'not-allowed',
+                fontSize: '14px',
+                flexShrink: 0,
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                if (row.client_email) {
+                  e.currentTarget.style.transform = 'scale(1.1)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+              title={row.client_email ? `Email ${row.surgery}` : 'No email address'}
+              disabled={!row.client_email}
+            >
+              ✉️
+            </button>
+
+            {/* Surgery Name */}
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.surgery || ''}>
+              {row.surgery || ''}
+            </span>
+          </div>
         ),
         renderEditCell: (props) => (
           <input
@@ -1320,6 +1362,15 @@ export default function ClientsDataGrid() {
             // Grid will auto-refresh via real-time subscription
             loadLatestNotes();
           }}
+        />
+      )}
+
+      {/* Client Email Command Center Modal */}
+      {emailModalClientId && (
+        <ClientEmailCommandCenter
+          clientId={emailModalClientId}
+          isOpen={!!emailModalClientId}
+          onClose={() => setEmailModalClientId(null)}
         />
       )}
     </div>

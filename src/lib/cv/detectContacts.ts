@@ -13,6 +13,8 @@ export interface DetectedContacts {
   socialMedia: string[];
   websites: string[];
   names?: string[];
+  employers: string[];
+  references: string[];
 }
 
 export interface DetectionResult {
@@ -106,6 +108,34 @@ const NAME_PATTERNS = [
   /(?:name|full name|candidate)[\s:]*([A-Z][a-z]+\s+[A-Z][a-z]+)/gi,
 ];
 
+// Employer/Surgery/Clinic name patterns
+const EMPLOYER_PATTERNS = [
+  // Dental practices with specific names: "Smile Dental Clinic", "Park Dental Surgery"
+  /\b([A-Z][a-zA-Z\s&']+)\s+(Dental\s+)?(Surgery|Clinic|Centre|Center|Practice|Hospital|NHS Trust)\b/gi,
+  // Medical centers: "Village Medical Centre", "Healthcare Clinic"
+  /\b([A-Z][a-zA-Z\s&']+)\s+(Medical\s+|Health\s+|Healthcare\s+)?(Centre|Center|Clinic|Practice|Surgery|Hospital)\b/gi,
+  // GP practices: "GP Village Medical Centre"
+  /\bGP\s+([A-Z][a-zA-Z\s&']+)\s+(Medical\s+|Health\s+)?(Centre|Center|Clinic|Practice|Surgery)\b/gi,
+  // Named hospitals: "St Mary's Hospital", "Royal London Hospital"
+  /\b(St\.?\s+[A-Z][a-zA-Z']+('s)?|Royal|Queen's|King's|Princess)\s+[A-Z][a-zA-Z\s]+\s+(Hospital|Medical Centre|NHS Trust)\b/gi,
+  // NHS Trust names
+  /\b[A-Z][a-zA-Z\s]+\s+NHS\s+(Foundation\s+)?Trust\b/gi,
+  // Private healthcare chains
+  /\b(Bupa|Nuffield|Spire|HCA|BMI)\s+[A-Z][a-zA-Z\s]+\s+(Hospital|Healthcare|Clinic)?\b/gi,
+  // Common dental chain names
+  /\b(mydentist|Portman|Dental Beauty|Damira|Smile Dental|Rodericks|{1}Dental|Oasis)\s+[A-Z][a-zA-Z\s]*/gi,
+];
+
+// Reference patterns (people who can be contacted)
+const REFERENCE_PATTERNS = [
+  // "References: Dr. John Smith" or "Reference: Jane Doe (Manager)"
+  /(?:reference|referee|referees)[\s:]+(?:available\s+)?(?:upon\s+request|on\s+request)?[\s:]*([A-Z][a-zA-Z\s.,']+)/gi,
+  // Specific reference format with title
+  /(?:reference|referee)[\s:]+(?:Dr\.?|Mr\.?|Mrs\.?|Ms\.?|Miss)\s+([A-Z][a-zA-Z\s.,']+)/gi,
+  // "Contact: Name (Title)" in reference context
+  /(?:contact|supervisor|manager|line\s+manager)[\s:]+([A-Z][a-zA-Z\s.,']+)(?:\s*\(|\s*-|\s*,)/gi,
+];
+
 /**
  * Detect all contact information in text
  */
@@ -119,6 +149,8 @@ export function detectContacts(text: string): DetectionResult {
     socialMedia: [],
     websites: [],
     names: [],
+    employers: [],
+    references: [],
   };
 
   const rawMatches: Array<{
@@ -263,6 +295,45 @@ export function detectContacts(text: string): DetectionResult {
     }
   });
 
+  // Detect employer/surgery/clinic names
+  EMPLOYER_PATTERNS.forEach((pattern) => {
+    const matches = text.matchAll(new RegExp(pattern));
+    for (const match of matches) {
+      const employer = match[0].trim();
+      // Skip very short matches or generic terms
+      if (employer.length < 10) return;
+      // Skip duplicates
+      if (!contacts.employers.some((e) => e.toLowerCase() === employer.toLowerCase())) {
+        contacts.employers.push(employer);
+        rawMatches.push({
+          type: 'employer',
+          value: match[0],
+          position: { start: match.index || 0, end: (match.index || 0) + match[0].length },
+        });
+      }
+    }
+  });
+
+  // Detect references
+  REFERENCE_PATTERNS.forEach((pattern) => {
+    const matches = text.matchAll(new RegExp(pattern));
+    for (const match of matches) {
+      const reference = (match[1] || match[0]).trim();
+      // Skip "available upon request" type matches
+      if (reference.toLowerCase().includes('available') || reference.toLowerCase().includes('request')) {
+        continue;
+      }
+      if (reference.length > 3 && !contacts.references.includes(reference)) {
+        contacts.references.push(reference);
+        rawMatches.push({
+          type: 'reference',
+          value: match[0],
+          position: { start: match.index || 0, end: (match.index || 0) + match[0].length },
+        });
+      }
+    }
+  });
+
   // Calculate total found and confidence
   const totalFound =
     contacts.emails.length +
@@ -271,7 +342,9 @@ export function detectContacts(text: string): DetectionResult {
     contacts.postcodes.length +
     contacts.linkedIn.length +
     contacts.socialMedia.length +
-    contacts.websites.length;
+    contacts.websites.length +
+    contacts.employers.length +
+    contacts.references.length;
 
   // Confidence based on diversity of contact types found
   const typesFound = [
@@ -344,6 +417,8 @@ export function getRedactionStats(result: DetectionResult): {
     linkedIn: result.contacts.linkedIn.length,
     socialMedia: result.contacts.socialMedia.length,
     websites: result.contacts.websites.length,
+    employers: result.contacts.employers.length,
+    references: result.contacts.references.length,
   };
 
   const parts: string[] = [];
@@ -353,6 +428,8 @@ export function getRedactionStats(result: DetectionResult): {
   if (details.postcodes) parts.push(`${details.postcodes} postcode${details.postcodes > 1 ? 's' : ''}`);
   if (details.linkedIn) parts.push(`${details.linkedIn} LinkedIn profile${details.linkedIn > 1 ? 's' : ''}`);
   if (details.socialMedia) parts.push(`${details.socialMedia} social link${details.socialMedia > 1 ? 's' : ''}`);
+  if (details.employers) parts.push(`${details.employers} employer name${details.employers > 1 ? 's' : ''}`);
+  if (details.references) parts.push(`${details.references} reference${details.references > 1 ? 's' : ''}`);
 
   return {
     summary: parts.length > 0 ? `Found: ${parts.join(', ')}` : 'No contact information detected',

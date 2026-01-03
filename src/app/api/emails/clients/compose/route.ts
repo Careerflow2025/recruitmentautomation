@@ -3,24 +3,13 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import Anthropic from '@anthropic-ai/sdk';
 
-interface ComposeRequest {
-  // Accept both camelCase and snake_case
-  candidateId?: string;
-  candidate_id?: string;
-  clientId?: string;
-  client_id?: string;
-  emailType?: 'cv_submission' | 'interview' | 'terms' | 'follow_up' | 'marketing' | 'custom';
-  email_type?: 'cv_submission' | 'interview' | 'terms' | 'follow_up' | 'marketing' | 'custom';
+interface ComposeClientEmailRequest {
+  client_id: string;
+  candidate_id?: string;  // Optional - for attaching CV context
+  email_type?: 'cv_introduction' | 'availability_check' | 'follow_up' | 'marketing' | 'custom';
   tone?: 'professional' | 'friendly' | 'formal';
-  additionalContext?: string;
-  additional_context?: string;
-  customPrompt?: string;
-  custom_prompt?: string;  // NEW: Free text prompt from user
-  includeCV?: boolean;
-  include_cv?: boolean;
+  custom_prompt?: string;  // Free text prompt from recruiter
   include_cv_context?: boolean;
-  templateId?: string;
-  template_id?: string;
 }
 
 interface CandidateContext {
@@ -32,36 +21,37 @@ interface CandidateContext {
   salary_expectation?: string;
   availability?: string;
   cv_summary?: string;
+  anonymous_reference?: string;
 }
 
 interface ClientContext {
   surgery_name: string;
-  role_needed: string;
+  contact_name?: string;
+  role_needed?: string;
   requirements?: string;
   pay_rate?: string;
   location?: string;
 }
 
 /**
- * POST /api/emails/compose
- * AI-powered email composition using Claude
+ * POST /api/emails/clients/compose
+ * AI-powered email composition for emailing clients (dental practices)
  */
 export async function POST(request: NextRequest) {
   try {
-    const requestBody: ComposeRequest = await request.json();
+    const body: ComposeClientEmailRequest = await request.json();
+    const {
+      client_id,
+      candidate_id,
+      email_type = 'cv_introduction',
+      tone = 'professional',
+      custom_prompt,
+      include_cv_context = true
+    } = body;
 
-    // Normalize field names (accept both camelCase and snake_case)
-    const candidateId = requestBody.candidateId || requestBody.candidate_id;
-    const clientId = requestBody.clientId || requestBody.client_id;
-    const emailType = requestBody.emailType || requestBody.email_type || 'cv_submission';
-    const tone = requestBody.tone || 'professional';
-    const additionalContext = requestBody.additionalContext || requestBody.additional_context;
-    const customPrompt = requestBody.customPrompt || requestBody.custom_prompt;
-    const includeCV = requestBody.includeCV || requestBody.include_cv || requestBody.include_cv_context;
-
-    if (!candidateId) {
+    if (!client_id) {
       return NextResponse.json(
-        { success: false, error: 'Candidate ID is required' },
+        { success: false, error: 'Client ID is required' },
         { status: 400 }
       );
     }
@@ -94,66 +84,74 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch candidate data
-    const { data: candidate, error: candidateError } = await supabase
-      .from('candidates')
+    // Fetch client data
+    const { data: client, error: clientError } = await supabase
+      .from('clients')
       .select('*')
-      .eq('id', candidateId)
+      .eq('id', client_id)
       .single();
 
-    if (candidateError || !candidate) {
+    if (clientError || !client) {
       return NextResponse.json(
-        { success: false, error: 'Candidate not found' },
+        { success: false, error: 'Client not found' },
         { status: 404 }
       );
     }
 
-    // Fetch candidate's CV if exists
-    let cvData = null;
-    if (includeCV) {
-      const { data: cv } = await supabase
-        .from('candidate_cvs')
-        .select('*')
-        .eq('candidate_id', candidateId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      cvData = cv;
-    }
-
-    // Fetch client data if provided
-    let clientData = null;
-    if (clientId) {
-      const { data: client } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', clientId)
-        .single();
-      clientData = client;
-    }
-
-    // Build candidate context
-    const candidateContext: CandidateContext = {
-      name: `${candidate.first_name} ${candidate.last_name}`.trim(),
-      role: candidate.role || 'Dental Professional',
-      experience: candidate.experience,
-      skills: candidate.skills ? (Array.isArray(candidate.skills) ? candidate.skills : [candidate.skills]) : [],
-      qualifications: candidate.qualifications ? (Array.isArray(candidate.qualifications) ? candidate.qualifications : [candidate.qualifications]) : [],
-      salary_expectation: candidate.salary,
-      availability: candidate.days,
-      cv_summary: cvData?.parsed_content?.summary || cvData?.parsed_content?.raw_text?.substring(0, 500),
+    // Build client context
+    const clientContext: ClientContext = {
+      surgery_name: client.surgery || client.name || 'the practice',
+      contact_name: client.contact_name || client.name,
+      role_needed: client.role,
+      requirements: client.requirements,
+      pay_rate: client.pay,
+      location: client.postcode,
     };
 
-    // Build client context if available
-    let clientContext: ClientContext | null = null;
-    if (clientData) {
-      clientContext = {
-        surgery_name: clientData.surgery || clientData.name,
-        role_needed: clientData.role,
-        requirements: clientData.requirements,
-        pay_rate: clientData.pay,
-        location: clientData.postcode,
-      };
+    // Fetch candidate data if provided (for CV introduction emails)
+    let candidateContext: CandidateContext | null = null;
+    let cvData = null;
+
+    if (candidate_id) {
+      const { data: candidate, error: candidateError } = await supabase
+        .from('candidates')
+        .select('*')
+        .eq('id', candidate_id)
+        .single();
+
+      if (candidate && !candidateError) {
+        // Generate anonymous reference
+        const anonymousRef = `DN-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+
+        candidateContext = {
+          name: `${candidate.first_name} ${candidate.last_name}`.trim(),
+          role: candidate.role || 'Dental Professional',
+          experience: candidate.experience,
+          skills: candidate.skills ? (Array.isArray(candidate.skills) ? candidate.skills : [candidate.skills]) : [],
+          qualifications: candidate.qualifications ? (Array.isArray(candidate.qualifications) ? candidate.qualifications : [candidate.qualifications]) : [],
+          salary_expectation: candidate.salary,
+          availability: candidate.days,
+          anonymous_reference: anonymousRef,
+        };
+
+        // Fetch CV if we want to include CV context
+        if (include_cv_context) {
+          const { data: cv } = await supabase
+            .from('candidate_cvs')
+            .select('*')
+            .eq('candidate_id', candidate_id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (cv) {
+            cvData = cv;
+            candidateContext.cv_summary = cv.parsed_content?.summary ||
+              cv.redacted_content?.structuredContent?.summary ||
+              cv.parsed_content?.raw_text?.substring(0, 500);
+          }
+        }
+      }
     }
 
     // Check for Anthropic API key
@@ -171,7 +169,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Build the prompt
-    const prompt = buildEmailPrompt(emailType, tone, candidateContext, clientContext, additionalContext, customPrompt);
+    const prompt = buildClientEmailPrompt(email_type, tone, clientContext, candidateContext, custom_prompt);
 
     // Generate email with Claude
     const message = await anthropic.messages.create({
@@ -189,38 +187,32 @@ export async function POST(request: NextRequest) {
     const generatedContent = message.content[0].type === 'text' ? message.content[0].text : '';
 
     // Parse subject and body from response
-    const { subject, body } = parseEmailResponse(generatedContent);
+    const { subject, body: emailBody } = parseEmailResponse(generatedContent);
 
     // Log the AI generation
-    const { data: logEntry, error: logError } = await supabase
+    await supabase
       .from('ai_email_logs')
       .insert({
         user_id: user.id,
-        candidate_id: candidateId,
-        client_id: clientId || null,
-        email_type: emailType,
+        candidate_id: candidate_id || null,
+        client_id: client_id,
+        email_type: email_type,
         generated_subject: subject,
-        generated_body: body,
+        generated_body: emailBody,
         model_used: 'claude-3-haiku-20240307',
         tokens_used: message.usage.input_tokens + message.usage.output_tokens,
         sent: false,
-      })
-      .select()
-      .single();
-
-    if (logError) {
-      console.error('Failed to log AI email generation:', logError);
-    }
+      });
 
     return NextResponse.json({
       success: true,
       email: {
         subject,
-        body,
-        candidateName: candidateContext.name,
-        clientName: clientContext?.surgery_name,
+        body: emailBody,
+        clientName: clientContext.surgery_name,
+        candidateName: candidateContext?.name,
+        candidateReference: candidateContext?.anonymous_reference,
         hasCV: !!cvData,
-        logId: logEntry?.id,
       },
       usage: {
         inputTokens: message.usage.input_tokens,
@@ -228,7 +220,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Email composition error:', error);
+    console.error('Client email composition error:', error);
     return NextResponse.json(
       {
         success: false,
@@ -242,12 +234,11 @@ export async function POST(request: NextRequest) {
 /**
  * Build the prompt for Claude based on email type and context
  */
-function buildEmailPrompt(
+function buildClientEmailPrompt(
   emailType: string,
   tone: string,
-  candidate: CandidateContext,
-  client: ClientContext | null,
-  additionalContext?: string,
+  client: ClientContext,
+  candidate: CandidateContext | null,
   customPrompt?: string
 ): string {
   const toneInstructions = {
@@ -257,11 +248,10 @@ function buildEmailPrompt(
   };
 
   const emailTypeInstructions: Record<string, string> = {
-    cv_submission: `Write an email to submit this candidate's CV to the dental practice. Highlight their relevant experience and qualifications. The goal is to get the practice interested in the candidate for an interview.`,
-    interview: `Write an email to schedule or confirm an interview. Be clear about logistics and next steps.`,
-    terms: `Write an email to discuss terms of employment or placement. Be professional and clear about expectations.`,
-    follow_up: `Write a follow-up email to check on the status of a previous conversation or application.`,
-    marketing: `Write a marketing email to promote this candidate to potential practices. Make it compelling but not pushy.`,
+    cv_introduction: `Write an email to introduce a dental professional candidate to this practice. Highlight their relevant experience and qualifications. The goal is to get the practice interested in the candidate for an interview. DO NOT include the candidate's name or contact details - use their reference number instead.`,
+    availability_check: `Write an email to check if this dental practice has any current or upcoming staffing needs. Be professional and offer to help with their recruitment requirements.`,
+    follow_up: `Write a follow-up email to check on the status of a previous conversation or candidate introduction.`,
+    marketing: `Write a marketing email to promote our dental recruitment services to this practice. Make it compelling but not pushy.`,
     custom: `Write a professional recruitment email based on the context provided.`,
   };
 
@@ -270,38 +260,34 @@ function buildEmailPrompt(
     ? `THE RECRUITER'S SPECIFIC REQUEST:\n${customPrompt}\n\nFollow the recruiter's instructions above while maintaining professionalism.`
     : emailTypeInstructions[emailType] || emailTypeInstructions.custom;
 
-  let prompt = `You are a professional UK dental recruitment consultant writing an email.
+  let prompt = `You are a professional UK dental recruitment consultant writing an email to a dental practice.
 
 ${toneInstructions[tone as keyof typeof toneInstructions] || toneInstructions.professional}
 
 ${taskInstructions}
 
-CANDIDATE INFORMATION:
-- Name: ${candidate.name}
+PRACTICE/CLIENT INFORMATION:
+- Practice Name: ${client.surgery_name}
+${client.contact_name ? `- Contact Name: ${client.contact_name}` : ''}
+${client.role_needed ? `- Role They Need: ${client.role_needed}` : ''}
+${client.requirements ? `- Their Requirements: ${client.requirements}` : ''}
+${client.pay_rate ? `- Pay Rate: ${client.pay_rate}` : ''}
+${client.location ? `- Location: ${client.location}` : ''}
+`;
+
+  if (candidate) {
+    prompt += `
+CANDIDATE INFORMATION (for introduction):
+- Reference Number: ${candidate.anonymous_reference}
 - Role: ${candidate.role}
 ${candidate.experience ? `- Experience: ${candidate.experience}` : ''}
 ${candidate.skills?.length ? `- Skills: ${candidate.skills.join(', ')}` : ''}
 ${candidate.qualifications?.length ? `- Qualifications: ${candidate.qualifications.join(', ')}` : ''}
 ${candidate.salary_expectation ? `- Salary Expectation: ${candidate.salary_expectation}` : ''}
 ${candidate.availability ? `- Availability: ${candidate.availability}` : ''}
-${candidate.cv_summary ? `- CV Summary: ${candidate.cv_summary}` : ''}
-`;
+${candidate.cv_summary ? `- Professional Summary: ${candidate.cv_summary}` : ''}
 
-  if (client) {
-    prompt += `
-CLIENT/PRACTICE INFORMATION:
-- Practice Name: ${client.surgery_name}
-- Role Needed: ${client.role_needed}
-${client.requirements ? `- Requirements: ${client.requirements}` : ''}
-${client.pay_rate ? `- Pay Rate: ${client.pay_rate}` : ''}
-${client.location ? `- Location: ${client.location}` : ''}
-`;
-  }
-
-  if (additionalContext) {
-    prompt += `
-ADDITIONAL CONTEXT:
-${additionalContext}
+IMPORTANT: Do NOT include the candidate's real name or personal contact details. Use only their reference number (${candidate.anonymous_reference}) when referring to them.
 `;
   }
 
@@ -312,8 +298,9 @@ IMPORTANT FORMATTING RULES:
 3. Then write the email body
 4. Keep the email concise but informative (150-300 words)
 5. Include a professional sign-off
-6. Do NOT include any contact details of the candidate in the email body - these will be provided separately
+6. Address the practice by name where appropriate
 7. Sign the email as "The Locum Meds Recruitment Team"
+${candidate ? `8. Mention that a redacted CV is attached (if applicable)` : ''}
 
 Generate the email now:`;
 
@@ -344,7 +331,7 @@ function parseEmailResponse(response: string): { subject: string; body: string }
 
   // Fallback if no subject found
   if (!subject) {
-    subject = 'Candidate Introduction - Dental Professional';
+    subject = 'Dental Recruitment Opportunity';
     body = response;
   }
 

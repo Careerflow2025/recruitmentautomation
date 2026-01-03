@@ -14,6 +14,8 @@ interface RedactRequest {
     redactLinkedIn?: boolean;
     redactSocialMedia?: boolean;
     redactWebsites?: boolean;
+    redactEmployers?: boolean;
+    redactReferences?: boolean;
   };
   generatePDF?: boolean;
 }
