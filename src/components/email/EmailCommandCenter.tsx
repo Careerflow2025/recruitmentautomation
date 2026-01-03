@@ -54,6 +54,23 @@ export default function EmailCommandCenter({
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  // Bulk Campaign state
+  const [allCandidates, setAllCandidates] = useState<CandidateWithCV[]>([]);
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set());
+  const [bulkSubject, setBulkSubject] = useState('');
+  const [bulkBody, setBulkBody] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkSending, setBulkSending] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ sent: number; failed: number } | null>(null);
+  const [roleFilter, setRoleFilter] = useState('');
+  const [postcodeFilter, setPostcodeFilter] = useState('');
+
+  // AI Smart Select state
+  const [smartCriteria, setSmartCriteria] = useState('');
+  const [smartSearching, setSmartSearching] = useState(false);
+  const [smartResults, setSmartResults] = useState<any[]>([]);
+  const [smartParsedCriteria, setSmartParsedCriteria] = useState<any>(null);
+
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -124,6 +141,161 @@ export default function EmailCommandCenter({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose]);
 
+  // Load all candidates for bulk campaign
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'bulk') return;
+
+    const loadAllCandidates = async () => {
+      setBulkLoading(true);
+      try {
+        const { data: candidates } = await supabase
+          .from('candidates')
+          .select('id, first_name, last_name, email, phone, role, postcode, days')
+          .order('added_at', { ascending: false });
+
+        setAllCandidates(candidates || []);
+      } catch (err) {
+        console.error('Failed to load candidates:', err);
+      } finally {
+        setBulkLoading(false);
+      }
+    };
+
+    loadAllCandidates();
+  }, [isOpen, activeTab, supabase]);
+
+  // Filter candidates for bulk campaign
+  const filteredBulkCandidates = allCandidates.filter(c => {
+    if (!c.email) return false; // Must have email
+    if (roleFilter && !c.role?.toLowerCase().includes(roleFilter.toLowerCase())) return false;
+    if (postcodeFilter && !c.postcode?.toLowerCase().startsWith(postcodeFilter.toLowerCase())) return false;
+    return true;
+  });
+
+  // Toggle candidate selection
+  const toggleCandidateSelection = (id: string) => {
+    setSelectedCandidateIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  // Select/deselect all filtered candidates
+  const toggleSelectAll = () => {
+    if (selectedCandidateIds.size === filteredBulkCandidates.length) {
+      setSelectedCandidateIds(new Set());
+    } else {
+      setSelectedCandidateIds(new Set(filteredBulkCandidates.map(c => c.id)));
+    }
+  };
+
+  // Send bulk campaign
+  const handleSendBulkCampaign = async () => {
+    if (selectedCandidateIds.size === 0 || !bulkSubject || !bulkBody) {
+      setError('Please select candidates and fill in subject and body');
+      return;
+    }
+
+    setBulkSending(true);
+    setError(null);
+    setBulkResult(null);
+
+    try {
+      // Create campaign
+      const createResponse = await fetch('/api/emails/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: `Campaign ${new Date().toLocaleDateString()}`,
+          subject: bulkSubject,
+          body_html: bulkBody,
+          candidate_ids: Array.from(selectedCandidateIds),
+        }),
+      });
+
+      const createResult = await createResponse.json();
+      if (!createResult.success) {
+        throw new Error(createResult.error || 'Failed to create campaign');
+      }
+
+      // Send campaign
+      const sendResponse = await fetch(`/api/emails/campaigns/${createResult.campaign.id}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const sendResult = await sendResponse.json();
+      if (!sendResult.success) {
+        throw new Error(sendResult.error || 'Failed to send campaign');
+      }
+
+      setBulkResult({
+        sent: sendResult.results.sent,
+        failed: sendResult.results.failed,
+      });
+
+      // Clear selection after success
+      setTimeout(() => {
+        setSelectedCandidateIds(new Set());
+        setBulkSubject('');
+        setBulkBody('');
+      }, 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send campaign');
+    } finally {
+      setBulkSending(false);
+    }
+  };
+
+  // AI Smart Select search
+  const handleSmartSearch = async () => {
+    if (!smartCriteria.trim()) {
+      setError('Please enter selection criteria');
+      return;
+    }
+
+    setSmartSearching(true);
+    setError(null);
+    setSmartResults([]);
+    setSmartParsedCriteria(null);
+
+    try {
+      const response = await fetch('/api/candidates/smart-select', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          criteria: smartCriteria,
+          limit: 30,
+        }),
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to search candidates');
+      }
+
+      setSmartResults(result.candidates || []);
+      setSmartParsedCriteria(result.parsedCriteria);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to search');
+    } finally {
+      setSmartSearching(false);
+    }
+  };
+
+  // Add smart select results to bulk campaign
+  const addSmartResultsToBulk = () => {
+    const newIds = new Set(selectedCandidateIds);
+    smartResults.forEach(c => newIds.add(c.id));
+    setSelectedCandidateIds(newIds);
+    setActiveTab('bulk');
+  };
+
   // Generate email with AI
   const handleGenerateWithAI = async () => {
     if (!candidate) return;
@@ -148,8 +320,9 @@ export default function EmailCommandCenter({
         throw new Error(result.error || 'Failed to generate email');
       }
 
-      setSubject(result.subject);
-      setBody(result.body_html);
+      // Response structure: { success, email: { subject, body }, usage }
+      setSubject(result.email.subject);
+      setBody(result.email.body);
       setAiGenerated(true);
     } catch (err) {
       console.error('AI generation failed:', err);
@@ -542,39 +715,327 @@ export default function EmailCommandCenter({
 
               {/* Bulk Campaign Tab */}
               {activeTab === 'bulk' && (
-                <div className="text-center py-12">
-                  <div className="text-6xl mb-4">📊</div>
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                    Bulk Email Campaigns
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-6">
-                    Send emails to multiple candidates at once with Brevo integration.
-                  </p>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 max-w-md mx-auto">
-                    <p className="text-blue-800 dark:text-blue-200">
-                      🚧 Coming Soon: Campaign builder with template selection,
-                      recipient filtering, and delivery tracking.
-                    </p>
+                <div className="space-y-6">
+                  {/* Campaign Result */}
+                  {bulkResult && (
+                    <div className={`rounded-lg p-4 ${
+                      bulkResult.failed === 0
+                        ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700'
+                        : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700'
+                    }`}>
+                      <p className={bulkResult.failed === 0 ? 'text-green-800 dark:text-green-200' : 'text-amber-800 dark:text-amber-200'}>
+                        {bulkResult.failed === 0 ? '✅' : '⚠️'} Campaign sent: {bulkResult.sent} emails delivered
+                        {bulkResult.failed > 0 && `, ${bulkResult.failed} failed`}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Filters */}
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Filter Candidates</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Role</label>
+                        <input
+                          type="text"
+                          value={roleFilter}
+                          onChange={(e) => setRoleFilter(e.target.value)}
+                          placeholder="e.g., Dental Nurse"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Postcode Prefix</label>
+                        <input
+                          type="text"
+                          value={postcodeFilter}
+                          onChange={(e) => setPostcodeFilter(e.target.value)}
+                          placeholder="e.g., SW, E, NW"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Candidate Selection */}
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedCandidateIds.size === filteredBulkCandidates.length && filteredBulkCandidates.length > 0}
+                            onChange={toggleSelectAll}
+                            className="w-4 h-4 text-blue-600 rounded"
+                          />
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Select All
+                          </span>
+                        </label>
+                      </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        {selectedCandidateIds.size} of {filteredBulkCandidates.length} selected
+                        {filteredBulkCandidates.length !== allCandidates.length && (
+                          <span className="text-xs ml-1">({allCandidates.length} total)</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="max-h-48 overflow-y-auto">
+                      {bulkLoading ? (
+                        <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+                          <svg className="animate-spin h-6 w-6 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          Loading candidates...
+                        </div>
+                      ) : filteredBulkCandidates.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+                          No candidates with email addresses found
+                        </div>
+                      ) : (
+                        <table className="w-full text-sm">
+                          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            {filteredBulkCandidates.map((c) => (
+                              <tr
+                                key={c.id}
+                                className={`hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${
+                                  selectedCandidateIds.has(c.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                                }`}
+                                onClick={() => toggleCandidateSelection(c.id)}
+                              >
+                                <td className="px-4 py-2 w-10">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedCandidateIds.has(c.id)}
+                                    onChange={() => {}}
+                                    className="w-4 h-4 text-blue-600 rounded"
+                                  />
+                                </td>
+                                <td className="px-4 py-2 text-gray-900 dark:text-white">
+                                  {c.first_name} {c.last_name}
+                                </td>
+                                <td className="px-4 py-2 text-gray-500 dark:text-gray-400">
+                                  {c.role || '-'}
+                                </td>
+                                <td className="px-4 py-2 text-gray-500 dark:text-gray-400">
+                                  {c.postcode || '-'}
+                                </td>
+                                <td className="px-4 py-2 text-gray-500 dark:text-gray-400 truncate max-w-[150px]">
+                                  {c.email}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Email Composer */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Subject <span className="text-xs text-gray-400">(use {'{{first_name}}'} for personalization)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={bulkSubject}
+                        onChange={(e) => setBulkSubject(e.target.value)}
+                        placeholder="e.g., Exciting Opportunity for {{first_name}}"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Email Body <span className="text-xs text-gray-400">(use {'{{first_name}}'}, {'{{last_name}}'}, {'{{candidate_name}}'})</span>
+                      </label>
+                      <textarea
+                        value={bulkBody}
+                        onChange={(e) => setBulkBody(e.target.value)}
+                        rows={8}
+                        placeholder="Dear {{first_name}},&#10;&#10;We have exciting opportunities that match your profile...&#10;&#10;Best regards"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Send Button */}
+                  <div className="flex justify-end pt-4">
+                    <button
+                      onClick={handleSendBulkCampaign}
+                      disabled={bulkSending || selectedCandidateIds.size === 0 || !bulkSubject || !bulkBody}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                    >
+                      {bulkSending ? (
+                        <>
+                          <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          <span>Sending to {selectedCandidateIds.size} recipients...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>📤</span>
+                          <span>Send Campaign to {selectedCandidateIds.size} Recipients</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               )}
 
               {/* AI Smart Select Tab */}
               {activeTab === 'ai-select' && (
-                <div className="text-center py-12">
-                  <div className="text-6xl mb-4">🎯</div>
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                    AI Smart Selection
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-6">
-                    Let Claude AI recommend which candidates to email based on your criteria.
-                  </p>
-                  <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-6 max-w-md mx-auto">
-                    <p className="text-purple-800 dark:text-purple-200">
-                      🚧 Coming Soon: Natural language criteria input,
-                      AI-powered candidate matching, and smart recommendations.
+                <div className="space-y-6">
+                  {/* Header */}
+                  <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+                    <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-1">
+                      AI-Powered Candidate Selection
+                    </h3>
+                    <p className="text-sm text-purple-700 dark:text-purple-300">
+                      Describe who you want to email in plain English. Claude AI will find matching candidates.
                     </p>
                   </div>
+
+                  {/* Search Input */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Selection Criteria
+                    </label>
+                    <textarea
+                      value={smartCriteria}
+                      onChange={(e) => setSmartCriteria(e.target.value)}
+                      rows={3}
+                      placeholder="Examples:&#10;• Dental nurses in London available Monday to Friday&#10;• Experienced dentists in SW postcodes&#10;• All hygienists with weekend availability"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                    />
+                    <button
+                      onClick={handleSmartSearch}
+                      disabled={smartSearching || !smartCriteria.trim()}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {smartSearching ? (
+                        <>
+                          <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          <span>AI is searching...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>🤖</span>
+                          <span>Find Candidates with AI</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Parsed Criteria Display */}
+                  {smartParsedCriteria && (
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                      <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        AI Understood:
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {smartParsedCriteria.role && (
+                          <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full text-sm">
+                            Role: {smartParsedCriteria.role}
+                          </span>
+                        )}
+                        {smartParsedCriteria.postcode_prefix && (
+                          <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-full text-sm">
+                            Area: {smartParsedCriteria.postcode_prefix}
+                          </span>
+                        )}
+                        {smartParsedCriteria.availability && (
+                          <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 rounded-full text-sm">
+                            Availability: {smartParsedCriteria.availability}
+                          </span>
+                        )}
+                        {smartParsedCriteria.experience_keywords?.length > 0 && (
+                          <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 rounded-full text-sm">
+                            Keywords: {smartParsedCriteria.experience_keywords.join(', ')}
+                          </span>
+                        )}
+                        <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-sm">
+                          Has Email: Yes
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Results */}
+                  {smartResults.length > 0 && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                          Found {smartResults.length} Matching Candidates
+                        </h4>
+                        <button
+                          onClick={addSmartResultsToBulk}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                        >
+                          Add All to Bulk Campaign →
+                        </button>
+                      </div>
+
+                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                            <tr>
+                              <th className="px-4 py-2 text-left text-gray-500 dark:text-gray-400">Match</th>
+                              <th className="px-4 py-2 text-left text-gray-500 dark:text-gray-400">Name</th>
+                              <th className="px-4 py-2 text-left text-gray-500 dark:text-gray-400">Role</th>
+                              <th className="px-4 py-2 text-left text-gray-500 dark:text-gray-400">Postcode</th>
+                              <th className="px-4 py-2 text-left text-gray-500 dark:text-gray-400">Reason</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            {smartResults.map((c: any) => (
+                              <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <td className="px-4 py-2">
+                                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                                    (c.match_score || 0) >= 80
+                                      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                                      : (c.match_score || 0) >= 60
+                                      ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'
+                                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                                  }`}>
+                                    {c.match_score || 70}%
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2 text-gray-900 dark:text-white">
+                                  {c.first_name} {c.last_name}
+                                </td>
+                                <td className="px-4 py-2 text-gray-500 dark:text-gray-400">
+                                  {c.role || '-'}
+                                </td>
+                                <td className="px-4 py-2 text-gray-500 dark:text-gray-400">
+                                  {c.postcode || '-'}
+                                </td>
+                                <td className="px-4 py-2 text-gray-500 dark:text-gray-400 text-xs max-w-[200px] truncate">
+                                  {c.match_reason || 'Matches criteria'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Empty State */}
+                  {!smartSearching && smartResults.length === 0 && smartParsedCriteria && (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      <div className="text-4xl mb-2">🔍</div>
+                      <p>No candidates matched your criteria. Try broadening your search.</p>
+                    </div>
+                  )}
                 </div>
               )}
             </>
