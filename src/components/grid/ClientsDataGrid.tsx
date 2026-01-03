@@ -16,7 +16,7 @@ import CustomColumnManager from './CustomColumnManager';
 import EditableColumnHeader from './EditableColumnHeader';
 import MultiNotesPopup from './MultiNotesPopup';
 import BulkParseModal from './BulkParseModal';
-import ClientEmailCommandCenter from '@/components/email/ClientEmailCommandCenter';
+import SimpleEmailModal from '@/components/email/SimpleEmailModal';
 
 // Extended Client type with user_id (exists in DB but not in type definition)
 type ClientWithUser = Client & { user_id?: string };
@@ -37,7 +37,7 @@ export default function ClientsDataGrid() {
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showBulkParseModal, setShowBulkParseModal] = useState(false);
-  const [emailModalClientId, setEmailModalClientId] = useState<string | null>(null);
+  const [emailModalClientIds, setEmailModalClientIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // AI Validation state: tracks validation status for role and postcode fields
@@ -472,11 +472,11 @@ export default function ClientsDataGrid() {
         ),
         renderCell: ({ row }) => (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
-            {/* Email Icon - Opens Client Email Command Center */}
+            {/* Email Icon - Opens Simple Email Modal */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setEmailModalClientId(row.id);
+                setEmailModalClientIds([row.id]);
               }}
               style={{
                 display: 'flex',
@@ -1265,9 +1265,18 @@ export default function ClientsDataGrid() {
         </div>
         <div className="grid-toolbar-actions">
           {selectedRows.size > 0 && (
-            <button onClick={handleBulkDelete} className="grid-toolbar-button">
-              🗑️ Delete ({selectedRows.size})
-            </button>
+            <>
+              <button
+                onClick={() => setEmailModalClientIds(Array.from(selectedRows))}
+                className="grid-toolbar-button"
+                style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white' }}
+              >
+                ✉️ Email Selected ({selectedRows.size})
+              </button>
+              <button onClick={handleBulkDelete} className="grid-toolbar-button">
+                🗑️ Delete ({selectedRows.size})
+              </button>
+            </>
           )}
           <button onClick={handleDownloadTemplate} className="grid-toolbar-button" title="Download Excel template">
             📥 Download Template
@@ -1365,12 +1374,12 @@ export default function ClientsDataGrid() {
         />
       )}
 
-      {/* Client Email Command Center Modal */}
-      {emailModalClientId && (
-        <ClientEmailCommandCenter
-          clientId={emailModalClientId}
-          isOpen={!!emailModalClientId}
-          onClose={() => setEmailModalClientId(null)}
+      {/* Simple Email Modal (works for 1 or many clients!) */}
+      {emailModalClientIds.length > 0 && (
+        <SimpleEmailModal
+          clientIds={emailModalClientIds}
+          isOpen={emailModalClientIds.length > 0}
+          onClose={() => setEmailModalClientIds([])}
         />
       )}
     </div>
