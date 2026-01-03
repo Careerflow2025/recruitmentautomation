@@ -19,6 +19,7 @@ import BulkParseModal from './BulkParseModal';
 import CVViewerModal from '@/components/cv/CVViewerModal';
 import CVPreviewModal from '@/components/cv/CVPreviewModal';
 import CVUploader from '@/components/cv/CVUploader';
+import EmailCommandCenter from '@/components/email/EmailCommandCenter';
 import { parseNameFromEmail, findDuplicateCandidates, getDuplicateReasonText, isValidEmail } from '@/lib/utils/candidateHelpers';
 
 export default function CandidatesDataGrid() {
@@ -42,6 +43,7 @@ export default function CandidatesDataGrid() {
   const [selectedCVId, setSelectedCVId] = useState<string | null>(null);
   const [previewCVId, setPreviewCVId] = useState<string | null>(null);
   const [candidateCVs, setCandidateCVs] = useState<Record<string, { id: string; filename: string; status: string }>>({});
+  const [emailModalCandidateId, setEmailModalCandidateId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // AI Validation state: tracks validation status for role and postcode fields
@@ -591,6 +593,40 @@ export default function CandidatesDataGrid() {
               >
                 {hasCV ? '📄' : '✗'}
               </button>
+
+              {/* Email Icon - Opens Email Command Center */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEmailModalCandidateId(row.id);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: '3px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  backgroundColor: row.email ? '#dbeafe' : '#fee2e2',
+                  color: row.email ? '#3b82f6' : '#dc2626',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  flexShrink: 0,
+                  transition: 'transform 0.1s',
+                }}
+                title={row.email ? `Email: ${row.email}` : 'No email address'}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                ✉️
+              </button>
+
               {/* First Name */}
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {row.first_name || ''}
@@ -1799,6 +1835,15 @@ export default function CandidatesDataGrid() {
           cvId={previewCVId}
           isOpen={!!previewCVId}
           onClose={() => setPreviewCVId(null)}
+        />
+      )}
+
+      {/* Email Command Center Modal */}
+      {emailModalCandidateId && (
+        <EmailCommandCenter
+          candidateId={emailModalCandidateId}
+          isOpen={!!emailModalCandidateId}
+          onClose={() => setEmailModalCandidateId(null)}
         />
       )}
     </div>
