@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       cvQuery = cvQuery.eq('id', cv_id);
     }
 
-    const { data: cv, error: cvError } = await cvQuery.order('uploaded_at', { ascending: false }).limit(1).single();
+    const { data: cv, error: cvError } = await cvQuery.order('created_at', { ascending: false }).limit(1).single();
 
     if (cvError || !cv) {
       // If no CV exists, generate a simple profile PDF
