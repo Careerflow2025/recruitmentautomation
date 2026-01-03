@@ -24,6 +24,7 @@ interface Candidate {
   last_name?: string;
   role?: string;
   postcode?: string;
+  has_cv?: boolean; // Whether candidate has a CV with parsed data
 }
 
 type Status = 'idle' | 'generating' | 'ready' | 'sending' | 'sent' | 'error';
@@ -83,7 +84,27 @@ export default function SimpleEmailModal({
           .limit(100);
 
         if (candidatesData) {
-          setCandidates(candidatesData);
+          // Check which candidates have CVs with parsed data
+          const candidateIds = candidatesData.map(c => c.id);
+          const { data: cvsData } = await supabase
+            .from('candidate_cvs')
+            .select('candidate_id, cv_parsed_data')
+            .in('candidate_id', candidateIds);
+
+          // Create a set of candidate IDs that have CVs with parsed data
+          const candidatesWithCV = new Set(
+            (cvsData || [])
+              .filter(cv => cv.cv_parsed_data !== null)
+              .map(cv => cv.candidate_id)
+          );
+
+          // Mark candidates with has_cv flag
+          const candidatesWithCVFlag = candidatesData.map(c => ({
+            ...c,
+            has_cv: candidatesWithCV.has(c.id),
+          }));
+
+          setCandidates(candidatesWithCVFlag);
         }
       } catch (error) {
         console.error('Failed to load data:', error);
@@ -380,14 +401,25 @@ export default function SimpleEmailModal({
                   <option value="">No CV attachment</option>
                   {candidates.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.first_name} {c.last_name} - {c.role || 'Unknown role'} ({c.postcode || 'No postcode'})
+                      {c.has_cv ? '✅' : '⚠️'} {c.first_name} {c.last_name} - {c.role || 'Unknown role'} ({c.postcode || 'No postcode'})
                     </option>
                   ))}
                 </select>
-                {selectedCandidateId && (
+                {selectedCandidateId && selectedCandidate?.has_cv && (
                   <p className="mt-2 text-xs text-blue-700 dark:text-blue-300">
                     🔒 Contact details will be removed from CV (redacted)
                   </p>
+                )}
+                {selectedCandidateId && selectedCandidate && !selectedCandidate.has_cv && (
+                  <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg">
+                    <p className="text-xs text-amber-800 dark:text-amber-200 flex items-center gap-1">
+                      <span>⚠️</span>
+                      <span>
+                        <strong>No CV uploaded</strong> for this candidate. The attached PDF will only contain basic profile info (role, location).
+                        For full CV content, upload their CV first.
+                      </span>
+                    </p>
+                  </div>
                 )}
               </div>
 
@@ -465,14 +497,26 @@ export default function SimpleEmailModal({
 
                   {/* CV Attachment Info */}
                   {selectedCandidateId && selectedCandidate && (
-                    <div className="flex items-center gap-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                      <span className="text-blue-600 dark:text-blue-400 text-xl">📎</span>
+                    <div className={`flex items-center gap-4 p-4 rounded-lg border ${
+                      selectedCandidate.has_cv
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700'
+                        : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700'
+                    }`}>
+                      <span className={`text-xl ${selectedCandidate.has_cv ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                        {selectedCandidate.has_cv ? '📎' : '⚠️'}
+                      </span>
                       <div>
-                        <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                          CV Attached: {selectedCandidate.first_name} {selectedCandidate.last_name}
+                        <p className={`text-sm font-medium ${selectedCandidate.has_cv ? 'text-blue-900 dark:text-blue-100' : 'text-amber-900 dark:text-amber-100'}`}>
+                          {selectedCandidate.has_cv
+                            ? `CV Attached: ${selectedCandidate.first_name} ${selectedCandidate.last_name}`
+                            : `Profile Only: ${selectedCandidate.first_name} ${selectedCandidate.last_name}`
+                          }
                         </p>
-                        <p className="text-xs text-blue-700 dark:text-blue-300">
-                          🔒 Contact details will be redacted
+                        <p className={`text-xs ${selectedCandidate.has_cv ? 'text-blue-700 dark:text-blue-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                          {selectedCandidate.has_cv
+                            ? '🔒 Contact details will be redacted'
+                            : 'No CV uploaded - basic profile info only'
+                          }
                         </p>
                       </div>
                     </div>
