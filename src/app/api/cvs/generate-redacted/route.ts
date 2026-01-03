@@ -10,7 +10,9 @@ interface GenerateRedactedRequest {
 
 /**
  * POST /api/cvs/generate-redacted
- * Generate a professional redacted CV PDF for email attachment
+ * Generate a redacted CV PDF that preserves FULL content
+ * Only removes: name, email, phone, address, LinkedIn
+ * Only anonymizes: MOST RECENT employer
  */
 export async function POST(request: NextRequest) {
   try {
@@ -67,7 +69,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get CV with redacted content
+    // Get CV with full text content
     let cvQuery = supabase
       .from('candidate_cvs')
       .select('*')
@@ -80,48 +82,67 @@ export async function POST(request: NextRequest) {
 
     const { data: cv, error: cvError } = await cvQuery.order('created_at', { ascending: false }).limit(1).single();
 
-    if (cvError || !cv) {
-      // If no CV exists, generate a simple profile PDF
-      console.log('No CV found, generating profile PDF from candidate data only');
-    }
-
-    // Get parsed CV data (rich content from AI parsing)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const parsedData: any = cv?.cv_parsed_data;
-    const candidateLocation = parsedData?.location || candidate.postcode || '';
-
     // Generate anonymous reference
     const candidateReference = `DN-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
 
-    // Build redacted content from parsed CV data
-    const redactedContent = {
-      candidateReference,
-      role: parsedData?.role || parsedData?.desired_role || candidate.role || 'Dental Professional',
-      generalArea: generalizeLocation(candidateLocation),
-      summary: parsedData?.summary || candidate.notes || 'Experienced dental professional seeking new opportunities.',
-      skills: parsedData?.skills || [],
-      experience: (parsedData?.work_history || []).map((exp: { role?: string; employer?: string; duration?: string; description?: string }, index: number) => ({
-        title: exp.role || 'Position',
-        company: anonymizeEmployer(exp.employer || '', candidateLocation, index === 0),
-        duration: exp.duration || '',
-        description: exp.description || '',
-      })),
-      education: (parsedData?.education || []).map((edu: { qualification?: string; institution?: string; year?: number | string }) => ({
-        qualification: edu.qualification || '',
-        institution: edu.institution || '',
-        year: edu.year?.toString() || '',
-      })),
-      qualifications: parsedData?.qualifications || [],
-    };
+    // Get full CV text
+    const fullCvText = cv?.cv_text_content;
 
-    // Generate PDF
-    const pdfBytes = await generateRedactedPDF(redactedContent, candidate);
+    // Get parsed data for employer info
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parsedData: any = cv?.cv_parsed_data;
+    const mostRecentEmployer = parsedData?.work_history?.[0]?.employer;
+
+    let pdfBytes: Uint8Array;
+
+    if (fullCvText) {
+      // FULL CV TEXT AVAILABLE - Use it!
+      console.log('Using full CV text for PDF generation');
+
+      // Redact contacts from full text
+      const redactedText = redactContactsFromText(fullCvText, {
+        candidateName: `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim(),
+        firstName: candidate.first_name,
+        lastName: candidate.last_name,
+        mostRecentEmployer: mostRecentEmployer,
+      });
+
+      // Generate PDF from full redacted text
+      pdfBytes = await generateFullTextPDF(redactedText, candidateReference);
+    } else {
+      // NO FULL TEXT - Fallback to parsed data (summarized version)
+      console.log('No full CV text, falling back to parsed data');
+
+      const candidateLocation = parsedData?.location || candidate.postcode || '';
+
+      const redactedContent = {
+        candidateReference,
+        role: parsedData?.role || parsedData?.desired_role || candidate.role || 'Dental Professional',
+        generalArea: generalizeLocation(candidateLocation),
+        summary: parsedData?.summary || candidate.notes || 'Experienced dental professional seeking new opportunities.',
+        skills: parsedData?.skills || [],
+        experience: (parsedData?.work_history || []).map((exp: { role?: string; employer?: string; duration?: string; description?: string }, index: number) => ({
+          title: exp.role || 'Position',
+          company: index === 0 ? anonymizeMostRecentEmployer(exp.employer || '') : (exp.employer || 'Healthcare Practice'),
+          duration: exp.duration || '',
+          description: exp.description || '',
+        })),
+        education: (parsedData?.education || []).map((edu: { qualification?: string; institution?: string; year?: number | string }) => ({
+          qualification: edu.qualification || '',
+          institution: edu.institution || '',
+          year: edu.year?.toString() || '',
+        })),
+        qualifications: parsedData?.qualifications || [],
+      };
+
+      pdfBytes = await generateStructuredPDF(redactedContent, candidate);
+    }
 
     // Convert to base64 for response
     const base64Pdf = Buffer.from(pdfBytes).toString('base64');
 
-    // Store in Supabase storage temporarily (optional - for email attachment)
-    const filename = `redacted_cv_${redactedContent.candidateReference}_${Date.now()}.pdf`;
+    // Store in Supabase storage temporarily
+    const filename = `redacted_cv_${candidateReference}_${Date.now()}.pdf`;
     const storagePath = `redacted-cvs/${user.id}/${filename}`;
 
     const { error: uploadError } = await supabase.storage
@@ -142,12 +163,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       candidateId: candidate_id,
-      anonymousReference: redactedContent.candidateReference,
+      anonymousReference: candidateReference,
       filename,
       contentType: 'application/pdf',
       base64: base64Pdf,
       publicUrl,
       size: pdfBytes.length,
+      usedFullText: !!fullCvText,
     });
 
   } catch (error) {
@@ -163,9 +185,350 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Generate a professional PDF from redacted content
+ * Escape special regex characters in a string
  */
-async function generateRedactedPDF(
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Redact contact information from full CV text
+ * Preserves ALL other content exactly as-is
+ */
+function redactContactsFromText(
+  text: string,
+  options: {
+    candidateName?: string;
+    firstName?: string;
+    lastName?: string;
+    mostRecentEmployer?: string;
+  }
+): string {
+  let redacted = text;
+
+  // 1. Remove candidate full name (case-insensitive)
+  if (options.candidateName && options.candidateName.trim()) {
+    const nameRegex = new RegExp(escapeRegex(options.candidateName), 'gi');
+    redacted = redacted.replace(nameRegex, '[Candidate]');
+  }
+
+  // 2. Remove first name separately (but be careful with common words)
+  if (options.firstName && options.firstName.trim().length > 2) {
+    // Only replace if it looks like a standalone name (word boundary)
+    const firstNameRegex = new RegExp(`\\b${escapeRegex(options.firstName)}\\b`, 'gi');
+    redacted = redacted.replace(firstNameRegex, '[Candidate]');
+  }
+
+  // 3. Remove last name separately
+  if (options.lastName && options.lastName.trim().length > 2) {
+    const lastNameRegex = new RegExp(`\\b${escapeRegex(options.lastName)}\\b`, 'gi');
+    redacted = redacted.replace(lastNameRegex, '[Candidate]');
+  }
+
+  // 4. Remove email addresses
+  redacted = redacted.replace(
+    /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+    '[Email on request]'
+  );
+
+  // 5. Remove UK phone numbers (various formats)
+  // Mobile: 07xxx, Landline: 01xxx/02xxx, International: +44
+  redacted = redacted.replace(
+    /(\+44\s?|0)(\d{4}[\s-]?\d{6}|\d{3}[\s-]?\d{4}[\s-]?\d{4}|\d{2}[\s-]?\d{4}[\s-]?\d{4}|\d{10,11})/g,
+    '[Phone on request]'
+  );
+
+  // 6. Remove addresses (house number + street name)
+  redacted = redacted.replace(
+    /\d+[a-zA-Z]?\s+[\w\s]+(Street|Road|Lane|Avenue|Drive|Close|Way|Court|Gardens|Place|Crescent|Terrace|Grove|Mews|Row|Square|Hill|Park|Rise|Walk|Gate|Parade)\b[^,\n]*/gi,
+    '[Address on request]'
+  );
+
+  // 7. Generalize full postcodes (keep area prefix, remove specific code)
+  // E.g., "NW10 5AB" → "NW10 area"
+  redacted = redacted.replace(
+    /\b([A-Z]{1,2}\d{1,2}[A-Z]?)\s*\d[A-Z]{2}\b/gi,
+    '$1 area'
+  );
+
+  // 8. Remove LinkedIn URLs
+  redacted = redacted.replace(
+    /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[^\s,)\]]+/gi,
+    '[LinkedIn on request]'
+  );
+
+  // 9. Remove other social media URLs
+  redacted = redacted.replace(
+    /(?:https?:\/\/)?(?:www\.)?(twitter|x|facebook|instagram)\.com\/[^\s,)\]]+/gi,
+    '[Social media on request]'
+  );
+
+  // 10. Anonymize ONLY the most recent employer
+  if (options.mostRecentEmployer && options.mostRecentEmployer.trim()) {
+    const employerRegex = new RegExp(escapeRegex(options.mostRecentEmployer), 'gi');
+    const anonymizedName = anonymizeMostRecentEmployer(options.mostRecentEmployer);
+    redacted = redacted.replace(employerRegex, anonymizedName);
+  }
+
+  return redacted;
+}
+
+/**
+ * Anonymize employer name based on type
+ */
+function anonymizeMostRecentEmployer(employer: string): string {
+  if (!employer) return 'A Healthcare Practice';
+
+  const lower = employer.toLowerCase();
+
+  if (lower.includes('dental') || lower.includes('dentist') || lower.includes('orthodont')) {
+    return 'A Dental Practice';
+  }
+  if (lower.includes('gp') || lower.includes('surgery') || lower.includes('medical') || lower.includes('doctor')) {
+    return 'A GP Practice';
+  }
+  if (lower.includes('hospital') || lower.includes('nhs') || lower.includes('trust')) {
+    return 'An NHS Trust';
+  }
+  if (lower.includes('clinic') || lower.includes('health') || lower.includes('centre') || lower.includes('center')) {
+    return 'A Healthcare Clinic';
+  }
+  if (lower.includes('pharmacy') || lower.includes('chemist')) {
+    return 'A Pharmacy';
+  }
+  return 'A Healthcare Practice';
+}
+
+/**
+ * Generate PDF from FULL redacted text (preserves original structure)
+ */
+async function generateFullTextPDF(
+  redactedText: string,
+  reference: string
+): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create();
+  let page = pdfDoc.addPage([595, 842]); // A4
+
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  const { height } = page.getSize();
+  const margin = 50;
+  const lineHeight = 12;
+  const fontSize = 9;
+  const maxWidth = 595 - margin * 2;
+  let yPos = height - margin;
+
+  // Header with reference
+  page.drawText('CANDIDATE PROFILE', {
+    x: margin,
+    y: yPos,
+    size: 14,
+    font: boldFont,
+    color: rgb(0.2, 0.4, 0.6),
+  });
+  yPos -= 20;
+
+  page.drawText(`Reference: ${reference}`, {
+    x: margin,
+    y: yPos,
+    size: 9,
+    font: boldFont,
+    color: rgb(0.3, 0.3, 0.3),
+  });
+  yPos -= 10;
+
+  // Divider
+  page.drawLine({
+    start: { x: margin, y: yPos },
+    end: { x: 595 - margin, y: yPos },
+    thickness: 0.5,
+    color: rgb(0.7, 0.7, 0.7),
+  });
+  yPos -= 20;
+
+  // Process full CV text line by line
+  const lines = redactedText.split('\n');
+
+  for (const line of lines) {
+    // Skip very short empty lines but keep some spacing
+    if (line.trim() === '') {
+      yPos -= lineHeight * 0.5;
+      continue;
+    }
+
+    // Check if we need a new page
+    if (yPos < margin + 40) {
+      // Add footer to current page
+      page.drawText('Contact details available upon successful placement', {
+        x: margin,
+        y: 25,
+        size: 7,
+        font,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+
+      // Create new page
+      page = pdfDoc.addPage([595, 842]);
+      yPos = height - margin;
+    }
+
+    // Word wrap the line
+    const wrappedLines = wrapText(line, font, fontSize, maxWidth);
+
+    for (const wrappedLine of wrappedLines) {
+      // Check again if need new page after wrapping
+      if (yPos < margin + 40) {
+        page.drawText('Contact details available upon successful placement', {
+          x: margin,
+          y: 25,
+          size: 7,
+          font,
+          color: rgb(0.5, 0.5, 0.5),
+        });
+
+        page = pdfDoc.addPage([595, 842]);
+        yPos = height - margin;
+      }
+
+      // Detect if line looks like a header (ALL CAPS or short and bold-looking)
+      const isHeader = wrappedLine === wrappedLine.toUpperCase() &&
+                       wrappedLine.length > 3 &&
+                       wrappedLine.length < 50 &&
+                       !wrappedLine.includes('[');
+
+      if (isHeader) {
+        yPos -= 5; // Extra space before headers
+        page.drawText(wrappedLine, {
+          x: margin,
+          y: yPos,
+          size: 10,
+          font: boldFont,
+          color: rgb(0.2, 0.4, 0.6),
+        });
+        yPos -= lineHeight + 3;
+      } else {
+        page.drawText(wrappedLine, {
+          x: margin,
+          y: yPos,
+          size: fontSize,
+          font,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+        yPos -= lineHeight;
+      }
+    }
+  }
+
+  // Footer on last page
+  page.drawText('Contact details available upon successful placement', {
+    x: margin,
+    y: 25,
+    size: 7,
+    font,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+
+  page.drawText(`Generated: ${new Date().toLocaleDateString('en-GB')}`, {
+    x: 595 - margin - 80,
+    y: 25,
+    size: 7,
+    font,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+
+  return await pdfDoc.save();
+}
+
+/**
+ * Word wrap text to fit within maxWidth
+ */
+function wrapText(
+  text: string,
+  font: Awaited<ReturnType<typeof StandardFonts.Helvetica extends infer T ? T : never>>,
+  fontSize: number,
+  maxWidth: number
+): string[] {
+  if (!text.trim()) return [''];
+
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    const testLine = currentLine + (currentLine ? ' ' : '') + word;
+    // Approximate width calculation (pdf-lib font method)
+    const testWidth = testLine.length * fontSize * 0.5; // Rough estimate
+
+    if (testWidth > maxWidth && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
+  }
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines;
+}
+
+/**
+ * Generalize location to area name (fallback for structured data)
+ */
+function generalizeLocation(postcode: string): string {
+  if (!postcode) return 'UK';
+
+  const areaMap: Record<string, string> = {
+    'SW': 'South West London',
+    'SE': 'South East London',
+    'NW': 'North West London',
+    'NE': 'North East London',
+    'N': 'North London',
+    'S': 'South London',
+    'E': 'East London',
+    'W': 'West London',
+    'EC': 'Central London',
+    'WC': 'Central London',
+    'CR': 'Croydon area',
+    'BR': 'Bromley area',
+    'DA': 'Dartford area',
+    'KT': 'Kingston area',
+    'TW': 'Twickenham area',
+    'HA': 'Harrow area',
+    'UB': 'Uxbridge area',
+    'EN': 'Enfield area',
+    'IG': 'Ilford area',
+    'RM': 'Romford area',
+    'SM': 'Sutton area',
+    'WD': 'Watford area',
+    'B': 'Birmingham area',
+    'M': 'Manchester area',
+    'L': 'Liverpool area',
+    'LS': 'Leeds area',
+    'BS': 'Bristol area',
+    'G': 'Glasgow area',
+    'EH': 'Edinburgh area',
+    'CF': 'Cardiff area',
+  };
+
+  const match = postcode.match(/^([A-Z]{1,2})\d/i);
+  if (match) {
+    const prefix = match[1].toUpperCase();
+    if (areaMap[prefix]) {
+      return areaMap[prefix];
+    }
+  }
+
+  return 'UK';
+}
+
+/**
+ * Generate structured PDF (fallback when no full text available)
+ */
+async function generateStructuredPDF(
   content: {
     candidateReference: string;
     role: string;
@@ -193,7 +556,7 @@ async function generateRedactedPDF(
   }
 ): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([595, 842]); // A4 size
+  const page = pdfDoc.addPage([595, 842]);
 
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -202,59 +565,11 @@ async function generateRedactedPDF(
   const margin = 50;
   let yPos = height - margin;
 
-  // Colors
   const primaryColor = rgb(0.2, 0.4, 0.6);
   const textColor = rgb(0.1, 0.1, 0.1);
   const lightGray = rgb(0.6, 0.6, 0.6);
 
-  // Helper function to draw text and move position
-  const drawText = (text: string, options: {
-    size?: number;
-    font?: typeof font;
-    color?: ReturnType<typeof rgb>;
-    lineHeight?: number;
-    maxWidth?: number;
-  } = {}) => {
-    const {
-      size = 11,
-      font: textFont = font,
-      color = textColor,
-      lineHeight = size * 1.5,
-      maxWidth = width - margin * 2,
-    } = options;
-
-    // Word wrap
-    const words = text.split(' ');
-    let line = '';
-    const lines: string[] = [];
-
-    for (const word of words) {
-      const testLine = line + (line ? ' ' : '') + word;
-      const testWidth = textFont.widthOfTextAtSize(testLine, size);
-      if (testWidth > maxWidth && line) {
-        lines.push(line);
-        line = word;
-      } else {
-        line = testLine;
-      }
-    }
-    if (line) lines.push(line);
-
-    for (const l of lines) {
-      if (yPos < margin + 20) {
-        // Add new page
-        const newPage = pdfDoc.addPage([595, 842]);
-        yPos = height - margin;
-        page.drawText(l, { x: margin, y: yPos, size, font: textFont, color });
-        yPos -= lineHeight;
-      } else {
-        page.drawText(l, { x: margin, y: yPos, size, font: textFont, color });
-        yPos -= lineHeight;
-      }
-    }
-  };
-
-  // Header - Candidate Reference
+  // Header
   page.drawText('CANDIDATE PROFILE', {
     x: margin,
     y: yPos,
@@ -273,7 +588,6 @@ async function generateRedactedPDF(
   });
   yPos -= 25;
 
-  // Role and Location
   page.drawText(content.role, {
     x: margin,
     y: yPos,
@@ -303,7 +617,6 @@ async function generateRedactedPDF(
     yPos -= 15;
   }
 
-  // Divider line
   yPos -= 10;
   page.drawLine({
     start: { x: margin, y: yPos },
@@ -324,7 +637,11 @@ async function generateRedactedPDF(
     });
     yPos -= 18;
 
-    drawText(content.summary, { size: 10 });
+    const summaryLines = wrapText(content.summary, font, 10, width - margin * 2);
+    for (const line of summaryLines) {
+      page.drawText(line, { x: margin, y: yPos, size: 10, font, color: textColor });
+      yPos -= 15;
+    }
     yPos -= 10;
   }
 
@@ -340,7 +657,11 @@ async function generateRedactedPDF(
     yPos -= 18;
 
     const skillsText = content.skills.join(' • ');
-    drawText(skillsText, { size: 10 });
+    const skillLines = wrapText(skillsText, font, 10, width - margin * 2);
+    for (const line of skillLines) {
+      page.drawText(line, { x: margin, y: yPos, size: 10, font, color: textColor });
+      yPos -= 15;
+    }
     yPos -= 10;
   }
 
@@ -375,7 +696,11 @@ async function generateRedactedPDF(
       yPos -= 15;
 
       if (exp.description) {
-        drawText(exp.description, { size: 10 });
+        const descLines = wrapText(exp.description, font, 10, width - margin * 2);
+        for (const line of descLines) {
+          page.drawText(line, { x: margin, y: yPos, size: 10, font, color: textColor });
+          yPos -= 15;
+        }
       }
       yPos -= 10;
     }
@@ -463,87 +788,4 @@ async function generateRedactedPDF(
   });
 
   return await pdfDoc.save();
-}
-
-/**
- * Anonymize employer name - especially for most recent position
- * "Village GP" → "A GP Practice in North London"
- * "Smile Dental Croydon" → "A Dental Practice in Croydon area"
- */
-function anonymizeEmployer(employer: string, location: string, isMostRecent: boolean): string {
-  if (!employer) return 'Healthcare Practice';
-
-  // Always anonymize the most recent employer (index 0 = most recent)
-  if (isMostRecent) {
-    const area = generalizeLocation(location);
-    const lowerEmployer = employer.toLowerCase();
-
-    // Detect type of practice
-    if (lowerEmployer.includes('gp') || lowerEmployer.includes('surgery') || lowerEmployer.includes('medical') || lowerEmployer.includes('doctor')) {
-      return `A GP Practice in ${area}`;
-    }
-    if (lowerEmployer.includes('dental') || lowerEmployer.includes('dentist') || lowerEmployer.includes('orthodont')) {
-      return `A Dental Practice in ${area}`;
-    }
-    if (lowerEmployer.includes('hospital') || lowerEmployer.includes('nhs') || lowerEmployer.includes('trust')) {
-      return `An NHS Trust in ${area}`;
-    }
-    if (lowerEmployer.includes('clinic') || lowerEmployer.includes('health')) {
-      return `A Healthcare Clinic in ${area}`;
-    }
-    return `A Healthcare Practice in ${area}`;
-  }
-
-  // For older positions, keep the employer name (less sensitive)
-  return employer;
-}
-
-/**
- * Generalize location to area name
- */
-function generalizeLocation(postcode: string): string {
-  if (!postcode) return 'UK';
-
-  const areaMap: Record<string, string> = {
-    'SW': 'South West London',
-    'SE': 'South East London',
-    'NW': 'North West London',
-    'NE': 'North East London',
-    'N': 'North London',
-    'S': 'South London',
-    'E': 'East London',
-    'W': 'West London',
-    'EC': 'Central London',
-    'WC': 'Central London',
-    'CR': 'Croydon area',
-    'BR': 'Bromley area',
-    'DA': 'Dartford area',
-    'KT': 'Kingston area',
-    'TW': 'Twickenham area',
-    'HA': 'Harrow area',
-    'UB': 'Uxbridge area',
-    'EN': 'Enfield area',
-    'IG': 'Ilford area',
-    'RM': 'Romford area',
-    'SM': 'Sutton area',
-    'WD': 'Watford area',
-    'B': 'Birmingham area',
-    'M': 'Manchester area',
-    'L': 'Liverpool area',
-    'LS': 'Leeds area',
-    'BS': 'Bristol area',
-    'G': 'Glasgow area',
-    'EH': 'Edinburgh area',
-    'CF': 'Cardiff area',
-  };
-
-  const match = postcode.match(/^([A-Z]{1,2})\d/i);
-  if (match) {
-    const prefix = match[1].toUpperCase();
-    if (areaMap[prefix]) {
-      return areaMap[prefix];
-    }
-  }
-
-  return 'UK';
 }
