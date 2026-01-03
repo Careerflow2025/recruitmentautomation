@@ -82,25 +82,37 @@ export async function POST(request: NextRequest) {
 
     if (cvError || !cv) {
       // If no CV exists, generate a simple profile PDF
-      console.log('No CV found, generating profile PDF');
+      console.log('No CV found, generating profile PDF from candidate data only');
     }
 
-    // Get redacted content from CV or create from candidate data
-    let redactedContent = cv?.redacted_content?.structuredContent;
+    // Get parsed CV data (rich content from AI parsing)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parsedData: any = cv?.cv_parsed_data;
+    const candidateLocation = parsedData?.location || candidate.postcode || '';
 
-    if (!redactedContent) {
-      // Create basic redacted content from candidate data
-      redactedContent = {
-        candidateReference: `DN-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
-        role: candidate.role || 'Dental Professional',
-        generalArea: generalizeLocation(candidate.postcode || ''),
-        summary: candidate.notes?.substring(0, 200) || 'Experienced dental professional seeking new opportunities.',
-        skills: [],
-        experience: [],
-        education: [],
-        qualifications: [],
-      };
-    }
+    // Generate anonymous reference
+    const candidateReference = `DN-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+
+    // Build redacted content from parsed CV data
+    const redactedContent = {
+      candidateReference,
+      role: parsedData?.role || parsedData?.desired_role || candidate.role || 'Dental Professional',
+      generalArea: generalizeLocation(candidateLocation),
+      summary: parsedData?.summary || candidate.notes || 'Experienced dental professional seeking new opportunities.',
+      skills: parsedData?.skills || [],
+      experience: (parsedData?.work_history || []).map((exp: { role?: string; employer?: string; duration?: string; description?: string }, index: number) => ({
+        title: exp.role || 'Position',
+        company: anonymizeEmployer(exp.employer || '', candidateLocation, index === 0),
+        duration: exp.duration || '',
+        description: exp.description || '',
+      })),
+      education: (parsedData?.education || []).map((edu: { qualification?: string; institution?: string; year?: number | string }) => ({
+        qualification: edu.qualification || '',
+        institution: edu.institution || '',
+        year: edu.year?.toString() || '',
+      })),
+      qualifications: parsedData?.qualifications || [],
+    };
 
     // Generate PDF
     const pdfBytes = await generateRedactedPDF(redactedContent, candidate);
@@ -451,6 +463,39 @@ async function generateRedactedPDF(
   });
 
   return await pdfDoc.save();
+}
+
+/**
+ * Anonymize employer name - especially for most recent position
+ * "Village GP" → "A GP Practice in North London"
+ * "Smile Dental Croydon" → "A Dental Practice in Croydon area"
+ */
+function anonymizeEmployer(employer: string, location: string, isMostRecent: boolean): string {
+  if (!employer) return 'Healthcare Practice';
+
+  // Always anonymize the most recent employer (index 0 = most recent)
+  if (isMostRecent) {
+    const area = generalizeLocation(location);
+    const lowerEmployer = employer.toLowerCase();
+
+    // Detect type of practice
+    if (lowerEmployer.includes('gp') || lowerEmployer.includes('surgery') || lowerEmployer.includes('medical') || lowerEmployer.includes('doctor')) {
+      return `A GP Practice in ${area}`;
+    }
+    if (lowerEmployer.includes('dental') || lowerEmployer.includes('dentist') || lowerEmployer.includes('orthodont')) {
+      return `A Dental Practice in ${area}`;
+    }
+    if (lowerEmployer.includes('hospital') || lowerEmployer.includes('nhs') || lowerEmployer.includes('trust')) {
+      return `An NHS Trust in ${area}`;
+    }
+    if (lowerEmployer.includes('clinic') || lowerEmployer.includes('health')) {
+      return `A Healthcare Clinic in ${area}`;
+    }
+    return `A Healthcare Practice in ${area}`;
+  }
+
+  // For older positions, keep the employer name (less sensitive)
+  return employer;
 }
 
 /**
