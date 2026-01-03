@@ -123,7 +123,7 @@ const EMPLOYER_PATTERNS = [
   // Private healthcare chains
   /\b(Bupa|Nuffield|Spire|HCA|BMI)\s+[A-Z][a-zA-Z\s]+\s+(Hospital|Healthcare|Clinic)?\b/gi,
   // Common dental chain names
-  /\b(mydentist|Portman|Dental Beauty|Damira|Smile Dental|Rodericks|{1}Dental|Oasis)\s+[A-Z][a-zA-Z\s]*/gi,
+  /\b(mydentist|Portman|Dental Beauty|Damira|Smile Dental|Rodericks|Oasis|Bupa Dental|Denplan)\s+[A-Z][a-zA-Z\s]*/gi,
 ];
 
 // Reference patterns (people who can be contacted)
