@@ -312,9 +312,9 @@ async function generateBeautifulPDF(
 
       checkNewPage(60);
 
-      // Job role (bold with arrow marker)
+      // Job role (bold with marker)
       const roleText = job.role || 'Position';
-      page.drawText('▸', {
+      page.drawText('>', {
         x: margin,
         y: yPos,
         size: 11,
@@ -362,7 +362,7 @@ async function generateBeautifulPDF(
 
         for (const bullet of bullets) {
           checkNewPage(15);
-          page.drawText(`•  ${bullet}`, {
+          page.drawText(`-  ${bullet}`, {
             x: margin + 20,
             y: yPos,
             size: 9,
@@ -390,7 +390,7 @@ async function generateBeautifulPDF(
 
       // Qualification (bold with arrow)
       const qualText = edu.qualification || 'Qualification';
-      page.drawText('▸', {
+      page.drawText('>', {
         x: margin,
         y: yPos,
         size: 10,
@@ -432,7 +432,7 @@ async function generateBeautifulPDF(
 
     for (const qual of parsedData.qualifications) {
       checkNewPage(15);
-      page.drawText(`•  ${qual}`, {
+      page.drawText(`-  ${qual}`, {
         x: margin,
         y: yPos,
         size: 10,
@@ -451,8 +451,8 @@ async function generateBeautifulPDF(
     checkNewPage(50);
     yPos = drawSectionHeader(page, 'CLINICAL SKILLS', margin, yPos, boldFont, brandColor);
 
-    // Display skills as flowing text with bullet separators
-    const skillsText = parsedData.skills.join('  •  ');
+    // Display skills as flowing text with separators
+    const skillsText = parsedData.skills.join('  |  ');
     yPos = drawWrappedText(page, skillsText, margin, yPos, font, textColor, contentWidth, 10, 14);
     yPos -= 15;
   }
